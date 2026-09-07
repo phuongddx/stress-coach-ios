@@ -29,7 +29,7 @@ No `lint` script by design: `next lint` is deprecated in Next 15.5 and there's n
 
 ## Single places to edit
 
-- **App Store URL** — `site.config.ts` `appStoreUrl` (placeholder `idXXXXXXXXX` until the ASC app exists). Every CTA on the site reads from here.
+- **Download URL** — `site.config.ts` `downloadUrl`: TestFlight (`https://testflight.apple.com/join/yuxPhrec`) while the App Store listing (id `6778478266`) is pending. At launch, flip it to `appStoreUrl` (one line). Every CTA on the site reads `downloadUrl`.
 - **Canonical domain** — `site.config.ts` `siteUrl` (placeholder `https://placeholder.vercel.app` until deploy). Feeds `app/sitemap.ts`, `app/robots.ts`, and `metadataBase` in `app/layout.tsx`.
 
 ## Deploy (Vercel)

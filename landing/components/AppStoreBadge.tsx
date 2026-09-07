@@ -1,15 +1,16 @@
 // Black "Download on the App Store" badge, geometry reproduced from the Open
 // Design appstore-badge.svg asset (Apple mark paths + type, black rounded
-// plate). Links to the single source of truth for the app's store URL.
+// plate). Links to siteConfig.downloadUrl — TestFlight while the store
+// listing is pending, the App Store URL from launch day (one-line flip).
 import { siteConfig } from "@/site.config";
 
 export function AppStoreBadge({ className }: { className?: string }) {
   return (
     <a
-      href={siteConfig.appStoreUrl}
+      href={siteConfig.downloadUrl}
       target="_blank"
       rel="noopener"
-      aria-label="Download Stress AI Coach on the App Store"
+      aria-label="Get Stress AI Coach"
       className={
         "inline-flex overflow-hidden rounded-[9px] leading-[0] " +
         "shadow-[0_1px_2px_rgba(16,18,35,0.04),0_4px_14px_rgba(16,18,35,0.05)] " +
