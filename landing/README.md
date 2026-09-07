@@ -30,8 +30,8 @@ No `lint` script by design: `next lint` is deprecated in Next 15.5 and there's n
 ## Single places to edit
 
 - **Download URL** — `site.config.ts` `downloadUrl`: TestFlight (`https://testflight.apple.com/join/yuxPhrec`) while the App Store listing (id `6778478266`) is pending. At launch, flip it to `appStoreUrl` (one line). Every CTA on the site reads `downloadUrl`.
-- **Canonical domain** — `site.config.ts` `siteUrl` (placeholder `https://placeholder.vercel.app` until deploy). Feeds `app/sitemap.ts`, `app/robots.ts`, and `metadataBase` in `app/layout.tsx`.
+- **Canonical domain** — `site.config.ts` `siteUrl` (currently `https://stress-ai-coach-landing.vercel.app`). Feeds `app/sitemap.ts`, `app/robots.ts`, and `metadataBase` in `app/layout.tsx`. Custom domain: update this line, then redeploy.
 
 ## Deploy (Vercel)
 
-Import the repo in Vercel: **New Project →** set **Root Directory** to `landing/` — the framework preset (Next.js) is detected automatically. Then replace the placeholder domain listed above with the assigned Vercel/production domain.
+Already deployed as the Vercel project `stress-ai-coach-landing` (team `phuong-doans-projects`), linked to this directory (`.vercel/` in `landing/`, git-ignored). Production URL: https://stress-ai-coach-landing.vercel.app. To ship a change: `cd landing && vercel deploy --prod`. To connect it to git instead (auto-deploy on push), attach the repo in the Vercel dashboard with **Root Directory** `landing/`.

@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "Stress AI Coach",
-  siteUrl: "https://placeholder.vercel.app", // canonical domain, set at deploy — feeds sitemap, robots, and metadataBase
+  siteUrl: "https://stress-ai-coach-landing.vercel.app", // canonical domain — feeds sitemap, robots, and metadataBase
   tagline: "Understand your stress. Do something about it.",
   appStoreUrl: "https://apps.apple.com/app/stress-ai-coach/id6778478266",
   testFlightUrl: "https://testflight.apple.com/join/yuxPhrec",
