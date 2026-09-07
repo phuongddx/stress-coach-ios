@@ -74,7 +74,7 @@ ios-stress-app/landing/          → Next.js (App Router, TS), own Vercel projec
 ## 6. Design system
 
 - **Tokens (`tokens.css`, verbatim from `sac-landing.html` / app Theme):** ink `#101223`, muted `#6B6E7B`, accent `#0288D1`, accent-bright `#4FC3F7`, ripple-tint `#E1F2FC`, surface `#F2F2F7`, warm surface `#FFFDF6`, tiers `#00A000/#007AFF/#8A5A00/#B25400/#FF3B30`, gradient `#4FC3F7→#0288D1→#10B981`
-- **Type:** system stacks exactly as in `sac-landing.html` — display `ui-serif, "New York", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua"`, body `ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable"`, mono `ui-monospace`. No webfont downloads; native editorial serif on Apple platforms is the identity
+- **Type:** Roboto (display + body; weights 400/500/700, self-hosted woff2 — `next/font` in the build), mono stays `ui-monospace`. Applied to `sac-landing.html` 2026-09-07 on user request (was system serif/sans stacks)
 - **Layout:** 12-col grid, ~1180px max width, rounded 18–24px cards, soft shadows
 - **Motion:** white→tint hero transition, staggered scroll reveals, animated tier viz, breathing ring, gentle Ripple float; all gated by `prefers-reduced-motion`
 - **Illustration rule:** all visuals authored SVG/illustration — **no app screenshots anywhere** (per design decision, 2026-09-07)
