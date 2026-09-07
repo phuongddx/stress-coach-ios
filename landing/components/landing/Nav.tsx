@@ -5,9 +5,10 @@
 // state, not time-based motion, so it stays on under reduced motion), and the
 // mobile sheet is a checkbox-hack. NavSheetList (the one client island)
 // unchecks the box on link tap so the sheet collapses like the design's JS;
-// the burger/close swap and the toggle's focus ring key off the same checkbox
-// via html:has() (Tailwind peer variants only reach siblings, not the nested
-// label). Breakpoints follow the design's 900px link/toggle switch.
+// visibility:hidden while closed keeps the sheet's links out of the tab
+// order. The burger/close swap and the toggle's focus ring key off the same
+// checkbox via html:has() (Tailwind peer variants only reach siblings, not
+// the nested label). Breakpoints follow the design's 900px link/toggle switch.
 import { AppStoreBadge } from "@/components/AppStoreBadge";
 import { RippleMark } from "@/components/illustrations/RippleMark";
 import { NavSheetList } from "./NavSheetList";
@@ -86,7 +87,7 @@ export function Nav() {
         </label>
       </div>
 
-      <div className="grid max-h-0 overflow-hidden border-t border-transparent transition-[max-height,border-color] duration-300 min-[900px]:hidden peer-checked:max-h-[340px] peer-checked:border-ink/10">
+      <div className="invisible grid max-h-0 overflow-hidden border-t border-transparent transition-[max-height,border-color,visibility] duration-300 min-[900px]:hidden peer-checked:visible peer-checked:max-h-[340px] peer-checked:border-ink/10">
         <NavSheetList links={LINKS} />
       </div>
     </header>
