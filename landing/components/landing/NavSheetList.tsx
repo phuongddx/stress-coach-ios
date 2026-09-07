@@ -10,6 +10,7 @@ export function NavSheetList({ links }: { links: ReadonlyArray<readonly [string,
   return (
     <ul
       role="list"
+      className="grid gap-0.5 px-[clamp(20px,5vw,40px)] pt-2 pb-[18px]"
       onClick={(event) => {
         if (!(event.target instanceof Element) || !event.target.closest("a")) return;
         const box = document.getElementById("sac-nav-toggle") as HTMLInputElement | null;
