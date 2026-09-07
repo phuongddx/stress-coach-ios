@@ -47,11 +47,11 @@ export function ChatVignette() {
       </p>
 
       <div className="flex flex-wrap gap-[9px] justify-self-start">
-        <span className="inline-flex min-h-[38px] items-center gap-2 rounded-full border-[1.5px] border-accent/35 bg-accent/[0.06] px-[15px] text-[0.8125rem] font-semibold text-accent">
+        <span className="inline-flex min-h-[38px] items-center gap-2 rounded-full border-[1.5px] border-accent/35 bg-accent/[0.06] px-[15px] text-[0.8125rem] font-semibold text-accent-deep">
           {chipIcon478}
           Start 4-7-8 · 2 min
         </span>
-        <span className="inline-flex min-h-[38px] items-center gap-2 rounded-full border-[1.5px] border-accent/35 bg-accent/[0.06] px-[15px] text-[0.8125rem] font-semibold text-accent">
+        <span className="inline-flex min-h-[38px] items-center gap-2 rounded-full border-[1.5px] border-accent/35 bg-accent/[0.06] px-[15px] text-[0.8125rem] font-semibold text-accent-deep">
           {chipIconWalk}
           Log a mini walk
         </span>

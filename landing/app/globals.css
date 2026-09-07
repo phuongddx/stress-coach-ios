@@ -5,6 +5,7 @@
   --ink-muted: #6b6e7b;
   --accent: #0288d1;
   --accent-bright: #4fc3f7;
+  --accent-deep: #0166a0;
   --tint: #e1f2fc;
   --surface: #f2f2f7;
   --surface-warm: #fffdf6;
@@ -24,6 +25,7 @@
   --color-ink-muted: var(--ink-muted);
   --color-accent: var(--accent);
   --color-accent-bright: var(--accent-bright);
+  --color-accent-deep: var(--accent-deep);
   --color-tint: var(--tint);
   --color-surface: var(--surface);
   --color-surface-warm: var(--surface-warm);

@@ -7,7 +7,7 @@ export function SectionHeading({ eyebrow, title, lede }: { eyebrow?: string; tit
   return (
     <div className="max-w-[660px]">
       {eyebrow && (
-        <p className="mb-[18px] flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.15em] text-accent">
+        <p className="mb-[18px] flex items-center gap-2.5 font-[family-name:var(--font-mono)] text-[0.6875rem] uppercase tracking-[0.15em] text-accent-deep">
           <span
             aria-hidden="true"
             className="h-0.5 w-[22px] shrink-0 rounded-full bg-[linear-gradient(120deg,var(--grad-a)_0%,var(--grad-b)_55%,var(--grad-c)_100%)]"

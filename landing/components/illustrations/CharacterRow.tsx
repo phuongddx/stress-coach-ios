@@ -131,7 +131,7 @@ export function CharacterRow() {
           <span
             className={
               "mb-[14px] inline-block rounded-full px-[11px] py-1 font-[family-name:var(--font-mono)] text-[0.625rem] uppercase tracking-[0.1em] " +
-              (c.starter ? "bg-accent/[0.12] text-accent" : "bg-ink/[0.07] text-ink-muted")
+              (c.starter ? "bg-accent/[0.12] text-accent-deep" : "bg-ink/[0.07] text-ink-muted")
             }
           >
             {c.tag}
