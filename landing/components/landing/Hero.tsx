@@ -7,10 +7,8 @@ import { ScoreDial } from "@/components/illustrations/ScoreDial";
 import { RippleMark } from "@/components/illustrations/RippleMark";
 import { siteConfig } from "@/site.config";
 
-// Darkened muted ink for legibility on the tint the hero settles into (the
-// design's --muted-tint; the global token set only carries --ink-muted).
 const HERO_CSS = `
-.sac-hero{--muted-tint:#565a68;view-timeline-name:--sac-hero}
+.sac-hero{view-timeline-name:--sac-hero}
 .sac-hero{animation:sac-hero-settle 1.3s cubic-bezier(.3,0,.2,1) both}
 @keyframes sac-hero-settle{from{background-color:#fff}to{background-color:var(--tint)}}
 @media (prefers-reduced-motion: reduce){.sac-hero{animation:none;background:var(--tint)}}

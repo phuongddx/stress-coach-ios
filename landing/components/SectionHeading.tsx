@@ -1,8 +1,5 @@
 // Section heading block from sac-landing's .sect-head pattern: optional
-// gradient-dashed eyebrow in mono caps, display-weight title, optional muted
-// lede. One-liner aside: the design tints the eyebrow with its darkened
-// --accent-deep; the landing token set only carries --accent, so that's what
-// the eyebrow uses here.
+// gradient-dashed eyebrow in mono caps, display-weight title, optional muted lede.
 export function SectionHeading({ eyebrow, title, lede }: { eyebrow?: string; title: string; lede?: string }) {
   return (
     <div className="max-w-[660px]">

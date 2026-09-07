@@ -6,9 +6,7 @@ import { AppStoreBadge } from "@/components/AppStoreBadge";
 import { RippleMark } from "@/components/illustrations/RippleMark";
 import { siteConfig } from "@/site.config";
 
-// Darkened muted ink for legibility on the tint (the design's --muted-tint).
 const FINAL_CSS = `
-.sac-final{--muted-tint:#565a68}
 .sac-fbubble{position:absolute;border-radius:50%;
   background:radial-gradient(circle at 32% 28%,rgba(255,255,255,.9),rgba(79,195,247,.42) 62%,rgba(2,136,209,.16));
   animation:sac-drift linear infinite}

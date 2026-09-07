@@ -17,6 +17,8 @@ npm run build      # production build to .next/
 npm run test       # vitest — quiz scoring engine tests
 ```
 
+No `lint` script by design: `next lint` is deprecated in Next 15.5 and there's no ESLint config to run.
+
 ## Routes
 
 | Route | What it is |
@@ -28,9 +30,7 @@ npm run test       # vitest — quiz scoring engine tests
 ## Single places to edit
 
 - **App Store URL** — `site.config.ts` `appStoreUrl` (placeholder `idXXXXXXXXX` until the ASC app exists). Every CTA on the site reads from here.
-- **Canonical domain** — set at deploy time, in two spots that must match:
-  - `app/sitemap.ts` and `app/robots.ts` (currently `https://PLACEHOLDER.vercel.app`)
-  - `SITE_URL` in `app/layout.tsx` (`metadataBase`, resolves absolute Open Graph URLs)
+- **Canonical domain** — `site.config.ts` `siteUrl` (placeholder `https://placeholder.vercel.app` until deploy). Feeds `app/sitemap.ts`, `app/robots.ts`, and `metadataBase` in `app/layout.tsx`.
 
 ## Deploy (Vercel)
 

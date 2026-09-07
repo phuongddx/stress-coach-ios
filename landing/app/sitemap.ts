@@ -1,3 +1,5 @@
+import { siteConfig } from "@/site.config";
+
 export default function sitemap() {
-  return [{ url: "https://PLACEHOLDER.vercel.app/", lastModified: new Date() }];
+  return [{ url: `${siteConfig.siteUrl}/`, lastModified: new Date() }];
 }

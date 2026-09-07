@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
+import { siteConfig } from "@/site.config";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: { userAgent: "*", allow: "/" },
-    sitemap: "https://PLACEHOLDER.vercel.app/sitemap.xml",
+    sitemap: `${siteConfig.siteUrl}/sitemap.xml`,
   };
 }

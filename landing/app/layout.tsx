@@ -5,8 +5,6 @@ import "./globals.css";
 
 const roboto = Roboto({ weight: ["400", "500", "700"], subsets: ["latin"], variable: "--font-roboto", display: "swap" });
 
-const SITE_URL = "https://PLACEHOLDER.vercel.app"; // canonical domain, set at deploy (mirrors app/sitemap.ts)
-
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
@@ -17,7 +15,7 @@ const jsonLd = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_URL),
+  metadataBase: new URL(siteConfig.siteUrl),
   title: { default: `${siteConfig.name} — ${siteConfig.tagline}`, template: `%s · ${siteConfig.name}` },
   description: "Stress AI Coach turns the health data your iPhone already collects into a daily 0–100 stress score, then helps you act on it with an AI wellness coach and calm tools. iPhone + Apple Watch.",
   openGraph: {
