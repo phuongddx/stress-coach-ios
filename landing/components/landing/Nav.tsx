@@ -3,10 +3,14 @@
 // the hero's view timeline (appears only once the hero CTA has left the
 // viewport, matching the design's body.past-hero behavior — scroll-linked
 // state, not time-based motion, so it stays on under reduced motion), and the
-// mobile sheet is a checkbox-hack (peer-checked) so no JS island is needed.
-// Breakpoints follow the design's 900px link/toggle switch.
+// mobile sheet is a checkbox-hack. NavSheetList (the one client island)
+// unchecks the box on link tap so the sheet collapses like the design's JS;
+// the burger/close swap and the toggle's focus ring key off the same checkbox
+// via html:has() (Tailwind peer variants only reach siblings, not the nested
+// label). Breakpoints follow the design's 900px link/toggle switch.
 import { AppStoreBadge } from "@/components/AppStoreBadge";
 import { RippleMark } from "@/components/illustrations/RippleMark";
+import { NavSheetList } from "./NavSheetList";
 
 const LINKS = [
   ["Score", "#score"],
@@ -30,6 +34,10 @@ main.sac-page{timeline-scope:--sac-hero}
 @media (prefers-reduced-motion: reduce){
   .sac-nav{animation:none;border-bottom-color:rgba(16,18,35,.10)}
 }
+html:has(#sac-nav-toggle:focus-visible) .sac-nav-toggle{outline:2px solid var(--accent);outline-offset:2px}
+.sac-nav-close{display:none}
+html:has(#sac-nav-toggle:checked) .sac-nav-burger{display:none}
+html:has(#sac-nav-toggle:checked) .sac-nav-close{display:block}
 `;
 
 export function Nav() {
@@ -67,27 +75,19 @@ export function Nav() {
         <label
           htmlFor="sac-nav-toggle"
           aria-label="Menu"
-          className="inline-flex size-[44px] cursor-pointer items-center justify-center rounded-[11px] border border-ink/10 bg-white text-ink transition-colors hover:bg-ink/5 min-[900px]:hidden peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent"
+          className="sac-nav-toggle inline-flex size-[44px] cursor-pointer items-center justify-center rounded-[11px] border border-ink/10 bg-white text-ink transition-colors hover:bg-ink/5 min-[900px]:hidden"
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" className="sac-nav-burger">
             <path d="M4 8h16M4 16h16" />
+          </svg>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true" className="sac-nav-close">
+            <path d="M6 6l12 12M18 6L6 18" />
           </svg>
         </label>
       </div>
 
       <div className="grid max-h-0 overflow-hidden border-t border-transparent transition-[max-height,border-color] duration-300 min-[900px]:hidden peer-checked:max-h-[340px] peer-checked:border-ink/10">
-        <ul role="list" className="grid gap-0.5 px-[clamp(20px,5vw,40px)] pt-2 pb-[18px]">
-          {LINKS.map(([label, href]) => (
-            <li key={href}>
-              <a
-                href={href}
-                className="flex min-h-[48px] items-center border-b border-ink/[0.06] px-1 text-[1.0625rem] font-medium text-ink no-underline"
-              >
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <NavSheetList links={LINKS} />
       </div>
     </header>
   );

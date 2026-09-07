@@ -9,7 +9,7 @@ import { SectionHeading } from "@/components/SectionHeading";
 const SECTION_CSS = `
 @supports (animation-timeline: view()){
   .sac-viz{view-timeline-name:--sac-scoreviz}
-  .sac-tier-bar{animation:sac-bar-grow 1s cubic-bezier(.22,.68,.16,1) both;animation-timeline:--sac-scoreviz}
+  .sac-tier-bar{transform-origin:bottom center;animation:sac-bar-grow 1s cubic-bezier(.22,.68,.16,1) both;animation-timeline:--sac-scoreviz}
   .sac-tier:nth-child(1) .sac-tier-bar{animation-range:entry 0% entry 50%}
   .sac-tier:nth-child(2) .sac-tier-bar{animation-range:entry 8% entry 58%}
   .sac-tier:nth-child(3) .sac-tier-bar{animation-range:entry 16% entry 66%}
