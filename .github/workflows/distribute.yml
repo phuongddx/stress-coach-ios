@@ -8,9 +8,8 @@ on:
         required: true
         type: choice
         options:
-          - "Core Testers"
-          - "Extended Beta"
-          - "Public Beta"
+          - "Qa"
+          - "Release-1.0.0"
       build_number:
         description: "Build number to distribute (leave blank = latest processed)"
         required: false
