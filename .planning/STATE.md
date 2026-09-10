@@ -3,10 +3,10 @@ gsd_state_version: "1.0"
 milestone: v1.2
 status: Awaiting next milestone
 stopped_at: Completed 03-06-PLAN.md (phase 3 complete — 6/6)
-last_updated: "2026-09-06T04:18:42.600Z"
+last_updated: "2026-09-10T02:12:58.790Z"
 last_activity: 2026-09-05
 last_activity_desc: Milestone v1.2 completed and archived
-state_head: 6790f3bb7c6a3306693ef4ca3f306fdf16023d95
+state_head: fd7b6c418a68ba18eee6cb27b0494087c8d6825a
 progress:
   total_phases: 4
   completed_phases: 1
@@ -161,6 +161,7 @@ None yet.
 | 260901-vfd | Fix `Color.stressColor(for: Double)` threshold bug | 2026-09-01 | cf2dc8c | [260901-vfd-…](./quick/260901-vfd-fix-color-stresscolor-for-double-thresho/) |
 | 4 | Update Settings UI to approved redesign direction (cream canvas, plain surface cards) | 2026-09-02 | 2b84862 | — |
 | 5 | Hide paywall credit-pack section (consumables unsupported) | 2026-09-06 | 6790f3b | — |
+| 6 | Remove deploy.yml fastlane upload_beta (superseded by Xcode Cloud Beta) | 2026-09-10 | fd7b6c4 | — |
 
 ## Deferred Items
 
