@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StressMonitor — Xcode Cloud Pipeline</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FFFDF6;
+    --paper-2: #F2F2F7;
+    --ink: #101223;
+    --muted: #6B6E7B;
+    --soft: #8E8E93;
+    --rule: rgba(16,18,35,0.12);
+    --accent: #007AFF;
+    --link: #0A84FF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Geist', sans-serif;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 3rem 2rem 2rem;
+  }
+  .eyebrow {
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--soft);
+    margin-bottom: 0.75rem;
+  }
+  h1 {
+    font-family: 'Instrument Serif', serif;
+    font-weight: 400;
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+  .subtitle {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    margin-bottom: 2rem;
+  }
+  .diagram { margin-bottom: 2rem; }
+  svg { display: block; width: 100%; height: auto; }
+  .cards {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr 0.9fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: #FFFFFF;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 1.25rem;
+  }
+  .card .eyebrow { margin-bottom: 0.5rem; }
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+  }
+  .card-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .dot-ink { background: var(--ink); }
+  .dot-accent { background: var(--accent); }
+  .dot-muted { background: var(--muted); }
+  .card h3 {
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+  .card ul {
+    list-style: none;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .card ul li::before {
+    content: "— ";
+    color: var(--soft);
+  }
+  .card .mono, .mono {
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.75rem;
+  }
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-top: 1rem;
+    font-family: 'Geist Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--soft);
+    letter-spacing: 0.06em;
+  }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">StressMonitor · CI/CD · Xcode Cloud</p>
+<h1>Commit to TestFlight, no hands</h1>
+<p class="subtitle">The pipeline as exercised by builds #17–#23: three triggers, one provisioning gate, two distribution paths — every trigger fired.</p>
+
+<div class="diagram">
+<svg viewBox="0 0 1280 640" role="img" aria-labelledby="xc-pipeline-title xc-pipeline-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="xc-pipeline-title">StressMonitor Xcode Cloud pipeline</title>
+  <desc id="xc-pipeline-desc">Three GitHub triggers — pull request, push to main, release tag — fan into three Xcode Cloud workflows that run a post-clone provisioning script, then archive and upload TestFlight builds to an internal group and an external release group.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#6B6E7B"/>
+    </marker>
+    <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#0A84FF"/>
+    </marker>
+  </defs>
+
+  <!-- paper -->
+  <rect width="100%" height="100%" fill="#FFFDF6"/>
+
+  <!-- zone: Xcode Cloud (painted before arrows and nodes) -->
+  <rect x="272" y="120" width="520" height="456" rx="8"
+        fill="rgba(16,18,35,0.02)" stroke="rgba(16,18,35,0.10)" stroke-width="0.8"/>
+  <rect x="288" y="124" width="176" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="376" y="133" fill="rgba(16,18,35,0.40)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.14em">XCODE CLOUD · PRODUCT STRESSMONITOR</text>
+
+  <!-- arrows (before nodes) — reversed-nesting trigger fan: deepest destination, bottom exit, leftmost channel -->
+  <!-- PR trigger: top exit y=232, channel x=260 → PR Gate (y=312) -->
+  <path d="M 208,232 H 252 Q 260,232 260,240 V 304 Q 260,312 268,312 H 296"
+        fill="none" stroke="#0A84FF" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+  <rect x="218" y="214" width="24" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="230" y="223" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.06em">PR</text>
+
+  <!-- PUSH trigger: middle exit y=260, channel x=244 → Beta (y=416) -->
+  <path d="M 208,260 H 236 Q 244,260 244,268 V 408 Q 244,416 252,416 H 296"
+        fill="none" stroke="#0A84FF" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+  <rect x="212" y="242" width="32" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="228" y="251" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.06em">PUSH</text>
+
+  <!-- TAG trigger: bottom exit y=288, channel x=228 → Release (y=520) -->
+  <path d="M 208,288 H 220 Q 228,288 228,296 V 512 Q 228,520 236,520 H 296"
+        fill="none" stroke="#0A84FF" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+  <!-- TAG label beside its vertical segment (8px gap), open canvas left of channel -->
+  <rect x="192" y="376" width="28" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="206" y="385" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.06em">TAG</text>
+
+  <!-- Beta → TestFlight -->
+  <path d="M 496,416 H 672 Q 680,416 680,408 V 380 Q 680,372 688,372 H 880"
+        fill="none" stroke="#6B6E7B" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <rect x="548" y="398" width="76" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="586" y="407" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.06em">TF INTERNAL</text>
+
+  <!-- Release → TestFlight -->
+  <path d="M 496,520 H 760 Q 768,520 768,512 V 412 Q 768,404 776,404 H 880"
+        fill="none" stroke="#6B6E7B" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <rect x="584" y="502" width="80" height="12" rx="2" fill="#FFFDF6"/>
+  <text x="624" y="511" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.06em">TF + APP STORE</text>
+
+  <!-- nodes -->
+  <!-- GitHub (external) -->
+  <rect x="48" y="220" width="160" height="80" rx="6" fill="#FFFDF6"/>
+  <rect x="48" y="220" width="160" height="80" rx="6"
+        fill="rgba(16,18,35,0.03)" stroke="rgba(16,18,35,0.30)" stroke-width="1"/>
+  <rect x="56" y="226" width="32" height="12" rx="2" fill="transparent"
+        stroke="rgba(16,18,35,0.30)" stroke-width="0.8"/>
+  <text x="72" y="235" fill="rgba(16,18,35,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">SCM</text>
+  <text x="128" y="262" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">GitHub repo</text>
+  <text x="128" y="280" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">phuongddx/stress-coach-ios</text>
+
+  <!-- ci_post_clone bar (focal 1) -->
+  <rect x="296" y="156" width="472" height="80" rx="6" fill="#FFFDF6"/>
+  <rect x="296" y="156" width="472" height="80" rx="6"
+        fill="rgba(0,122,255,0.08)" stroke="#007AFF" stroke-width="1"/>
+  <rect x="304" y="162" width="64" height="12" rx="2" fill="transparent"
+        stroke="rgba(0,122,255,0.50)" stroke-width="0.8"/>
+  <text x="336" y="171" fill="rgba(0,122,255,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">CI SCRIPT</text>
+  <text x="532" y="196" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">ci_post_clone.sh — runs in every build</text>
+  <text x="532" y="216" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">GOOGLE_SERVICE_INFO_PLIST_BASE64 → GoogleService-Info.plist · 1098 B</text>
+
+  <!-- PR Gate -->
+  <rect x="296" y="272" width="200" height="80" rx="6" fill="#FFFDF6"/>
+  <rect x="296" y="272" width="200" height="80" rx="6"
+        fill="#FFFFFF" stroke="#101223" stroke-width="1"/>
+  <rect x="304" y="278" width="60" height="12" rx="2" fill="transparent"
+        stroke="rgba(16,18,35,0.40)" stroke-width="0.8"/>
+  <text x="334" y="287" fill="rgba(16,18,35,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">WORKFLOW</text>
+  <text x="396" y="314" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">PR Gate</text>
+  <text x="396" y="332" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">build + test → check on PR</text>
+
+  <!-- Beta -->
+  <rect x="296" y="376" width="200" height="80" rx="6" fill="#FFFDF6"/>
+  <rect x="296" y="376" width="200" height="80" rx="6"
+        fill="#FFFFFF" stroke="#101223" stroke-width="1"/>
+  <rect x="304" y="382" width="60" height="12" rx="2" fill="transparent"
+        stroke="rgba(16,18,35,0.40)" stroke-width="0.8"/>
+  <text x="334" y="391" fill="rgba(16,18,35,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">WORKFLOW</text>
+  <text x="396" y="418" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">Beta</text>
+  <text x="396" y="436" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">archive → TestFlight internal</text>
+
+  <!-- Release -->
+  <rect x="296" y="480" width="200" height="80" rx="6" fill="#FFFDF6"/>
+  <rect x="296" y="480" width="200" height="80" rx="6"
+        fill="#FFFFFF" stroke="#101223" stroke-width="1"/>
+  <rect x="304" y="486" width="60" height="12" rx="2" fill="transparent"
+        stroke="rgba(16,18,35,0.40)" stroke-width="0.8"/>
+  <text x="334" y="495" fill="rgba(16,18,35,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">WORKFLOW</text>
+  <text x="396" y="522" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">Release</text>
+  <text x="396" y="540" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">archive → App Store eligible</text>
+
+  <!-- TestFlight (focal 2) -->
+  <rect x="880" y="340" width="200" height="96" rx="6" fill="#FFFDF6"/>
+  <rect x="880" y="340" width="200" height="96" rx="6"
+        fill="rgba(0,122,255,0.08)" stroke="#007AFF" stroke-width="1"/>
+  <rect x="888" y="346" width="28" height="12" rx="2" fill="transparent"
+        stroke="rgba(0,122,255,0.50)" stroke-width="0.8"/>
+  <text x="902" y="355" fill="rgba(0,122,255,0.8)" font-size="7" font-family="'Geist Mono', monospace"
+        text-anchor="middle" letter-spacing="0.08em">ASC</text>
+  <text x="980" y="380" fill="#101223" font-size="12" font-weight="600"
+        font-family="'Geist', sans-serif" text-anchor="middle">TestFlight</text>
+  <text x="980" y="398" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">Qa · internal</text>
+  <text x="980" y="412" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">Release-1.0.0 · external</text>
+  <text x="980" y="426" fill="#6B6E7B" font-size="9"
+        font-family="'Geist Mono', monospace" text-anchor="middle">1.0.0 (23) LIVE</text>
+
+  <!-- legend strip -->
+  <line x1="48" y1="600" x2="1232" y2="600" stroke="rgba(16,18,35,0.10)" stroke-width="0.8"/>
+  <text x="48" y="620" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace"
+        letter-spacing="0.14em">LEGEND</text>
+
+  <rect x="140" y="612" width="16" height="12" rx="2"
+        fill="rgba(16,18,35,0.03)" stroke="rgba(16,18,35,0.30)" stroke-width="0.8"/>
+  <text x="164" y="621" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace">EXTERNAL</text>
+
+  <rect x="288" y="612" width="16" height="12" rx="2"
+        fill="#FFFFFF" stroke="#101223" stroke-width="0.8"/>
+  <text x="312" y="621" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace">WORKFLOW</text>
+
+  <rect x="440" y="612" width="16" height="12" rx="2"
+        fill="rgba(0,122,255,0.08)" stroke="#007AFF" stroke-width="0.8"/>
+  <text x="464" y="621" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace">FOCAL · CI SCRIPT / TESTFLIGHT</text>
+
+  <line x1="704" y1="618" x2="740" y2="618" stroke="#0A84FF" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+  <text x="748" y="621" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace">WEBHOOK TRIGGER</text>
+
+  <line x1="908" y1="618" x2="944" y2="618" stroke="#6B6E7B" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="952" y="621" fill="#6B6E7B" font-size="8" font-family="'Geist Mono', monospace">BUILD UPLOAD</text>
+</svg>
+</div>
+
+<div class="cards">
+  <div class="card">
+    <p class="eyebrow">TRIGGERS · ALL PROVEN</p>
+    <div class="card-header">
+      <span class="card-dot dot-accent"></span>
+      <h3>Three ways in, all three fired</h3>
+    </div>
+    <ul>
+      <li><span class="mono">PR → main</span> — build ✓, tests ✗ pre-existing suite (run #18)</li>
+      <li><span class="mono">push → main</span> — auto Beta #20, #22</li>
+      <li><span class="mono">tag release/1.0.0</span> — Release #23, App-Store eligible</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p class="eyebrow">THE GATE</p>
+    <div class="card-header">
+      <span class="card-dot dot-ink"></span>
+      <h3>What guards the binary</h3>
+    </div>
+    <ul>
+      <li><span class="mono">ci_post_clone.sh</span> fails closed — missing secret = failed build</li>
+      <li>Secret redacted + locked, linked to all 3 workflows</li>
+      <li>Automatic signing, team K2TYLYAWMK (Apple-verified)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <p class="eyebrow">WHERE BUILDS LAND</p>
+    <div class="card-header">
+      <span class="card-dot dot-muted"></span>
+      <h3>TestFlight state</h3>
+    </div>
+    <ul>
+      <li>17, 20, 22 — uploaded, VALID · one command from Qa</li>
+      <li>External LIVE: 1.0.0 (23) on Release-1.0.0</li>
+      <li>Beta review passed · Xcode 26.6 pinned</li>
+    </ul>
+  </div>
+</div>
+
+<footer>
+  source commit 179a4c1 · workflows pinned Xcode 26.6 · skin: StressMonitor Wellness tokens
+</footer>
+
+</body>
+</html>

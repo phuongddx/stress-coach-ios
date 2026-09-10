@@ -9,7 +9,21 @@ StressMonitor is a privacy-first iPhone and Apple Watch app that turns HealthKit
 [![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)](https://www.swift.org/)
 [![Architecture](https://img.shields.io/badge/Architecture-MVVM-7C3AED)](docs/system-architecture.md)
 
-> Health data remains local-first. HealthKit access is read-only, CloudKit sync is optional, and raw HealthKit samples are not sent to the AI service.
+> **Privacy by default.** Health data stays local-first. HealthKit access is read-only, CloudKit sync is optional, and raw HealthKit samples are never sent to the AI service — only the derived stress context travels with a chat message.
+
+> **Status:** Live on TestFlight — every merge to `main` and every release tag produces a build automatically, and release 1.0.0 (23) is live on external group `Release-1.0.0` with beta review passed. App Store submission is pending. No CI badge is shown because Xcode Cloud has no public badge endpoint.
+
+## Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [How stress scoring works](#how-stress-scoring-works)
+- [Architecture](#architecture)
+- [How it ships](#how-it-ships)
+- [Development](#development)
+- [Repository map](#repository-map)
+- [Technology](#technology)
+- [Documentation](#documentation)
 
 ## Features
 
@@ -102,7 +116,39 @@ StressMonitor uses MVVM with `@Observable` state, protocol-based dependency inje
 - **Platform-aware sharing:** the watch target mirrors the stress algorithm so it can calculate independently; App Groups and WatchConnectivity share presentation data.
 - **Authenticated AI:** chat uses Firebase authentication and an SSE-streaming backend; only messages and derived stress context cross that boundary.
 
-For a deeper walkthrough, see the [system architecture](docs/system-architecture.md) and the [runtime architecture diagram](docs/diagrams/stress-calculation-architecture.html).
+For a deeper walkthrough, see the [system architecture](docs/system-architecture.md) and the interactive [stress calculation diagram](docs/diagrams/stress-calculation-architecture.html).
+
+## How it ships
+
+Delivery runs on Xcode Cloud, with three workflows pinned to Xcode 26.6 on macOS Tahoe 26.6.2.
+
+![Delivery pipeline — pull requests, pushes to main, and release tags flow through Xcode Cloud to TestFlight](docs/diagrams/xcode-cloud-pipeline.png)
+
+| Workflow | Trigger | Runs | Destination |
+|---|---|---|---|
+| **PR Gate** | Pull request targeting `main` | Build + `StressMonitorTests` | Merge gate only — nothing is distributed |
+| **Beta** | Push to `main` | Archive → upload | TestFlight internal — group **Qa** |
+| **Release** | Tag matching `release*` | App-Store-eligible archive → upload | TestFlight external — group **Release-1.0.0** |
+
+Every cloud build provisions its Firebase configuration in `StressMonitor/ci_scripts/ci_post_clone.sh`: the `GOOGLE_SERVICE_INFO_PLIST_BASE64` secret is materialized into `GoogleService-Info.plist` right after checkout, and the build **fails closed** if the secret is missing — a partially configured build can never reach TestFlight. Signing is automatic under Apple Developer team `K2TYLYAWMK`. Group distribution rides on a TestFlight post-action, which is currently a one-click step per build.
+
+GitHub Actions complements the cloud pipeline with a SwiftLint gate on pull requests ([ci.yml](.github/workflows/ci.yml)) and manual fastlane dispatches for distribution, release, and Match signing. The pipeline is proven end to end: the PR gate has run (#18), pushes to `main` produced Beta builds #20 and #22, and tagging `release/1.0.0` produced build #23 — the TestFlight external release 1.0.0 (23) now live, with beta review passed. An interactive version of the diagram is available at [xcode-cloud-pipeline.html](xcode-cloud-pipeline.html).
+
+## Development
+
+**Requirements:** macOS with Xcode 26.x and the iOS 18.6+ SDK (the app targets iOS 18.6; the watch app targets watchOS 11.6).
+
+```sh
+open StressMonitor/StressMonitor.xcodeproj
+```
+
+Select the **StressMonitor** scheme and press ⌘R. To run on a simulator or device without HealthKit history, add the `-demo-mode` launch argument (Product → Scheme → Edit Scheme → Run → Arguments) — the app then uses simulated HealthKit data end to end.
+
+**Firebase configuration.** `GoogleService-Info.plist` is gitignored. It is required for AI chat and Firebase/Google Sign-In authentication, and not needed for stress scoring or demo mode. Ask a maintainer for a copy, or see the [deployment guide](docs/deployment-guide.md) for how Xcode Cloud injects it in the cloud.
+
+**Lint.** SwiftLint enforces the project rules defined in `.swiftlint.yml`; every pull request is linted in CI.
+
+**Tests.** The `StressMonitorTests` target ships with the `StressMonitor` scheme (⌘U to run) and executes in the Xcode Cloud PR gate on every pull request. The suite currently has known, pre-existing failures — a set of signal-trap crashes and tests that depend on real credentials — so do not expect a fully green run yet. See [Testing](docs/TESTING.md) for details.
 
 ## Repository map
 
@@ -141,9 +187,12 @@ Direct Swift Package dependencies are limited to Firebase Authentication and Goo
 
 ## Documentation
 
+- [Getting started](docs/GETTING-STARTED.md)
 - [Documentation index](docs/INDEX.md)
-- [Product overview](docs/project-overview-pdr.md)
+- [Product overview (PDR)](docs/project-overview-pdr.md)
 - [System architecture](docs/system-architecture.md)
+- [Testing](docs/TESTING.md)
+- [Configuration and signing](docs/CONFIGURATION.md)
 - [Code standards](docs/code-standards.md)
 - [Design guidelines](docs/design-guidelines.md)
 - [Deployment guide](docs/deployment-guide.md)
