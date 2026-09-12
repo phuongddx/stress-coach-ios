@@ -29,10 +29,18 @@ final class BiologicalAgeViewModel {
     private let healthKit: HealthKitServiceProtocol
     private let calculator: BioAgeCalculator
 
+    convenience init(repository: StressRepositoryProtocol) {
+        self.init(
+            repository: repository,
+            healthKit: HealthKitManager(),
+            calculator: BioAgeCalculator()
+        )
+    }
+
     init(
         repository: StressRepositoryProtocol,
-        healthKit: HealthKitServiceProtocol = HealthKitManager(),
-        calculator: BioAgeCalculator = BioAgeCalculator()
+        healthKit: HealthKitServiceProtocol,
+        calculator: BioAgeCalculator
     ) {
         self.repository = repository
         self.healthKit = healthKit
