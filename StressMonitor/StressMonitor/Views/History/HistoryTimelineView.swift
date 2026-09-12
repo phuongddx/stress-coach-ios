@@ -230,7 +230,7 @@ struct HistoryTimelineView: View {
     }
     .modelContainer(
         for: StressMeasurement.self,
-        configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        inMemory: true
     )
     .background(HomeCharacterDesignTokens.homeBackground)
 }
