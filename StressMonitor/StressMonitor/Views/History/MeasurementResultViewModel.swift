@@ -8,7 +8,7 @@ struct ResultFactorRow: Identifiable, Sendable {
     /// Normalized stress contribution 0–1 (nil = factor unavailable).
     let value: Double?
     /// Raw input summary (e.g. "52 ms"); nil when not derivable.
-    let detailText: String?
+    var detailText: String? = nil
 
     var id: FactorBreakdownRow.Factor { factor }
 }
