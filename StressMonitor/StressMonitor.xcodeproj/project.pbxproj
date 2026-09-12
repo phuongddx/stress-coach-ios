@@ -691,7 +691,7 @@
 		"ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME" = WidgetBackground;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWidget/StressMonitorWidget.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"GENERATE_INFOPLIST_FILE" = YES;
 		"INFOPLIST_FILE" = "StressMonitorWidget/Info.plist";
@@ -703,7 +703,7 @@
 			"@executable_path/Frameworks",
 			"@executable_path/../../Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.widget";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -724,7 +724,7 @@
 		"ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME" = WidgetBackground;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWidget/StressMonitorWidget.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"GENERATE_INFOPLIST_FILE" = YES;
 		"INFOPLIST_FILE" = "StressMonitorWidget/Info.plist";
@@ -736,7 +736,7 @@
 			"@executable_path/Frameworks",
 			"@executable_path/../../Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.widget";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -880,7 +880,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitor/StressMonitor.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -903,7 +903,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -928,7 +928,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitor/StressMonitor.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -951,7 +951,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -976,7 +976,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWatch Watch App/StressMonitorWatch Watch App.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -990,7 +990,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.watchkitapp";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -1014,7 +1014,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWatch Watch App/StressMonitorWatch Watch App.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -1028,7 +1028,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.watchkitapp";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
