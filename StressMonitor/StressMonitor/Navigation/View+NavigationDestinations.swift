@@ -33,6 +33,9 @@ extension View {
             case .watchFace:
                 WatchFacePreferencesView()
 
+            case .history:
+                HistoryTimelineView()
+
             case .measurement(let id):
                 MeasurementDetailDestination(id: id)
 

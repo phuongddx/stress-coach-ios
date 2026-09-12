@@ -27,6 +27,8 @@ enum Route: Hashable, Codable {
     case watchFace
 
     // History
+    /// History Timeline screen (`HistoryTimelineView`).
+    case history
     case measurement(id: PersistentIdentifier)
 
     // Action tab destinations
