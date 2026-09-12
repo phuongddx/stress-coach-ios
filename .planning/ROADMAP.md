@@ -5,7 +5,7 @@
 - ✅ **v1.0 App Store Submission Remediation** — Phases 1, 1.1, 2, 3, 4, 5 (closed 2026-08-12, `override_closeout`)
 - ✅ **v1.1 Backend API Migration** — Phases 1-3 (closed 2026-08-24, `verified_closeout`)
 - ✅ **v1.2 Submission Readiness** — Phases 1-3 of 4 executed (closed 2026-09-05, `override_closeout` — Phase 4 deferred to its own cycle)
-- 🔄 **v1.3 Design Parity** — Phase 1 (opened 2026-09-12 from `/gsd-explore` screen census)
+- ✅ **v1.3 Design Parity** — Phase 1 (executed 2026-09-13, verification `passed`; branch `v1.3-design-parity`)
 
 ## Phases
 
@@ -52,7 +52,7 @@ Full phase detail archived at `.planning/milestones/v1.2-ROADMAP.md` and `.plann
 
 </details>
 
-## v1.3 Design Parity (open)
+## v1.3 Design Parity (executed — pending milestone close)
 
 ### Phase 1: Missing Designed Screens
 

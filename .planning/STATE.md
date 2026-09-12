@@ -202,3 +202,11 @@ Resume file: None
 ## Operator Next Steps
 
 - Start the next milestone with /gsd-new-milestone
+
+## 2026-09-13 — v1.3 Phase 1: Missing Designed Screens
+
+- Status: **complete**, verification **passed** (VERIFICATION.md; 311 tests / 53 suites green, CI-parity build green).
+- Branch `v1.3-design-parity` (15 implementation commits + docs). All commits authored Phuong Doan, no AI attribution.
+- Screens delivered: History Timeline (+ live `Route.measurement` entry), Measurement Result, Biological Age (+ Settings reroute). Bonus fix: HealthKit DOB protocol-extension dead-default bug.
+- Process discoveries: test target requires explicit pbxproj registration (app target auto-registers); `-only-testing` matches 0 Swift Testing suites on Xcode 26.6 — run full target; simulator platforms iOS/watchOS 26.5 installed locally.
+- Pending: milestone close (audit/complete/cleanup) + PR to main.

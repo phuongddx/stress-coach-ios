@@ -1,0 +1,33 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": "v1.2 — Submission Readiness",
+  "phases": [
+    {
+      "number": "1",
+      "name": "Binary & Manifest Truth",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Delete Correctness & Test-Suite Trust",
+      "status": "in_progress"
+    },
+    {
+      "number": "3",
+      "name": "Accessibility Compliance",
+      "status": "in_progress"
+    },
+    {
+      "number": "4",
+      "name": "Store Submission Package",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress",
+    "label": "Show progress",
+    "reason": "Unsure of state — showing progress"
+  },
+  "updated_at": "2026-09-05T14:04:39.701Z"
+}
