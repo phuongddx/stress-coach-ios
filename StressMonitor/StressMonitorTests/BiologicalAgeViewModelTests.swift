@@ -264,12 +264,13 @@ struct BiologicalAgeViewModelTests {
                 value: -spec.daysAgo,
                 to: startOfToday
             )
-            let timestamp = calendar.date(
+            let requested = calendar.date(
                 bySettingHour: spec.hoursFromDayStart,
                 minute: 0,
                 second: 0,
                 of: day ?? startOfToday
             ) ?? startOfToday
+            let timestamp = min(requested, Date())
             let measurement = StressMeasurement(
                 timestamp: timestamp,
                 stressLevel: 42,
