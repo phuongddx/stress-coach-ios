@@ -48,7 +48,7 @@ final class MeasurementResultViewModel {
             ),
             ResultFactorRow(factor: .sleep, value: breakdown.sleepComponent),
             ResultFactorRow(factor: .activity, value: breakdown.activityComponent),
-            ResultFactorRow(factor: .recovery, value: breakdown.recoveryComponent),
+            ResultFactorRow(factor: .recovery, value: breakdown.recoveryComponent)
         ]
     }
 
