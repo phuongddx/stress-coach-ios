@@ -46,6 +46,8 @@ enum Route: Hashable, Codable {
     case breathingSummary(BreathingSessionResult)
 
     // Health
+    /// Biological Age analytics screen (`BiologicalAgeView`).
+    case bioAge
     /// Health Coach chat over `POST /agent/chat`. Entry gated behind
     /// `FeatureFlags.agentChatEnabled` — ships true ahead of the backend
     /// Phase B deploy; sends surface a typed 404 until it lands.
