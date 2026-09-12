@@ -36,6 +36,9 @@ extension View {
             case .history:
                 HistoryTimelineView()
 
+            case .measurementResult(let result):
+                MeasurementResultView(result: result)
+
             case .measurement(let id):
                 MeasurementDetailDestination(id: id)
 

@@ -29,6 +29,9 @@ enum Route: Hashable, Codable {
     // History
     /// History Timeline screen (`HistoryTimelineView`).
     case history
+    /// Immediate post-reading result (`MeasurementResultView`). Carries the live
+    /// calculation; the reading is already persisted before this is reachable.
+    case measurementResult(StressResult)
     case measurement(id: PersistentIdentifier)
 
     // Action tab destinations
