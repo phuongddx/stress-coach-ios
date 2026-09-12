@@ -5,6 +5,7 @@
 - ✅ **v1.0 App Store Submission Remediation** — Phases 1, 1.1, 2, 3, 4, 5 (closed 2026-08-12, `override_closeout`)
 - ✅ **v1.1 Backend API Migration** — Phases 1-3 (closed 2026-08-24, `verified_closeout`)
 - ✅ **v1.2 Submission Readiness** — Phases 1-3 of 4 executed (closed 2026-09-05, `override_closeout` — Phase 4 deferred to its own cycle)
+- 🔄 **v1.3 Design Parity** — Phase 1 (opened 2026-09-12 from `/gsd-explore` screen census)
 
 ## Phases
 
@@ -50,3 +51,15 @@ Close facts: 313 files, +17,871/−14,401 over 3 days; merged to `main` at `8d98
 Full phase detail archived at `.planning/milestones/v1.2-ROADMAP.md` and `.planning/milestones/v1.2-phases/`.
 
 </details>
+
+## v1.3 Design Parity (open)
+
+### Phase 1: Missing Designed Screens
+
+**Goal:** Implement the three designed-but-unbuilt iOS screens from `design/screens/` so the app matches the 27-surface design prototype: **Measurement Result** (`07-measurement.html`), **History Timeline** (`11-history.html`), and **Biological Age** (`18-bio-age.html`). Navigation must be wired end-to-end: History Timeline becomes the production entry point for the currently-unreachable `Route.measurement(id:)` destination; the Settings Biological Age row routes to the new Bio Age screen instead of `.about`. Screens follow existing MVVM/DI/routing patterns, the design system (`docs/design-guidelines*.md`, dual-code stress levels, 44pt targets, `.accessibleDynamicType()`), and ship with unit tests for any new ViewModel/navigation logic.
+
+**Context:** Screen census 2026-09-12 (`/gsd-explore`): 28 iOS screens implemented vs 27 designed surfaces; 22/27 direct matches, 2 more as Dashboard states; 07/11/18 are the only designed screens with no standalone implementation. `BioAgeCalculator` already exists (app + watch copies); a Settings row exists but routes to `.about`.
+
+**Requirements covered:** design-parity screens (new scope, validated by census).
+
+**Depends on:** none (v1.2 closed).
