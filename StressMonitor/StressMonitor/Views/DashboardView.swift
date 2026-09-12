@@ -3,6 +3,7 @@ import SwiftData
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppRouter.self) private var router
     @Environment(PaywallController.self) private var paywall
     @State private var viewModel: StressViewModel
     @Environment(\.scenePhase) private var scenePhase
@@ -194,7 +195,11 @@ struct DashboardView: View {
             .opacity(appearAnimation ? 1 : 0)
 
         // 8. Stress over time — 7-day bar chart + tier legend
-        StressOverTimeChart(data: viewModel.weeklyStressPoints) { paywall.present(reason: .trendsLongRange) }
+        StressOverTimeChart(
+            data: viewModel.weeklyStressPoints,
+            onUpgrade: { paywall.present(reason: .trendsLongRange) },
+            onOpenHistory: { router.homePath.append(.history) }
+        )
             .opacity(appearAnimation ? 1 : 0)
 
         // 9. Premium upsell — frosted glass banner (full-screen paywall)
