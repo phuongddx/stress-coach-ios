@@ -18,7 +18,7 @@ All commits authored `Phuong Doan`; no AI attribution.
 
 ## Verification
 - Build: **BUILD SUCCEEDED** (CI-parity generic iOS Simulator, signing off) — after environment repair (iOS 26.5 + watchOS 26.5 simulator platforms installed; iPhone 16 (iOS 26.5) device created).
-- Tests: **294 tests / 50 suites passed** (full `StressMonitorTests` target, CI-parity flags, parallelism off). Includes new `HistoryTimelineViewModelTests`.
+- Tests: **306 tests / 52 suites passed** after target-registration fix (see below). Initial 294/50 run predated registration — the test target uses explicit pbxproj refs (not a synchronized group), so new test files need explicit registration (fixed in `d28a46b`).
 - SwiftLint: new files clean; changed files only pre-existing warnings.
 - Known toolchain quirk: `-only-testing:Target/SuiteName` matches 0 Swift Testing tests on this Xcode (display-name suites) — run the full target instead; CI is unfiltered.
 
@@ -27,4 +27,4 @@ All commits authored `Phuong Doan`; no AI attribution.
 - History context lines/tags (prototype-only, no persisted source) omitted per plan YAGNI resolution; factual HRV/RHR subtitle used.
 
 ## Deferred
-- None.
+- Wave-1 `HistoryTimelineViewModelTests` initially not compiled (test-target registration gap, discovered in Wave 2); fixed in `d28a46b` — final full-suite run 306/52 green.
