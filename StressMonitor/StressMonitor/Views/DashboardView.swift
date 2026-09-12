@@ -142,13 +142,22 @@ struct DashboardView: View {
         .opacity(appearAnimation ? 1 : 0)
 
         // 2. Hero — semicircle gauge + score + Ripple inside + state label
-        StressHeroCard(
-            level: stress?.level ?? 0,
-            category: stress?.category ?? .relaxed,
-            confidence: stress?.confidence,
-            measuredAt: viewModel.lastRefresh,
-            substate: substate(for: stress)
-        )
+        Button {
+            guard let stress else { return }
+            HapticManager.shared.buttonPress()
+            router.homePath.append(Route.measurementResult(stress))
+        } label: {
+            StressHeroCard(
+                level: stress?.level ?? 0,
+                category: stress?.category ?? .relaxed,
+                confidence: stress?.confidence,
+                measuredAt: viewModel.lastRefresh,
+                substate: substate(for: stress)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(stress == nil)
+        .accessibilityLabel("View full result")
         .opacity(appearAnimation ? 1 : 0)
         // 2b. Server coach score — daily score computed on the server from
         // uploaded health summaries, under the local reading
