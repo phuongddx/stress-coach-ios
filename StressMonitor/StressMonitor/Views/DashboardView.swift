@@ -198,7 +198,7 @@ struct DashboardView: View {
         StressOverTimeChart(
             data: viewModel.weeklyStressPoints,
             onUpgrade: { paywall.present(reason: .trendsLongRange) },
-            onOpenHistory: { router.homePath.append(.history) }
+            onOpenHistory: { router.homePath.append(Route.history) }
         )
             .opacity(appearAnimation ? 1 : 0)
 
