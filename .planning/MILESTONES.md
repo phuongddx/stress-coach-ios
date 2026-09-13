@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.3 Design Parity (Shipped: 2026-09-13)
+
+**Phases completed:** 1 phase, 3 plans · **Closeout:** `verified_closeout` — Phase 1 verification `passed` 10/10 (initial `gaps_found` closed by fixture fix `92d54fc`; full CI-parity gate green: 311 tests / 53 suites) · **Stats:** 41 files, +3,918/−112, 28 commits on `v1.3-design-parity` (2026-09-12 → 2026-09-13); version 1.0.1 (26) · **Known verification overrides:** 0 newly acknowledged, 13 carried forward from a prior close (see STATE.md Deferred Items)
+
+**Key accomplishments:**
+
+- History Timeline screen (design 11) shipped with a production Home entry — chart's "All history" control → `Route.history` — and every timeline row pushes the previously-dead `Route.measurement(id:)` → `MeasurementDetailView` (DEC-1 closed)
+- Measurement Result screen (design 07) shipped — hero score ring, honest 5-factor breakdown, prior-reading delta with a zero-case label, Ripple insight, Breathe/Mini Walk actions — entered from the Home stress hero
+- Biological Age screen (design 18) shipped — calculator-driven hero, 7-day HRV/RHR driver rows, daily-estimate chart with chronological-age reference line, insufficient-data state; Settings "Biological Age" row rerouted `.about` → `.bioAge` (DEC-2 closed)
+- Bonus fix: HealthKit date-of-birth protocol-extension dead-default bug (explicit protocol requirement dispatch, `692770f`)
+- Full CI-parity gate green — 311 tests / 53 suites including 5 new BiologicalAgeViewModelTests; the verifier-caught time-of-day fixture instability was fixed in the fixture, not production code (`92d54fc`)
+- All commits authored Phuong Doan; no AI attribution
+
+**Deferred:** on-device visual/a11y walkthrough of the three new screens (recommended post-gate in the verification report); PR of `v1.3-design-parity` to `main` pending at close.
+
+---
+
 ## v1.2 Submission Readiness (Shipped: 2026-09-05)
 
 **Phases completed:** 3 phases (of 4 planned), 18 plans, 46 tasks · **Closeout:** `override_closeout` (user-directed) — Phase 4 not started; Phases 2/3 execution-complete with verification `human_needed` · **Stats:** 313 files, +17,871/−14,401, 3 days (2026-09-03 → 2026-09-05); merged to `main` at `8d98697` · **Known verification overrides:** 13 newly acknowledged, 0 carried forward from a prior close (see STATE.md Deferred Items)

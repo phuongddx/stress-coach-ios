@@ -1,8 +1,9 @@
 ---
 phase: 01-missing-designed-screens
 verified: 2026-09-12T17:09:23Z
-status: gaps_found
-score: 8/10 must-haves verified
+reverified: 2026-09-12T17:15:21Z
+status: passed
+score: 10/10 must-haves verified (initial 8/10; gap closed by 92d54fc, full gate re-run green)
 covered_files:
   - .planning/phases/01-missing-designed-screens/01-history-timeline-tracer-PLAN.md
   - .planning/phases/01-missing-designed-screens/01-history-timeline-tracer-SUMMARY.md
@@ -31,35 +32,21 @@ covered_files:
   - StressMonitor/StressMonitorTests/BiologicalAgeViewModelTests.swift
   - StressMonitor/StressMonitorTests/HistoryTimelineViewModelTests.swift
   - StressMonitor/StressMonitorTests/MeasurementResultViewModelTests.swift
-covered_digest: "v1:sha256:17484eeb751e72f1b0dc94a4a26addf95d7f788e2a2438808124203bd64ac36f"
-behavior_unverified: 1
-behavior_unverified_items:
-  - truth: "Biological Age's sufficient-data path reliably renders only calculator-derived BioAgeResult values"
-    test: "Seed seven readings whose timestamps are guaranteed not to be in the future, invoke BiologicalAgeViewModel.load(), and inspect result, HRV/RHR averages, and daily estimates."
-    expected: "hasSufficientData is true; the hero, two driver rows, daily chart, and Ripple insight contain only values produced by BioAgeCalculator or HealthKit DOB; thin data still shows the insufficient-data card."
-    why_human: "The screen and data flow are present and wired, but the intended sufficient-data tests currently fail from a time-dependent fixture, so no stable automated behavioral evidence covers this runtime state transition."
+covered_digest: "v1:sha256:84f2fe1b43edc98d16af097f00c6c24fd1e4b09c7bc45b97296a2f2d8c689f63"
+behavior_unverified: 0
 overrides_applied: 0
 gaps:
   - truth: "The phase's full CI-parity test gate passes, including stable Biological Age ViewModel coverage"
-    status: failed
-    reason: "The verifier-run full target failed with 311 tests / 53 suites and 5 issues. Three BiologicalAgeViewModelTests methods are time-of-day dependent: fixtures place today's reading at 10:00 while the fake repository filters readings to Date(). Run before 10:00 local, today's fixture is future-dated and excluded, leaving only six days."
-    artifacts:
-      - path: "StressMonitor/StressMonitorTests/BiologicalAgeViewModelTests.swift"
-        issue: "sevenDaySpecs() and makeFixture() build today's measurement at 10:00 (lines 221-224, 258-272), but FakeStressRepository filters timestamp <= endDate (lines 34-36). Before 10:00 this excludes the intended seventh sample."
-      - path: "StressMonitor/StressMonitor/Views/BiologicalAge/BiologicalAgeViewModel.swift"
-        issue: "load() correctly uses now = Date() as the fetch upper bound (lines 59-69); the unstable test fixture, rather than an obviously fabricated production input, causes the current failures."
-    missing:
-      - "Make the Biological Age fixtures deterministic across the full day, for example derive them from the current time or use start-of-day minus fixed offsets without creating a future timestamp."
-      - "Rerun the exact full xcodebuild test command without -only-testing; it must report all 311 tests / 53 suites passing."
+    status: resolved
+    resolution: "92d54fc clamps BiologicalAgeViewModelTests fixtures to min(requested, Date()), so today's sample can never be future-dated; the exact unfiltered CI-parity command re-run post-midnight (the previously failing window): 311 tests / 53 suites passed — TEST SUCCEEDED. Initial findings preserved in the report body below."
 ---
 
 # Phase 1: Missing Designed Screens Verification Report
 
 **Phase Goal:** Implement the three designed-but-unbuilt screens from `design/screens/` — Measurement Result (`07`), History Timeline (`11`), and Biological Age (`18`) — with production navigation end-to-end, existing MVVM/DI/design/a11y patterns, and unit tests for the new ViewModel/navigation logic.
-
-**Verified:** 2026-09-12T17:09:23Z (2026-09-13 00:09 +07)
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-09-12T17:09:23Z (2026-09-13 00:09 +07); gap closure re-verified 2026-09-12T17:15:21Z (2026-09-13 00:15 +07)
+**Status:** passed (initial gaps_found closed by 92d54fc — see Gap Closure below)
+**Re-verification:** Yes — gap resolved on first retry
 
 ## Goal Achievement
 
