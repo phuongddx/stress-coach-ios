@@ -33,6 +33,12 @@ extension View {
             case .watchFace:
                 WatchFacePreferencesView()
 
+            case .history:
+                HistoryTimelineView()
+
+            case .measurementResult(let result):
+                MeasurementResultView(result: result)
+
             case .measurement(let id):
                 MeasurementDetailDestination(id: id)
 
@@ -47,6 +53,9 @@ extension View {
 
             case .breathingSummary(let result):
                 BreathingSummaryView(result: result)
+
+            case .bioAge:
+                BiologicalAgeView()
 
             case .agentChat:
                 AgentChatView()

@@ -250,7 +250,7 @@ struct SettingsView: View {
                     tint: .primaryGreen,
                     title: "Biological Age",
                     value: bioAgeText,
-                    destination: .about
+                    destination: .bioAge
                 )
             }
         }

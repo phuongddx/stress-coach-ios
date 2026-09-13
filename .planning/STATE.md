@@ -1,21 +1,21 @@
 ---
 gsd_state_version: "1.0"
-milestone: v1.2
+milestone: v1.3
+milestone_name: Design Parity (executed — pending milestone close)
 status: Awaiting next milestone
-stopped_at: Completed 03-06-PLAN.md (phase 3 complete — 6/6)
-last_updated: "2026-09-10T02:12:58.790Z"
-last_activity: 2026-09-05
-last_activity_desc: Milestone v1.2 completed and archived
-state_head: fd7b6c418a68ba18eee6cb27b0494087c8d6825a
+stopped_at: Completed 01-03-PLAN.md (phase 1 complete — 3/3, verification passed)
+last_updated: "2026-09-13T09:20:48.911Z"
+last_activity: 2026-09-13
+last_activity_desc: Milestone v1.3 completed and archived
+state_head: bbc1eed48d5134e5a71e772eb76edd98f1eeb809
 progress:
-  total_phases: 4
+  total_phases: 1
   completed_phases: 1
-  total_plans: 18
-  completed_plans: 18
-  percent: 25
-milestone_name: Submission Readiness
-current_phase: 3
-current_phase_name: Accessibility Compliance
+  total_plans: 3
+  completed_plans: 3
+  percent: 100
+current_phase: 1
+current_phase_name: Missing Designed Screens
 ---
 
 # Project State
@@ -25,14 +25,14 @@ current_phase_name: Accessibility Compliance
 See: .planning/PROJECT.md (updated 2026-09-05 at v1.2 close)
 
 **Core value:** Every feature that ships in the binary must actually work end-to-end for a real user — not just compile.
-**Current focus:** Planning next milestone (submission cycle: SHIP-01..03 + DATA-01 human verification)
+**Current focus:** v1.3 closeout (milestone close + PR of `v1.3-design-parity` to main)
 
 ## Current Position
 
-Phase: Milestone v1.2 complete
+Phase: Milestone v1.3 complete
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-09-05 — Milestone v1.2 completed and archived
+Last activity: 2026-09-13 — Milestone v1.3 completed and archived
 
 ## Performance Metrics
 
@@ -156,12 +156,6 @@ None yet.
 
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
-| 260811-t0l | Fix CI failure in .github/workflows/_test.yml: resolve simulator UDID dynamically | 2026-08-11 | 7864b95 | [260811-t0l-…](./quick/260811-t0l-fix-ci-failure-in-github-workflows-test-/) |
-| 260829-kby | Firebase bootstrap state + AuthServiceError taxonomy (CI provisioning deferred) | 2026-08-29 | 6227803 | [260829-kby-…](./quick/260829-kby-provision-googleservice-info-plist-in-ci/) |
-| 260901-vfd | Fix `Color.stressColor(for: Double)` threshold bug | 2026-09-01 | cf2dc8c | [260901-vfd-…](./quick/260901-vfd-fix-color-stresscolor-for-double-thresho/) |
-| 4 | Update Settings UI to approved redesign direction (cream canvas, plain surface cards) | 2026-09-02 | 2b84862 | — |
-| 5 | Hide paywall credit-pack section (consumables unsupported) | 2026-09-06 | 6790f3b | — |
-| 6 | Remove deploy.yml fastlane upload_beta (superseded by Xcode Cloud Beta) | 2026-09-10 | fd7b6c4 | — |
 
 ## Deferred Items
 
@@ -195,10 +189,18 @@ Earlier v1.0 deferrals (Phase 01/02 verification gaps, `MockStoreKitService` Rel
 
 ## Session Continuity
 
-Last session: 2026-09-05T04:57:10.464Z
-Stopped at: Completed 03-06-PLAN.md (phase 3 complete — 6/6)
+Last session: 2026-09-13T08:58:24Z
+Stopped at: v1.3 Phase 1 verified (3/3 plans); milestone closeout pending
 Resume file: None
 
 ## Operator Next Steps
 
 - Start the next milestone with /gsd-new-milestone
+
+## 2026-09-13 — v1.3 Phase 1: Missing Designed Screens
+
+- Status: **complete**, verification **passed** (VERIFICATION.md; 311 tests / 53 suites green, CI-parity build green).
+- Branch `v1.3-design-parity` (15 implementation commits + docs). All commits authored Phuong Doan, no AI attribution.
+- Screens delivered: History Timeline (+ live `Route.measurement` entry), Measurement Result, Biological Age (+ Settings reroute). Bonus fix: HealthKit DOB protocol-extension dead-default bug.
+- Process discoveries: test target requires explicit pbxproj registration (app target auto-registers); `-only-testing` matches 0 Swift Testing suites on Xcode 26.6 — run full target; simulator platforms iOS/watchOS 26.5 installed locally.
+- Pending: milestone close (audit/complete/cleanup) + PR to main.

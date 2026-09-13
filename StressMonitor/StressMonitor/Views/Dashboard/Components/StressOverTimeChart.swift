@@ -10,7 +10,8 @@ import SwiftUI
 /// Spec reference: design/screens/04-home.html — `.stress-chart`.
 struct StressOverTimeChart: View {
     let data: [StressDataPoint]
-    var onUpgrade: (() -> Void)? = nil
+    var onUpgrade: (() -> Void)?
+    var onOpenHistory: (() -> Void)?
 
     /// 7-day history is free (core monitoring). Kept on the card for the future
     /// 30/90-day paywall, currently a no-op hook.
@@ -18,9 +19,14 @@ struct StressOverTimeChart: View {
 
     private let days = ["M", "T", "W", "T", "F", "S", "S"]
 
-    init(data: [StressDataPoint], onUpgrade: (() -> Void)? = nil) {
+    init(
+        data: [StressDataPoint],
+        onUpgrade: (() -> Void)? = nil,
+        onOpenHistory: (() -> Void)? = nil
+    ) {
         self.data = data
         self.onUpgrade = onUpgrade
+        self.onOpenHistory = onOpenHistory
     }
 
     var body: some View {
@@ -51,10 +57,26 @@ struct StressOverTimeChart: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.Wellness.adaptivePrimaryText)
             Spacer()
-            Text("LAST 7 DAYS")
-                .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                .tracking(1.0)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            HStack(spacing: 4) {
+                Text("LAST 7 DAYS")
+                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+                    .tracking(1.0)
+                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+
+                if let onOpenHistory {
+                    Button {
+                        HapticManager.shared.buttonPress()
+                        onOpenHistory()
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color.primaryBlue)
+                    }
+                    .buttonStyle(.plain)
+                    .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+                    .accessibilityLabel("All history")
+                }
+            }
         }
     }
 

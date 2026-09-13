@@ -4,7 +4,7 @@ import Foundation
 
 /// Per-factor normalized stress values from a multi-factor calculation.
 /// All component fields are optional — nil means that factor was unavailable.
-struct FactorBreakdown: Codable, Sendable {
+struct FactorBreakdown: Codable, Hashable, Sendable {
     let hrvComponent: Double?
     let hrComponent: Double?
     let sleepComponent: Double?

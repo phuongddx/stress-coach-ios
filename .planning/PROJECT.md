@@ -8,6 +8,8 @@ As of v1.1 close (2026-08-23) the app runs end-to-end against its own deployed b
 
 As of v1.2 close (2026-09-05, `override_closeout`, Phase 4 deferred): the remediation halves are done — binary/manifest truth (privacy manifest ASC-valid on build 14, one App Group, plist single-source, no extractable credentials), the widget's write path wired and device-verified, delete-correctness machinery with a mutation-proven regression pin, a trustworthy CI-parity test suite, and accessibility machine-gated and review-clean (contrast suite, Dynamic Type ramp, single-owner Reduce Motion, 84 orphan files deleted). What remains between the binary and App Review is deliberately small: the Phase-4 submission package (SHIP-01..03, never started), two human verification gates (DATA-01 live two-device CloudKit delete; Phase-3 A11Y walkthrough via `/gsd-verify-work 3`), and the v1.1 drift re-test against a post-wiring TestFlight build.
 
+As of v1.3 close (2026-09-13, `verified_closeout`): design parity — every surface from the 27-screen design prototype now ships standalone. The three designed-but-unbuilt screens (History Timeline, Measurement Result, Biological Age) landed with production navigation end-to-end, reviving the previously-dead `Route.measurement(id:)` destination and rerouting the Settings Biological Age row off `.about`. Full CI-parity gate green at 311 tests / 53 suites; version 1.0.1 (26) on branch `v1.3-design-parity`, PR to `main` pending at close.
+
 ## Core Value
 
 Every feature that ships in the binary must actually work end-to-end for a real user — not just compile. Chat must authenticate and respond, a purchase must actually complete, "delete all data" must actually delete, and the Privacy Manifest must pass Apple's automated validation. Feature-complete-on-paper is not the bar; submittable is.
@@ -86,6 +88,8 @@ Every feature that ships in the binary must actually work end-to-end for a real 
 - ✓ v1.2 P2 ENV-03: WR-03 (DEBUG defaults to real StoreKit; mock via `-mock-iap` launch arg) + WR-04 (unverified transactions never finished) — both red-first pinned
 - ✓ v1.2 P3 A11Y-01..05: 44pt hit areas, machine-checked WCAG AA contrast (resolved-UIColor ratios, both appearances), single-owner Reduce Motion helper, Dynamic Type ramp (14 manifest surfaces + 82 widget/watch anchors), 84 orphan files deleted behind three-scheme builds — machine gates green; human walkthrough pending (override recorded at close)
 
+- ✓ v1.3 P1: Design parity — the three designed-but-unbuilt screens shipped standalone with production navigation (History Timeline via Home chart entry, rows push `Route.measurement(id:)` → `MeasurementDetailView`; Measurement Result via Home hero; Biological Age via Settings reroute `.about` → `.bioAge`) — verification `passed` 10/10, full CI-parity gate 311 tests / 53 suites green
+
 ### Active
 
 <!-- Next-milestone scope: the v1.2 close carryover (submission tail). Status reflects honest per-requirement verification state, not self-reported marks. -->
@@ -97,6 +101,7 @@ Every feature that ships in the binary must actually work end-to-end for a real 
 - [ ] SHIP-03: ASC privacy questionnaire answered per the D3 contract
 - [ ] DATA-01 residual: two-device CloudKit-propagation delete test (human-gated; evidence apparatus ready)
 - [ ] Motion-family follow-up: ChatBottomSheetView:541 decorative `repeatForever` guard; fidget resume on Reduce Motion disable (both ~two-line; `motionReduced` state already wired)
+- [ ] v1.3 residual: on-device visual/a11y walkthrough of the three new screens (recommended post-gate in the verification report)
 - [ ] StoreKitServiceTests + EntitlementForegroundCorrectionTests re-enablement (StoreKitTest daemon productNotFound — needs a working XCTestDevices layer)
 - [ ] v1.1 drift re-test: 5 UAT scenarios vs build 15+ (acknowledged at v1.2 close)
 - [ ] (optional) Nyquist VALIDATION.md reconciliation for v1.1 phases 1-3 (coverage TODO, not compliance)
@@ -119,7 +124,9 @@ Every feature that ships in the binary must actually work end-to-end for a real 
 - **Decision status at v1.1 close**: D1 RESOLVED (real Firebase auth shipped, v1.1 Phase 01); D2 RESOLVED in practice (encryptedValues shipped, v1.0 Phase 2 — never formally recorded); D3 (privacy contract authority) and D4 (widget in v1) STILL OPEN and gate BUILD-01/SHIP-03 and WIRE-01 respectively — the two decisions v1.2 must make first. The two non-blocking product questions (7-day trial copy, premium character unlock semantics) also remain open.
 - Repo state at v1.1 close: work shipped on milestone branch `gsd/v1.1-backend-api-migration` (branch created retroactively for Phase 02+; Phase 01 landed on `main`), tagged `v1.1` at close; backend lives in the separate `stress-app-be` repo, deployed at `stress-api.dropitx.site`.
 
+
 - Repo state at v1.2 close: merged to `main` via merge commit `8d98697`, tagged `v1.2`, branch `v1.2-submission-readiness` preserved on origin; full suite 296 tests (285 pass / 0 fail / 11 pre-existing skips); ~763k Swift LOC in tree excluding spm-cache.
+- Repo state at v1.3 close: work on branch `v1.3-design-parity` (28 commits; PR to `main` pending at close), version 1.0.1 (26); design-parity screens complete, full suite 311 tests / 53 suites green; the submission tail (SHIP-01..03 + the two human gates) remains the next milestone's scope.
 - **v1.0 Verification Reality Check** (kept for history, from 2026-08-12 close): v1.0 was closed with `override_closeout` — 5/6 phases un-verified or partially verified, 9/26 requirements unchecked. **v1.1 answered that debt**: every v1.1 phase closed with `passed` verification + human-validated UAT, and v1.1 itself closed `verified_closeout` (milestone audit 21/21 requirements, 3/3 phases, 7/7 integration seams, 4/4 E2E flows; zero gaps, documented tech debt only).
 
 ## Constraints
@@ -167,6 +174,11 @@ Every feature that ships in the binary must actually work end-to-end for a real 
 | v1.2 P3: contrast and Dynamic Type truth is machine-checked, not review-asserted | Resolved-UIColor ratio suites + `FontWellnessTypeParityTests` pin the tokens; regressions fail CI instead of awaiting a reviewer | ✓ Good |
 | v1.2 close: a parallel GSD fix stream superseded a stalled plan's Tasks 1-8; user ruled accept-supersede + test-only pins | Re-executing the plan text would have downgraded stronger landed fixes (4.5:1 per-tier labels back to unconditional-white 3:1); only the genuinely-open IN residuals were executed (SDD subagent loop, 9 commits, whole-branch review clean) | ✓ Good |
 | v1.2 closed `override_closeout` with Phase 4 deferred | Phase-4 prerequisites are green and its scope needs its own discuss/plan cycle; user directed the close to bank the remediation work | ⚠️ Revisit — SHIP-01..03 + the two human gates are the submission tail |
+| v1.3 DEC-1: History Timeline is the production entry point for the dead `Route.measurement(id:)` route | The route existed only in the resolver docs; a standalone history screen gives every persisted reading a push destination | ✓ Good — link-wired and verified, 6-test suite green |
+| v1.3 DEC-2: Settings "Biological Age" row reroutes `.about` → `.bioAge` | The row's label promises Biological Age; `.about` was a placeholder | ✓ Good — exact-row reroute verified |
+| v1.3: HealthKit DOB fetched through an explicit protocol requirement, not a protocol-extension default | The extension default could never see the conformer's `dateOfBirth` — a silent 35-fallback dead default | ✓ Good — dispatch fix `692770f`, test-pinned |
+| v1.3: new test suites need explicit pbxproj registration (app-target auto-registration does not apply) | A silently-uncompiled suite masquerades as green — surfaced as a 294→306 test-count jump mid-phase | ✓ Good — registered A035–A037, `plutil -lint` OK |
+| v1.3: verifier-caught fixture instability fixed in the fixture, never by weakening production code | `BiologicalAgeViewModel.load()` correctly uses `Date()`; the test fixture future-dated today's sample before 10:00 | ✓ Good — `92d54fc` clamp + full gate re-run green in the failing window |
 
 ## Evolution
 
@@ -186,4 +198,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-05 after v1.2 milestone (Submission Readiness closed — override_closeout, Phase 4 deferred; merged to main at 8d98697, tagged v1.2)*
+*Last updated: 2026-09-13 after v1.3 milestone (Design Parity closed — verified_closeout; branch `v1.3-design-parity`, PR to main pending)*
