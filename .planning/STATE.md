@@ -25,7 +25,7 @@ current_phase_name: Missing Designed Screens
 See: .planning/PROJECT.md (updated 2026-09-05 at v1.2 close)
 
 **Core value:** Every feature that ships in the binary must actually work end-to-end for a real user — not just compile.
-**Current focus:** v1.3 closeout (milestone close + PR of `v1.3-design-parity` to main)
+**Current focus:** v1.3 closed (`verified_closeout`; squash-merged to `main` at `3d77872`, tagged `v1.3`); next milestone TBD via /gsd-new-milestone
 
 ## Current Position
 
@@ -203,4 +203,4 @@ Resume file: None
 - Branch `v1.3-design-parity` (15 implementation commits + docs). All commits authored Phuong Doan, no AI attribution.
 - Screens delivered: History Timeline (+ live `Route.measurement` entry), Measurement Result, Biological Age (+ Settings reroute). Bonus fix: HealthKit DOB protocol-extension dead-default bug.
 - Process discoveries: test target requires explicit pbxproj registration (app target auto-registers); `-only-testing` matches 0 Swift Testing suites on Xcode 26.6 — run full target; simulator platforms iOS/watchOS 26.5 installed locally.
-- Pending: milestone close (audit/complete/cleanup) + PR to main.
+- ~~Pending: milestone close + PR to main.~~ **RESOLVED 2026-09-13**: closed `verified_closeout`; squash-merged to `main` at `3d77872`; tagged `v1.3` and pushed.
