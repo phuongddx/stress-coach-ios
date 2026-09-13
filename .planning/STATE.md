@@ -1,7 +1,7 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.3
-milestone_name: Design Parity (executed — pending milestone close)
+milestone_name: Design Parity
 status: Awaiting next milestone
 stopped_at: Completed 01-03-PLAN.md (phase 1 complete — 3/3, verification passed)
 last_updated: "2026-09-13T09:20:48.911Z"
