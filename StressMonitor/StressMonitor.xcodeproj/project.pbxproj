@@ -55,6 +55,9 @@
 		F1A1B2C3D4E500000000B032 /* HealthKitDailySummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A032 /* HealthKitDailySummaryTests.swift */; };
 		F1A1B2C3D4E500000000B033 /* HealthSyncServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A033 /* HealthSyncServiceTests.swift */; };
 		F1A1B2C3D4E500000000B034 /* AgentChatViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A034 /* AgentChatViewModelTests.swift */; };
+		F1A1B2C3D4E500000000B036 /* MeasurementResultViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A036 /* MeasurementResultViewModelTests.swift */; };
+		F1A1B2C3D4E500000000B035 /* HistoryTimelineViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A035 /* HistoryTimelineViewModelTests.swift */; };
+		F1A1B2C3D4E500000000B037 /* BiologicalAgeViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A037 /* BiologicalAgeViewModelTests.swift */; };
 		F211BBDA2FD9112000A6E25D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F211BBD92FD9111F00A6E25D /* WidgetKit.framework */; };
 		F211BBDC2FD9112000A6E25D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F211BBDB2FD9112000A6E25D /* SwiftUI.framework */; };
 		F211BBED2FD9112200A6E25D /* StressMonitorWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F211BBD72FD9111F00A6E25D /* StressMonitorWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -159,6 +162,9 @@
 		F1A1B2C3D4E500000000A032 /* HealthKitDailySummaryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HealthKitDailySummaryTests.swift; path = StressMonitorTests/HealthKitDailySummaryTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A033 /* HealthSyncServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HealthSyncServiceTests.swift; path = StressMonitorTests/HealthSyncServiceTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A034 /* AgentChatViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AgentChatViewModelTests.swift; path = StressMonitorTests/AgentChatViewModelTests.swift; sourceTree = "<group>"; };
+		F1A1B2C3D4E500000000A036 /* MeasurementResultViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MeasurementResultViewModelTests.swift; path = StressMonitorTests/MeasurementResultViewModelTests.swift; sourceTree = "<group>"; };
+		F1A1B2C3D4E500000000A035 /* HistoryTimelineViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HistoryTimelineViewModelTests.swift; path = StressMonitorTests/HistoryTimelineViewModelTests.swift; sourceTree = "<group>"; };
+		F1A1B2C3D4E500000000A037 /* BiologicalAgeViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BiologicalAgeViewModelTests.swift; path = StressMonitorTests/BiologicalAgeViewModelTests.swift; sourceTree = "<group>"; };
 		F211BBD72FD9111F00A6E25D /* StressMonitorWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StressMonitorWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F211BBD92FD9111F00A6E25D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		F211BBDB2FD9112000A6E25D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -346,6 +352,9 @@
 				F1A1B2C3D4E500000000A032 /* HealthKitDailySummaryTests.swift */,
 				F1A1B2C3D4E500000000A033 /* HealthSyncServiceTests.swift */,
 				F1A1B2C3D4E500000000A034 /* AgentChatViewModelTests.swift */,
+				F1A1B2C3D4E500000000A036 /* MeasurementResultViewModelTests.swift */,
+				F1A1B2C3D4E500000000A035 /* HistoryTimelineViewModelTests.swift */,
+				F1A1B2C3D4E500000000A037 /* BiologicalAgeViewModelTests.swift */,
 				4C67EAC979024C30F581AD22 /* StressMonitorProducts.storekit */,
 				F2C504FF3042BDAB00758B16 /* Recovered References */,
 			);
@@ -584,6 +593,9 @@
 				F1A1B2C3D4E500000000B032 /* HealthKitDailySummaryTests.swift in Sources */,
 				F1A1B2C3D4E500000000B033 /* HealthSyncServiceTests.swift in Sources */,
 				F1A1B2C3D4E500000000B034 /* AgentChatViewModelTests.swift in Sources */,
+				F1A1B2C3D4E500000000B036 /* MeasurementResultViewModelTests.swift in Sources */,
+				F1A1B2C3D4E500000000B035 /* HistoryTimelineViewModelTests.swift in Sources */,
+				F1A1B2C3D4E500000000B037 /* BiologicalAgeViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -679,7 +691,7 @@
 		"ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME" = WidgetBackground;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWidget/StressMonitorWidget.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"GENERATE_INFOPLIST_FILE" = YES;
 		"INFOPLIST_FILE" = "StressMonitorWidget/Info.plist";
@@ -691,7 +703,7 @@
 			"@executable_path/Frameworks",
 			"@executable_path/../../Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.widget";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -712,7 +724,7 @@
 		"ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME" = WidgetBackground;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWidget/StressMonitorWidget.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"GENERATE_INFOPLIST_FILE" = YES;
 		"INFOPLIST_FILE" = "StressMonitorWidget/Info.plist";
@@ -724,7 +736,7 @@
 			"@executable_path/Frameworks",
 			"@executable_path/../../Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.widget";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -868,7 +880,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitor/StressMonitor.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -891,7 +903,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -916,7 +928,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitor/StressMonitor.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -939,7 +951,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -964,7 +976,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWatch Watch App/StressMonitorWatch Watch App.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -978,7 +990,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.watchkitapp";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";
@@ -1002,7 +1014,7 @@
 		"ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME" = AccentColor;
 		"CODE_SIGN_ENTITLEMENTS" = "StressMonitorWatch Watch App/StressMonitorWatch Watch App.entitlements";
 		"CODE_SIGN_STYLE" = Automatic;
-		"CURRENT_PROJECT_VERSION" = 16;
+		"CURRENT_PROJECT_VERSION" = 26;
 		"DEVELOPMENT_TEAM" = K2TYLYAWMK;
 		"ENABLE_PREVIEWS" = YES;
 		"GENERATE_INFOPLIST_FILE" = YES;
@@ -1016,7 +1028,7 @@
 			"$(inherited)",
 			"@executable_path/Frameworks",
 		);
-		"MARKETING_VERSION" = "1.0.0";
+		"MARKETING_VERSION" = "1.0.1";
 		"PRODUCT_BUNDLE_IDENTIFIER" = "stress.ai.com.watchkitapp";
 		"PRODUCT_NAME" = "$(TARGET_NAME)";
 		"PROVISIONING_PROFILE_SPECIFIER" = "";

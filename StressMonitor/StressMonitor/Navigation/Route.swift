@@ -27,6 +27,11 @@ enum Route: Hashable, Codable {
     case watchFace
 
     // History
+    /// History Timeline screen (`HistoryTimelineView`).
+    case history
+    /// Immediate post-reading result (`MeasurementResultView`). Carries the live
+    /// calculation; the reading is already persisted before this is reachable.
+    case measurementResult(StressResult)
     case measurement(id: PersistentIdentifier)
 
     // Action tab destinations
@@ -41,6 +46,8 @@ enum Route: Hashable, Codable {
     case breathingSummary(BreathingSessionResult)
 
     // Health
+    /// Biological Age analytics screen (`BiologicalAgeView`).
+    case bioAge
     /// Health Coach chat over `POST /agent/chat`. Entry gated behind
     /// `FeatureFlags.agentChatEnabled` — ships true ahead of the backend
     /// Phase B deploy; sends surface a typed 404 until it lands.

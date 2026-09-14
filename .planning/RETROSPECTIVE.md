@@ -119,6 +119,43 @@
 - Model mix: GSD phases on the balanced profile; the SDD loop used low-tier implementers for transcription tasks, standard tier for judgment, reviewer tier for gates
 - Notable: the 42-minute first SDD dispatch was dominated by simulator boot and process storms, not agent work
 
+
+## Milestone: v1.3 — Design Parity
+
+**Shipped:** 2026-09-13 (`verified_closeout`)
+**Phases:** 1 | **Plans:** 3 | 41 files, +3,918/−112, 28 commits on `v1.3-design-parity` (2026-09-12 → 2026-09-13)
+
+### What Was Built
+
+- The three designed-but-unbuilt screens (History Timeline, Measurement Result, Biological Age) shipped standalone with production navigation end-to-end — reviving the dead `Route.measurement(id:)` destination and rerouting the Settings Biological Age row off `.about`
+- 17 new unit tests across three Swift Testing suites; full CI-parity gate green at 311 tests / 53 suites
+- Bonus fix: HealthKit date-of-birth protocol-extension dead default (explicit protocol requirement dispatch)
+
+### What Worked
+
+- Screen census (`/gsd-explore`) as the scope instrument — "28 implemented vs 27 designed" named exactly three screens to build and nothing more
+- The verifier earned its keep: initial `gaps_found` on a time-of-day fixture instability that runs before 10:00 local had hidden; closed in the fixture with a re-run inside the failing window
+- One plan per screen over shared research — three plans, zero cross-plan conflicts
+
+### What Was Inefficient
+
+- The milestone bypassed `/gsd-new-milestone`: no REQUIREMENTS.md, STATE.md frontmatter never flipped to v1.3 — surfacing at close as a 0-phase manager dashboard and a verification report the tooling couldn't read (bare filename, `gaps_found` frontmatter, stale covered-digest). Manual state repair at close cost more than the skipped ceremony
+- New test suites were silently absent from the test target until the 294→306 test-count jump exposed the missing pbxproj registration
+
+### Patterns Established
+
+- Explicit pbxproj A/B refs for every new test suite — app-target auto-registration does not apply
+- Fixtures derive "today" via `min(requested, Date())` — never a fixed clock time
+
+### Key Lessons
+
+- Skipping milestone bootstrap trades minutes of ceremony for an hour of state forensics at close — machine state (frontmatter, filenames, digests) is the contract
+- Tooling reads a verification report's frontmatter, not its body; a body-only "passed" note is invisible to every gate
+
+### Cost Observations
+
+- Single execution session (2026-09-12/13); the ~12.5 GB simulator-platform install was the longest single wait
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -127,6 +164,8 @@
 |-----------|----------|--------|------------|
 | v1.0 | multiple | 6 | First milestone. Established: independent build re-verification after every fixer pass; re-review after fix as standard practice for data-integrity code. |
 | v1.1 | multiple | 3 | Verification-first close: every phase passed verification + human UAT; milestone audit before close; `<threat_model>` at plan time; grep-gate regression fences. |
+| v1.2 | multiple | 3 (of 4) | Machine-gated quality (contrast + Dynamic Type suites, grep fences); `override_closeout` with Phase 4 deferred; pre-close artifact audit acknowledging 13 open items |
+| v1.3 | 1 | 1 | `verified_closeout` on a single-phase milestone; screen-census-driven scoping; state-forensics lesson from skipping `/gsd-new-milestone` |
 
 ### Cumulative Quality
 
@@ -134,6 +173,8 @@
 |-----------|-------|----------|-------------------|
 | v1.0 | Never executed (host CoreSimulator blocker) — compile-verified only | Unknown | 0 |
 | v1.1 | 215 iOS tests green (host, `-parallel-testing-enabled NO`); backend 29 tests/100 steps green | Unknown (Nyquist TODO) | 0 new third-party beyond required Firebase/GoogleSignIn SDKs |
+| v1.2 | 296 tests (285 pass / 0 fail / 11 pre-existing skips) | Unknown | 0 |
+| v1.3 | 311 tests / 53 suites green (CI-parity gate) | Unknown | 0 |
 
 ### Top Lessons (Verified Across Milestones)
 

@@ -1,6 +1,6 @@
 import Foundation
 
-struct StressResult: Identifiable, Codable, Sendable {
+struct StressResult: Identifiable, Codable, Hashable, Sendable {
     let id: UUID
     let level: Double
     let category: StressCategory

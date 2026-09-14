@@ -11,6 +11,11 @@ protocol HealthKitServiceProtocol: Sendable {
     func fetchSleepData(for date: Date) async throws -> SleepData?
     func fetchActivityData(for date: Date) async throws -> ActivityData?
     func fetchRecoveryData(for date: Date) async throws -> RecoveryData?
+    /// User's date of birth components from HealthKit. Declared as a
+    /// requirement so protocol-typed callers dynamically dispatch to the
+    /// concrete implementation (an extension-only member would always use
+    /// the `nil` default). The extension default keeps nil for mocks.
+    var dateOfBirthComponents: DateComponents? { get }
 }
 
 extension HealthKitServiceProtocol {
