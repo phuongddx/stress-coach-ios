@@ -52,11 +52,19 @@ final class PaywallController {
     /// Premium status consulted by the no-op guard. Injectable for tests.
     private let premiumState: PremiumState
 
-    init(premiumState: PremiumState = .shared) {
+    /// Whether purchases are offered at all. Injectable so tests can pin the
+    /// enabled-path guard semantics while the shipping build stays postponed.
+    private let availability: PurchaseAvailability
+
+    init(premiumState: PremiumState = .shared, availability: PurchaseAvailability = .current) {
         self.premiumState = premiumState
+        self.availability = availability
     }
 
     /// Present the paywall full-screen for `reason`.
+    ///
+    /// No-ops entirely while `PurchaseAvailability` is postponed — the single
+    /// choke point that keeps every purchase path off-screen.
     ///
     /// No-ops when the user already has premium — except for `.outOfCredits`:
     /// the backend never 402s a server-side premium subscriber, so a 402
@@ -65,6 +73,7 @@ final class PaywallController {
     /// they need (a locally-premium user hitting 402 is in a divergence
     /// state; suppressing the paywall would leave a dead-end error string).
     func present(reason: PaywallReason) {
+        guard availability == .enabled else { return }
         if reason != .outOfCredits {
             guard !premiumState.isPremiumUser else { return }
         }

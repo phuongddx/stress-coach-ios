@@ -241,7 +241,10 @@ struct CharacterDetailView: View {
     @ViewBuilder
     private var unlockCTA: some View {
         VStack(spacing: 12) {
-            if creature.unlockType == .premium {
+            // Premium creatures are filtered out of the collection while
+            // purchases are postponed; the guard keeps the price and the
+            // upgrade CTA unreachable even via a stale deep link.
+            if creature.unlockType == .premium, PurchaseAvailability.isEnabled {
                 Image(systemName: AppIconSystem.System.premium.sfSymbol)
                     .font(.system(size: 36))
                     .foregroundStyle(.orange)

@@ -126,6 +126,12 @@ struct SettingsView: View {
 
     // MARK: - 1. Me-hero
 
+    /// Nil while purchases are postponed so `MeHeroCard` drops the PLUS pill.
+    private var plusTapHandler: (() -> Void)? {
+        guard PurchaseAvailability.isEnabled else { return nil }
+        return { paywall.present(reason: .general) }
+    }
+
     private var meHeroSection: some View {
         MeHeroCard(
             bioAge: viewModel.bioAge,
@@ -133,7 +139,7 @@ struct SettingsView: View {
             streakDays: viewModel.streakDays,
             displayName: viewModel.displayName,
             email: viewModel.displayEmail ?? accountViewModel.linkedEmail,
-            onPlusTap: { paywall.present(reason: .general) }
+            onPlusTap: plusTapHandler
         )
     }
 
@@ -158,7 +164,7 @@ struct SettingsView: View {
                     setting: .characters,
                     tint: HomeCharacterDesignTokens.Ripple.deep,
                     title: "Characters",
-                    value: "\(unlockedCharacters.count) of \(CharacterCreature.allCharacters.count)",
+                    value: "\(unlockedCharacters.count) of \(CharacterCreature.offeredCharacters.count)",
                     destination: .characters
                 )
                 hairlineDivider
@@ -324,16 +330,18 @@ struct SettingsView: View {
     private var preferencesSection: some View {
         SettingsCard {
             VStack(spacing: 0) {
-                navRow(
-                    icon: AppIconSystem.Setting.stressMonitorPlus.sfSymbol,
-                    setting: .stressMonitorPlus,
-                    tint: .premiumGold,
-                    title: "StressMonitor Plus",
-                    value: CreditBalanceFormatter.plusRowValue(creditService.balance),
-                    valueTint: .premiumGold,
-                    action: { paywall.present(reason: .general) }
-                )
-                hairlineDivider
+                if PurchaseAvailability.isEnabled {
+                    navRow(
+                        icon: AppIconSystem.Setting.stressMonitorPlus.sfSymbol,
+                        setting: .stressMonitorPlus,
+                        tint: .premiumGold,
+                        title: "StressMonitor Plus",
+                        value: CreditBalanceFormatter.plusRowValue(creditService.balance),
+                        valueTint: .premiumGold,
+                        action: { paywall.present(reason: .general) }
+                    )
+                    hairlineDivider
+                }
                 navRow(
                     icon: AppIconSystem.Setting.appearance.sfSymbol,
                     setting: .appearance,
