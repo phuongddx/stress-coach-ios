@@ -195,3 +195,9 @@ StressMonitor/StressMonitor.xcodeproj/StressMonitor.xcodeproj/
 # Firebase config (per-app, contains API keys)
 StressMonitor/StressMonitor/GoogleService-Info.plist
 .worktrees/
+
+# Credentials — never commit. asc writes config.json here with --local/--bypass-keychain.
+.asc/
+*.p8
+*.mobileprovision
+*.p12
