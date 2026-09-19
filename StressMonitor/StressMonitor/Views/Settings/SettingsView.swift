@@ -483,6 +483,13 @@ struct SettingsView: View {
                     title: "Help & privacy",
                     destination: .about
                 )
+                hairlineDivider
+                navRow(
+                    icon: "books.vertical",
+                    tint: HomeCharacterDesignTokens.Ripple.deep,
+                    title: "Science & sources",
+                    destination: .scienceSources(topic: nil)
+                )
             }
         }
     }

@@ -8,6 +8,9 @@ import SwiftUI
 struct BiologicalAgeView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: BiologicalAgeViewModel?
+    /// Presented as a sheet rather than pushed: this screen is reachable from
+    /// more than one tab, so it must not assume which navigation path it is on.
+    @State private var showsSources = false
 
     var body: some View {
         ScrollView {
@@ -43,6 +46,18 @@ struct BiologicalAgeView: View {
         .accessibleDynamicType()
         .navigationTitle("Biological Age")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                ScienceInfoButton(topic: .biologicalAge) { _ in
+                    showsSources = true
+                }
+            }
+        }
+        .sheet(isPresented: $showsSources) {
+            NavigationStack {
+                ScienceSourcesView(focusedTopic: .biologicalAge)
+            }
+        }
         .task {
             guard viewModel == nil else { return }
             let loadedViewModel = BiologicalAgeViewModel(

@@ -13,6 +13,9 @@ import SwiftUI
 struct BreathingSummaryView: View {
     let result: BreathingSessionResult
     @Environment(\.dismiss) private var dismiss
+    /// Sheet, not a push: this screen hides its back button and owns its own
+    /// dismissal, so it must not append to a navigation path it does not own.
+    @State private var showsSources = false
 
     // Design tokens from app.css
     private let accent = Color(hex: "#4FC3F7")
@@ -41,6 +44,13 @@ struct BreathingSummaryView: View {
                 // HRV chart card
                 BeforeAfterHRVChart(before: result.preSessionHRV, after: result.postSessionHRV)
                     .padding(16)
+                    .overlay(alignment: .topTrailing) {
+                        ScienceInfoButton(topic: .breathing) { _ in
+                            showsSources = true
+                        }
+                        .padding(.trailing, 10)
+                        .padding(.top, 6)
+                    }
                     .background(RoundedRectangle(cornerRadius: 18).fill(surface))
                     .padding(.horizontal, 24)
 
@@ -81,6 +91,11 @@ struct BreathingSummaryView: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(accentStrong)
                 }
+            }
+        }
+        .sheet(isPresented: $showsSources) {
+            NavigationStack {
+                ScienceSourcesView(focusedTopic: .breathing)
             }
         }
     }
