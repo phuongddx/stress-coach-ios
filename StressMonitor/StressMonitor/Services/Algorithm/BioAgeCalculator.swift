@@ -12,8 +12,15 @@ struct BioAgeCalculator: Sendable {
 
     // MARK: - Age-Group Norm Tables
 
-    /// Expected SDNN HRV (ms) by age range — derived from population studies.
-    /// Higher HRV = younger biological age.
+    /// Expected SDNN HRV (ms) by age range. Higher HRV = younger biological age.
+    ///
+    /// Source: Umetani K, Singer DH, McCraty R, Atkinson M. Twenty-Four Hour Time
+    /// Domain Heart Rate Variability and Heart Rate: Relations to Age and Gender
+    /// Over Nine Decades. J Am Coll Cardiol. 1998;31(3):593-601.
+    ///
+    /// Those norms come from 24-hour ECG; HealthKit supplies short-window SDNN,
+    /// and the two are not interchangeable (Shaffer & Ginsberg 2017). The user-facing
+    /// caveat lives in `ScienceTopic.biologicalAge.limitation` — keep both in step.
     private static let hrvAgeNorms: [(maxAge: Int, expectedHRV: Double)] = [
         (maxAge: 25, expectedHRV: 65),
         (maxAge: 30, expectedHRV: 58),
@@ -30,6 +37,14 @@ struct BioAgeCalculator: Sendable {
 
     /// Expected resting heart rate (bpm) by age range.
     /// Lower RHR = younger biological age (stronger vagal tone).
+    ///
+    /// Source: Quer G, Gouda P, Galarnyk M, Topol EJ, Steinhubl SR. Inter- and
+    /// intraindividual variability in daily resting heart rate... PLOS ONE.
+    /// 2020;15(2):e0227709 — 92,457 adults, ~33M daily RHR values.
+    ///
+    /// That cohort found age, sex, BMI and sleep together explain no more than 10%
+    /// of between-person variation in RHR, which is why `BaselineCalculator`'s
+    /// personal baseline outranks these population figures wherever it exists.
     private static let rhrAgeNorms: [(maxAge: Int, expectedRHR: Double)] = [
         (maxAge: 25, expectedRHR: 63),
         (maxAge: 30, expectedRHR: 64),

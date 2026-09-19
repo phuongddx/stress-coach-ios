@@ -25,6 +25,9 @@ enum Route: Hashable, Codable {
     case appearance
     case about
     case watchFace
+    /// Sources behind the app's health claims. `topic` scrolls straight to one
+    /// claim's citations when opened from an info control; nil opens the top.
+    case scienceSources(topic: ScienceTopic?)
 
     // History
     /// History Timeline screen (`HistoryTimelineView`).

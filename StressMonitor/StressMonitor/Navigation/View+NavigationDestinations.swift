@@ -33,6 +33,9 @@ extension View {
             case .watchFace:
                 WatchFacePreferencesView()
 
+            case .scienceSources(let topic):
+                ScienceSourcesView(focusedTopic: topic)
+
             case .history:
                 HistoryTimelineView()
 

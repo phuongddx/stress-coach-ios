@@ -158,6 +158,15 @@ struct DashboardView: View {
         .buttonStyle(.plain)
         .disabled(stress == nil)
         .accessibilityLabel("View full result")
+        // Sits outside the card's Button so the two taps never nest: the card
+        // opens the reading, this opens the research behind the score.
+        .overlay(alignment: .topTrailing) {
+            ScienceInfoButton(topic: .stressScore) { topic in
+                router.homePath.append(Route.scienceSources(topic: topic))
+            }
+            .padding(.trailing, 12)
+            .padding(.top, 10)
+        }
         .opacity(appearAnimation ? 1 : 0)
         // 2b. Server coach score — daily score computed on the server from
         // uploaded health summaries, under the local reading
