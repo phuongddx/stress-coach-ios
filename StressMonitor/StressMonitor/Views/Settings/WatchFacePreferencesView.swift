@@ -67,7 +67,7 @@ struct WatchFacePreferencesView: View {
 
     private var companionSection: some View {
         Section {
-            ForEach(CharacterCreature.allCharacters) { creature in
+            ForEach(CharacterCreature.offeredCharacters) { creature in
                 Button {
                     activeCompanionId = creature.id
                     UserDefaults.standard.set(creature.id, forKey: "watchface.activeCompanionId")

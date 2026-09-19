@@ -154,7 +154,7 @@ struct PaywallOutOfCreditsGuardTests {
         let suite = "PaywallGuard-\(UUID().uuidString)"
         let state = PremiumState(defaults: UserDefaults(suiteName: suite)!, key: "isPremiumUser")
         state.isPremiumUser = true
-        let paywall = PaywallController(premiumState: state)
+        let paywall = PaywallController(premiumState: state, availability: .enabled)
 
         paywall.present(reason: .outOfCredits)
         #expect(paywall.presentation?.reason == .outOfCredits)
@@ -162,6 +162,27 @@ struct PaywallOutOfCreditsGuardTests {
         paywall.dismiss()
         paywall.present(reason: .general)
         #expect(paywall.presentation == nil)
+    }
+
+    @Test("postponed purchases suppress every paywall reason")
+    func postponedPurchasesSuppressPaywall() {
+        let suite = "PaywallPostponed-\(UUID().uuidString)"
+        let state = PremiumState(defaults: UserDefaults(suiteName: suite)!, key: "isPremiumUser")
+        let paywall = PaywallController(
+            premiumState: state,
+            availability: .postponed(reason: .awaitingAppStoreProducts)
+        )
+
+        paywall.present(reason: .general)
+        #expect(paywall.presentation == nil)
+
+        paywall.present(reason: .outOfCredits)
+        #expect(paywall.presentation == nil)
+    }
+
+    @Test("shipping build postpones purchases")
+    func shippingBuildPostponesPurchases() {
+        #expect(!PurchaseAvailability.isEnabled)
     }
 }
 

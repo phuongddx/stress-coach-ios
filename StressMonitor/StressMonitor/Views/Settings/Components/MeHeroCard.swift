@@ -54,7 +54,11 @@ struct MeHeroCard: View {
 
             Spacer(minLength: 8)
 
-            PlusPill(onTap: onPlusTap)
+            // Omitted when the owner supplies no tap handler — the upsell has
+            // nowhere to go, so it must not render.
+            if let onPlusTap {
+                PlusPill(onTap: onPlusTap)
+            }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(displayName). Bio age \(bioAge.map(String.init) ?? "unknown"). Stress \(stressLabel). \(streakDays) day streak.")

@@ -206,19 +206,22 @@ struct DashboardView: View {
         // 8. Stress over time — 7-day bar chart + tier legend
         StressOverTimeChart(
             data: viewModel.weeklyStressPoints,
-            onUpgrade: { paywall.present(reason: .trendsLongRange) },
             onOpenHistory: { router.homePath.append(Route.history) }
         )
             .opacity(appearAnimation ? 1 : 0)
 
-        // 9. Premium upsell — frosted glass banner (full-screen paywall)
-        Button {
-            paywall.present(reason: .general)
-        } label: {
-            PremiumBanner()
+        // 9. Premium upsell — frosted glass banner (full-screen paywall).
+        // Hidden while purchases are postponed, so the dashboard never
+        // references purchasable content.
+        if PurchaseAvailability.isEnabled {
+            Button {
+                paywall.present(reason: .general)
+            } label: {
+                PremiumBanner()
+            }
+            .buttonStyle(.plain)
+            .opacity(appearAnimation ? 1 : 0)
         }
-        .buttonStyle(.plain)
-        .opacity(appearAnimation ? 1 : 0)
     }
 
     // MARK: - Derivation helpers

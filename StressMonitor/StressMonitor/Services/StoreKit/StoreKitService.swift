@@ -43,7 +43,8 @@ final class StoreKitService: StoreKitServiceProtocol {
         catalog: StoreKitProductCatalog? = nil,
         creditService: CreditServiceProtocol? = nil,
         redeemer: PurchaseRedeemer? = nil,
-        subscriptionVerifier: PurchaseRedeemer? = nil
+        subscriptionVerifier: PurchaseRedeemer? = nil,
+        availability: PurchaseAvailability = .current
     ) {
         self.premiumState = premiumState ?? .shared
         self.catalog = catalog ?? .live
@@ -51,6 +52,11 @@ final class StoreKitService: StoreKitServiceProtocol {
         let apiClient = StressAPIClient()
         self.redeemer = redeemer ?? { jws in try await apiClient.redeemPurchase(jws: jws) }
         self.subscriptionVerifier = subscriptionVerifier ?? { jws in try await apiClient.verifySubscription(jws: jws) }
+        // While purchases are postponed the app offers no way to buy, so the
+        // transaction listener and the entitlement refresh would only query
+        // products that do not exist in App Store Connect. Flipping
+        // `PurchaseAvailability.current` back to `.enabled` restores both.
+        guard availability == .enabled else { return }
         self.transactionUpdatesTask = listenForTransactions()
         Task { await refreshEntitlements() }
     }

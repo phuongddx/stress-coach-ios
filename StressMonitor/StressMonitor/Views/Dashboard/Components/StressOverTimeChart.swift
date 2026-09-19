@@ -10,22 +10,15 @@ import SwiftUI
 /// Spec reference: design/screens/04-home.html — `.stress-chart`.
 struct StressOverTimeChart: View {
     let data: [StressDataPoint]
-    var onUpgrade: (() -> Void)?
     var onOpenHistory: (() -> Void)?
-
-    /// 7-day history is free (core monitoring). Kept on the card for the future
-    /// 30/90-day paywall, currently a no-op hook.
-    private var shouldLock: Bool { false }
 
     private let days = ["M", "T", "W", "T", "F", "S", "S"]
 
     init(
         data: [StressDataPoint],
-        onUpgrade: (() -> Void)? = nil,
         onOpenHistory: (() -> Void)? = nil
     ) {
         self.data = data
-        self.onUpgrade = onUpgrade
         self.onOpenHistory = onOpenHistory
     }
 
@@ -33,12 +26,7 @@ struct StressOverTimeChart: View {
         VStack(alignment: .leading, spacing: 16) {
             header
 
-            if shouldLock {
-                chartArea
-                    .overlay(PremiumLockOverlay(lockedFeatureLabel: "Unlock longer trends", onUpgrade: onUpgrade))
-            } else {
-                chartArea
-            }
+            chartArea
 
             legend
         }

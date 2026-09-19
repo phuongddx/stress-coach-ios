@@ -196,6 +196,17 @@ struct CharacterCreature: Identifiable, Equatable, Sendable {
     static func find(by id: String) -> CharacterCreature? {
         allCharacters.first { $0.id == id }
     }
+
+    /// Characters offered to the user in this build.
+    ///
+    /// Premium creatures are withheld while `PurchaseAvailability` is
+    /// postponed: the app must surface no purchasable content while the
+    /// products are absent from App Store Connect. Lookups and persistence
+    /// keep using `allCharacters` so existing unlock rows stay resolvable.
+    static var offeredCharacters: [CharacterCreature] {
+        guard !PurchaseAvailability.isEnabled else { return allCharacters }
+        return allCharacters.filter { $0.unlockType != .premium }
+    }
 }
 
 // MARK: - Evolution Requirements

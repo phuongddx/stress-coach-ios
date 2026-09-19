@@ -239,7 +239,11 @@ struct StressMonitorApp: App {
             // the app is already running.
             guard newPhase == .active else { return }
             Task { @MainActor in
-                await storeKitService.refreshEntitlements()
+                // Skipped while purchases are postponed — there is nothing to
+                // self-correct and no product to query.
+                if PurchaseAvailability.isEnabled {
+                    await storeKitService.refreshEntitlements()
+                }
                 // Also refreshes the credit balance on every foreground; a
                 // 401 here doubles as the AUTH-02 stale-session probe.
                 do {

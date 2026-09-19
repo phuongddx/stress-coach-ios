@@ -61,8 +61,10 @@ struct OnboardingSuccessView: View {
                         .padding(.bottom, 16)
 
                     // Free trial banner
-                    freeTrialBanner
-                        .padding(.bottom, 16)
+                    if PurchaseAvailability.isEnabled {
+                        freeTrialBanner
+                            .padding(.bottom, 16)
+                    }
 
                     // Metric boxes row
                     metricsRow

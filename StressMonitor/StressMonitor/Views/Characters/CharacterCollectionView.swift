@@ -15,9 +15,9 @@ struct CharacterCollectionView: View {
     // MARK: - Computed
 
     private var unlockedCount: Int {
-        CharacterCreature.allCharacters.filter { isUnlocked($0.id) }.count
+        CharacterCreature.offeredCharacters.filter { isUnlocked($0.id) }.count
     }
-    private var totalCount: Int { CharacterCreature.allCharacters.count }
+    private var totalCount: Int { CharacterCreature.offeredCharacters.count }
 
     // MARK: - Body
 
@@ -93,7 +93,7 @@ struct CharacterCollectionView: View {
             spacing: 12
         ) {
             // Show all characters except Lumi (Lumi gets full-width card below)
-            ForEach(CharacterCreature.allCharacters.filter { $0.id != "lumi" }) { creature in
+            ForEach(CharacterCreature.offeredCharacters.filter { $0.id != "lumi" }) { creature in
                 CharacterGridCard(
                     creature: creature,
                     unlock: viewModel.unlockStatus(for: creature.id),

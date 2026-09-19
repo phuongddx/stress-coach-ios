@@ -157,8 +157,11 @@ struct ChatBottomSheetView: View {
 
             // DEC-2 placement-a: live balance pill. Informational while the
             // user still has credits; tappable straight to the paywall when
-            // the remaining count hits zero.
-            balancePill
+            // the remaining count hits zero. Hidden while purchases are
+            // postponed — a zero balance would otherwise offer no way out.
+            if PurchaseAvailability.isEnabled {
+                balancePill
+            }
 
             // Overflow menu
             Image(systemName: "ellipsis")
