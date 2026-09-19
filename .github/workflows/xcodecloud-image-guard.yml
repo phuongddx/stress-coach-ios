@@ -1,0 +1,92 @@
+name: Xcode Cloud Image Guard
+
+# Weekly check that every Xcode Cloud workflow's pinned Xcode+macOS pairing is
+# still valid. Apple retires CI images without notice; an invalid pairing makes
+# every build fail at dispatch in seconds with no logs and no notification —
+# which is exactly how TestFlight stayed silently broken for 10 days in
+# September 2026. This turns that into an email the day it drifts.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: xcodecloud-image-guard
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    name: Verify workflow image pairings
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      ASC_BYPASS_KEYCHAIN: "1"
+
+    steps:
+      - name: Install asc
+        run: |
+          curl -fsSL https://asccli.sh/install | bash
+          asc version
+
+      - name: Check Xcode Cloud workflow image pairings
+        run: |
+          GUARD_TOKEN="$(asc auth token --confirm --output text)"
+          export GUARD_TOKEN
+          python3 <<'PY'
+          import json, os, urllib.request
+
+          TOKEN = os.environ["GUARD_TOKEN"]
+          PRODUCT = "9794E0D6-ED3B-4F41-94C4-ACE201F034DD"  # StressMonitor CI product
+          BASE = "https://api.appstoreconnect.apple.com/v1"
+
+          def get(url):
+              req = urllib.request.Request(url, headers={"Authorization": f"Bearer {TOKEN}"})
+              with urllib.request.urlopen(req) as r:
+                  return json.load(r)
+
+          workflows = get(f"{BASE}/ciProducts/{PRODUCT}/workflows?limit=50")["data"]
+          failures, notes = [], []
+
+          for w in workflows:
+              name = w["attributes"]["name"]
+              enabled = w["attributes"].get("isEnabled")
+              full = get(f"{BASE}/ciWorkflows/{w['id']}?include=xcodeVersion,macOsVersion")
+              rel = full["data"].get("relationships", {})
+              xv = (rel.get("xcodeVersion") or {}).get("data") or {}
+              mv = (rel.get("macOsVersion") or {}).get("data") or {}
+
+              if not xv or not mv:
+                  notes.append(f"{name}: images not pinned (uses account default) — skipped")
+                  continue
+
+              included = {i["id"]: i["attributes"].get("name", i["id"]) for i in full.get("included", [])}
+              xcode_name = included.get(xv["id"], xv["id"])
+              macos_name = included.get(mv["id"], mv["id"])
+
+              compatible = get(f"{BASE}/ciXcodeVersions/{xv['id']}/macOsVersions?limit=200")
+              ok = any(m["id"] == mv["id"] for m in compatible.get("data", []))
+
+              line = f"{'OK ' if ok else 'INVALID'}  {name} (enabled={enabled}): {xcode_name} + {macos_name}"
+              print(line)
+              if not ok:
+                  failures.append(f"{name}: {xcode_name} + {macos_name} is no longer a valid pairing")
+
+          for n in notes:
+              print("SKIP ", n)
+
+          if failures:
+              print("\nXcode Cloud builds would be rejected at dispatch. Re-pin the workflows:")
+              for f in failures:
+                  print(f" - {f}")
+              raise SystemExit(1)
+
+          print("\nAll pinned Xcode Cloud images are valid.")
+          PY
