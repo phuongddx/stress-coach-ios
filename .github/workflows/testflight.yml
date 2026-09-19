@@ -1,0 +1,161 @@
+name: TestFlight
+
+# Build and upload a TestFlight build from GitHub Actions.
+#
+# Exists because Xcode Cloud's Beta workflow is disabled (its pinned Xcode/macOS
+# image pairing went invalid and every run was rejected at dispatch). Manual
+# dispatch only, so the two never race if Xcode Cloud is re-enabled.
+#
+# Signing uses the existing App Store distribution identity rather than Match:
+# the private key for certificate XPT2DHR688 — the one backing the ACTIVE
+# "match AppStore stress.ai.com*" profiles — is exported once to a .p12 and
+# stored as a secret. No Match repo, no new certificates.
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_notes:
+        description: "What to Test notes for this build"
+        required: false
+        default: "Internal build from main."
+
+concurrency:
+  group: testflight-${{ github.ref }}
+  cancel-in-progress: false   # never cancel an in-flight upload
+
+env:
+  XCODE_VERSION: "26.3"
+  SCHEME: "StressMonitor"
+  PROJECT: "StressMonitor/StressMonitor.xcodeproj"
+  LANG: "en_US.UTF-8"
+  ASC_APP_ID: "6778478266"
+
+jobs:
+  testflight:
+    name: Build and upload
+    runs-on: macos-15
+    timeout-minutes: 45
+    environment: production
+
+    env:
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      ASC_BYPASS_KEYCHAIN: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install asc
+        run: |
+          curl -fsSL https://asccli.sh/install | bash
+          asc version
+
+      # GoogleService-Info.plist is gitignored; without it Firebase auth, chat
+      # and IAP ship dead. Fail loudly rather than distribute a broken binary —
+      # same contract as Xcode Cloud's ci_post_clone.sh.
+      - name: Provision GoogleService-Info.plist
+        env:
+          GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          set -e
+          if [ -z "${GOOGLE_SERVICE_INFO_PLIST_BASE64:-}" ]; then
+            echo "error: GOOGLE_SERVICE_INFO_PLIST_BASE64 secret is not set." >&2
+            exit 1
+          fi
+          DEST="StressMonitor/StressMonitor/GoogleService-Info.plist"
+          printf '%s' "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > "$DEST"
+          plutil -lint "$DEST"
+
+      - name: Install signing identity
+        env:
+          BUILD_CERTIFICATE_P12_BASE64: ${{ secrets.BUILD_CERTIFICATE_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          set -e
+          RUNNER_KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          printf '%s' "$BUILD_CERTIFICATE_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$RUNNER_KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$RUNNER_KEYCHAIN"
+          security import "$RUNNER_TEMP/dist.p12" -k "$RUNNER_KEYCHAIN" \
+            -P "$P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$RUNNER_KEYCHAIN" > /dev/null
+          security list-keychain -d user -s "$RUNNER_KEYCHAIN" login.keychain-db
+          security find-identity -v -p codesigning "$RUNNER_KEYCHAIN"
+
+      # Pulls the ACTIVE App Store profiles already registered in ASC.
+      # No --create-missing: nothing should be created implicitly on a release path.
+      - name: Fetch provisioning profiles
+        run: |
+          set -e
+          for BUNDLE in stress.ai.com stress.ai.com.watchkitapp stress.ai.com.widget; do
+            asc signing fetch --bundle-id "$BUNDLE" --profile-type IOS_APP_STORE --output ./signing
+          done
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          find ./signing -name '*.mobileprovision' -exec cp {} ~/Library/MobileDevice/Provisioning\ Profiles/ \;
+          ls -1 ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      # Xcode Cloud owned the build number before; on this path the next free
+      # number is derived from what App Store Connect already has.
+      - name: Set build number
+        run: |
+          set -e
+          LATEST=$(asc builds list --app "$ASC_APP_ID" --limit 1 --output json \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"][0]["attributes"]["version"])')
+          NEXT=$((LATEST + 1))
+          echo "Latest build in ASC: $LATEST → building $NEXT"
+          asc xcode version edit --build-number "$NEXT"
+          echo "BUILD_NUMBER=$NEXT" >> "$GITHUB_ENV"
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          asc xcode archive \
+            --project "$PROJECT" \
+            --scheme "$SCHEME" \
+            --configuration Release \
+            --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
+            --overwrite
+
+      - name: Export IPA
+        run: |
+          set -o pipefail
+          asc xcode export \
+            --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
+            --method app-store-connect \
+            --signing-style manual \
+            --team-id K2TYLYAWMK \
+            --ipa-path "$RUNNER_TEMP/export/StressMonitor.ipa" \
+            --overwrite
+
+      - name: Upload to TestFlight
+        run: |
+          set -e
+          IPA=$(find "$RUNNER_TEMP/export" -name '*.ipa' | head -1)
+          echo "Uploading $IPA"
+          asc builds upload \
+            --app "$ASC_APP_ID" \
+            --ipa "$IPA" \
+            --test-notes "${{ inputs.test_notes }}" \
+            --locale en-US \
+            --output table
+
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-debug
+          path: |
+            ./signing
+            ${{ runner.temp }}/export
+          retention-days: 5
