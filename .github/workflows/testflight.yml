@@ -150,12 +150,20 @@ jobs:
       - name: Export IPA
         run: |
           set -o pipefail
+          # Match Archive: automatic signing (asc default) + allowProvisioningUpdates
+          # and the same API key auth, instead of manual signing (which needs
+          # explicit profile mappings we don't have and don't need).
           asc xcode export \
             --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
             --method app-store-connect \
-            --signing-style manual \
-            --team-id K2TYLYAWMK \
             --ipa-path "$RUNNER_TEMP/export/StressMonitor.ipa" \
+            --xcodebuild-flag=-allowProvisioningUpdates \
+            --xcodebuild-flag=-authenticationKeyPath \
+            --xcodebuild-flag="$RUNNER_TEMP/AuthKey.p8" \
+            --xcodebuild-flag=-authenticationKeyID \
+            --xcodebuild-flag="$ASC_KEY_ID" \
+            --xcodebuild-flag=-authenticationKeyIssuerID \
+            --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
 
       - name: Upload to TestFlight
