@@ -121,7 +121,7 @@ jobs:
             | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"][0]["attributes"]["version"])')
           NEXT=$((LATEST + 1))
           echo "Latest build in ASC: $LATEST → building $NEXT"
-          asc xcode version edit --build-number "$NEXT"
+          asc xcode version edit --build-number "$NEXT" --project "$PROJECT" --target "$SCHEME"
           echo "BUILD_NUMBER=$NEXT" >> "$GITHUB_ENV"
 
       - name: Archive
