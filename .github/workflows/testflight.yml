@@ -127,11 +127,24 @@ jobs:
       - name: Archive
         run: |
           set -o pipefail
+          # Project uses Automatic (CODE_SIGN_STYLE=Automatic) signing. Manually
+          # placing .mobileprovision files does nothing under Automatic signing —
+          # xcodebuild needs -allowProvisioningUpdates plus API key auth so it can
+          # resolve/create the right profile itself (the signing identity from the
+          # previous step still has to be in the keychain for the actual signing).
+          printf '%s' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
           asc xcode archive \
             --project "$PROJECT" \
             --scheme "$SCHEME" \
             --configuration Release \
             --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
+            --xcodebuild-flag=-allowProvisioningUpdates \
+            --xcodebuild-flag=-authenticationKeyPath \
+            --xcodebuild-flag="$RUNNER_TEMP/AuthKey.p8" \
+            --xcodebuild-flag=-authenticationKeyID \
+            --xcodebuild-flag="$ASC_KEY_ID" \
+            --xcodebuild-flag=-authenticationKeyIssuerID \
+            --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
 
       - name: Export IPA
