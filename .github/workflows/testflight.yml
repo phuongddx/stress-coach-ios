@@ -96,6 +96,11 @@ jobs:
       # Pulls the ACTIVE App Store profiles already registered in ASC.
       # No --create-missing: nothing should be created implicitly on a release path.
       - name: Fetch provisioning profiles
+        env:
+          # asc signing fetch validates --bundle-id against ASC_APP_ID when set,
+          # but the watch/widget extension bundle IDs are not the app's primary
+          # bundle ID, so that validation rejects them. Clear it for this step only.
+          ASC_APP_ID: ""
         run: |
           set -e
           for BUNDLE in stress.ai.com stress.ai.com.watchkitapp stress.ai.com.widget; do
