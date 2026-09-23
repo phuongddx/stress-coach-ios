@@ -104,7 +104,9 @@ jobs:
         run: |
           set -e
           for BUNDLE in stress.ai.com stress.ai.com.watchkitapp stress.ai.com.widget; do
-            asc signing fetch --bundle-id "$BUNDLE" --profile-type IOS_APP_STORE --output ./signing
+            # Separate output dir per bundle: all three bundles share the same
+            # distribution certificate, so a shared dir collides on the .cer filename.
+            asc signing fetch --bundle-id "$BUNDLE" --profile-type IOS_APP_STORE --output "./signing/$BUNDLE"
           done
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           find ./signing -name '*.mobileprovision' -exec cp {} ~/Library/MobileDevice/Provisioning\ Profiles/ \;
