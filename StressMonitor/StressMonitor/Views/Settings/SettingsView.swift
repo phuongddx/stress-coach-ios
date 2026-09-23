@@ -14,6 +14,8 @@ struct SettingsView: View {
     @State private var docsURL: URL? = nil
     @State private var showChatSheet = false
     @State private var showSignInErrorAlert = false
+    @State private var showDeleteAccountConfirm = false
+    @State private var showAccountDeletedAlert = false
 
     @Query(filter: #Predicate<CharacterUnlock> { $0.isActive })
     private var activeUnlocks: [CharacterUnlock]
@@ -56,6 +58,25 @@ struct SettingsView: View {
         .accessibleDynamicType()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Delete your account?", isPresented: $showDeleteAccountConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("Delete Account", role: .destructive) {
+                Task {
+                    if await accountViewModel.deleteAccount() {
+                        showAccountDeletedAlert = true
+                    } else {
+                        showSignInErrorAlert = accountViewModel.errorMessage != nil
+                    }
+                }
+            }
+        } message: {
+            Text("This permanently deletes your account and its data. This cannot be undone.")
+        }
+        .alert("Account deleted", isPresented: $showAccountDeletedAlert) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your account and its data have been deleted.")
+        }
         .onAppear {
             viewModel = SettingsViewModel(modelContext: modelContext)
             if habitViewModel == nil {
@@ -234,11 +255,28 @@ struct SettingsView: View {
                 }
                 hairlineDivider
                 navRow(
+                    icon: "apple.logo",
+                    tint: .settingsRippleBlue,
+                    title: "Sign in with Apple",
+                    value: accountViewModel.linkedEmail ?? "Link account",
+                    action: signInWithAppleTapped
+                )
+                hairlineDivider
+                navRow(
                     icon: "g.circle",
                     tint: .settingsRippleBlue,
                     title: "Sign in with Google",
                     value: accountViewModel.linkedEmail ?? "Link account",
                     action: signInWithGoogleTapped
+                )
+                hairlineDivider
+                navRow(
+                    icon: "person.crop.circle.badge.xmark",
+                    tint: Color.error,
+                    title: "Delete Account",
+                    value: accountViewModel.isDeletingAccount ? "Deleting…" : nil,
+                    valueTint: Color.error,
+                    action: { showDeleteAccountConfirm = true }
                 )
                 hairlineDivider
                 navRow(
@@ -500,6 +538,31 @@ struct SettingsView: View {
             .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
+    }
+
+    private func signInWithAppleTapped() {
+        guard accountViewModel.linkedEmail == nil else { return }
+        // ASAuthorizationController needs a UIKit presentation anchor.
+        guard let viewController = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first(where: { $0.activationState == .foregroundActive })?
+            .keyWindow?
+            .rootViewController
+        else {
+            accountViewModel.errorMessage = "Sign in with Apple is unavailable right now."
+            showSignInErrorAlert = true
+            return
+        }
+
+        Task {
+            do {
+                try await accountViewModel.signInWithApple(presenting: viewController)
+            } catch {
+                if accountViewModel.errorMessage != nil {
+                    showSignInErrorAlert = true
+                }
+            }
+        }
     }
 
     private func signInWithGoogleTapped() {

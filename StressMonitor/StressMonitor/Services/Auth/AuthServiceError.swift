@@ -9,6 +9,8 @@ enum AuthServiceError: Error, LocalizedError {
     case notConfigured
     case notSignedIn
     case googleSignInFailed(underlying: Error?)
+    case appleSignInFailed(underlying: Error?)
+    case accountDeletionFailed(underlying: Error?)
 
     var errorDescription: String? {
         switch self {
@@ -19,6 +21,12 @@ enum AuthServiceError: Error, LocalizedError {
         case .googleSignInFailed(let underlying):
             return underlying?.localizedDescription
                 ?? "Google Sign-In could not be completed. Please try again."
+        case .appleSignInFailed(let underlying):
+            return underlying?.localizedDescription
+                ?? "Sign in with Apple could not be completed. Please try again."
+        case .accountDeletionFailed(let underlying):
+            return underlying?.localizedDescription
+                ?? "Your account could not be deleted. Please try again."
         }
     }
 }

@@ -14,6 +14,7 @@ protocol AuthServiceProtocol: Sendable {
     func getIDToken() async throws -> String
     func signOut() throws
     func signInWithGoogle(presenting viewController: UIViewController) async throws
+    func signInWithApple(presenting viewController: UIViewController) async throws
 }
 
 // MARK: - Firebase Auth Service
@@ -27,6 +28,14 @@ protocol AuthServiceProtocol: Sendable {
 final class FirebaseAuthService: AuthServiceProtocol, @unchecked Sendable {
 
     private let tokenRefreshMargin: TimeInterval = 60
+
+    /// Apple's authorization code, kept so account deletion can revoke the
+    /// Sign in with Apple token.
+    fileprivate static let appleAuthorizationCodeKey = "appleAuthorizationCode"
+
+    /// `ASAuthorizationController` holds its delegate weakly — retain the
+    /// coordinator for the duration of one sign-in request.
+    private var appleSignInCoordinator: AppleSignInCoordinator?
 
     nonisolated init() {}
 
@@ -121,6 +130,50 @@ final class FirebaseAuthService: AuthServiceProtocol, @unchecked Sendable {
         _ = try await Auth.auth().signIn(with: credential)
     }
 
+    // MARK: - Sign in with Apple
+
+    /// Native Sign in with Apple. Same link-then-fallback shape as
+    /// `signInWithGoogle`: link to the current (usually anonymous) user so
+    /// credits and chat history survive the upgrade, and fall back to a plain
+    /// sign-in when the Apple credential already belongs to another account.
+    ///
+    /// The authorization code is stored because Apple requires the token to be
+    /// revoked when the account is deleted; it is cleared on deletion and on
+    /// credential clearing.
+    func signInWithApple(presenting viewController: UIViewController) async throws {
+        guard isFirebaseConfigured else {
+            throw AuthServiceError.notConfigured
+        }
+
+        let coordinator = AppleSignInCoordinator()
+        appleSignInCoordinator = coordinator
+        defer { appleSignInCoordinator = nil }
+
+        let payload = try await coordinator.signIn(presenting: viewController)
+
+        if let code = payload.authorizationCode {
+            UserDefaults.standard.set(code, forKey: Self.appleAuthorizationCodeKey)
+        }
+
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: payload.identityToken,
+            rawNonce: payload.rawNonce,
+            fullName: nil
+        )
+
+        if let currentUser = Auth.auth().currentUser {
+            do {
+                _ = try await currentUser.link(with: credential)
+                return
+            } catch {
+                guard (error as NSError).code == AuthErrorCode.credentialAlreadyInUse.rawValue else { throw error }
+                _ = try await Auth.auth().signIn(with: credential)
+                return
+            }
+        }
+        _ = try await Auth.auth().signIn(with: credential)
+    }
+
     // MARK: - Credential Clearing
 
     /// Signs out the current Firebase user and wipes the legacy Keychain
@@ -133,7 +186,7 @@ final class FirebaseAuthService: AuthServiceProtocol, @unchecked Sendable {
         for account in ["supabaseAccessToken", "supabaseRefreshToken"] {
             try? KeychainService.delete(service: service, account: account)
         }
-        for key in ["supabaseSessionExpiresAt", "supabaseChatSessionId"] {
+        for key in ["supabaseSessionExpiresAt", "supabaseChatSessionId", appleAuthorizationCodeKey] {
             UserDefaults.standard.removeObject(forKey: key)
         }
     }
