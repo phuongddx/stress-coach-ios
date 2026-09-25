@@ -15,17 +15,5 @@
 			</array>
 		</dict>
 	</array>
-	<key>STOREKIT_CREDITS_LARGE_PRODUCT_ID</key>
-	<string>com.stressmonitor.app.credits.large</string>
-	<key>STOREKIT_CREDITS_SMALL_PRODUCT_ID</key>
-	<string>com.stressmonitor.app.credits.small</string>
-	<key>STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID</key>
-	<string>com.stressmonitor.app.premium.annual</string>
-	<key>STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID</key>
-	<string>com.stressmonitor.app.premium.monthly</string>
-	<key>STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID</key>
-	<string>22353146</string>
-	<key>STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID</key>
-	<string>com.stressmonitor.app.premium.weekly</string>
 </dict>
 </plist>
