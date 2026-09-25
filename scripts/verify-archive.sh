@@ -14,7 +14,9 @@ WIDGET_POINT_ID="com.apple.widgetkit-extension"
 
 # Merged-plist keys that must NOT be present in this free-only release — this app ships
 # no IAP (see plans/260925-0819-remove-iap-mentions). A merged app Info.plist containing
-# any of these keys means IAP evidence leaked back into the build.
+# any of these keys means IAP evidence leaked back into the build. Kept for documentation
+# only: the actual check below matches ANY key prefixed STOREKIT_, not just these six, so
+# it also catches a future/renamed StoreKit key such as STOREKIT_CREDITS_MEDIUM_PRODUCT_ID.
 STOREKIT_KEYS=(
     STOREKIT_CREDITS_LARGE_PRODUCT_ID
     STOREKIT_CREDITS_SMALL_PRODUCT_ID
@@ -186,12 +188,14 @@ else
 fi
 
 if [ -n "$APP_PLIST_DUMP" ]; then
+    # Prefix match (not the STOREKIT_KEYS list above) so a renamed/new StoreKit key
+    # is caught too. Anchored to the dump's "key" => line shape so a STOREKIT_-prefixed
+    # *value* under an unrelated key can't produce a false positive.
     plist_present=""
-    for key in "${STOREKIT_KEYS[@]}"; do
-        if grep -q "\"$key\"" <<<"$APP_PLIST_DUMP"; then
-            plist_present="$plist_present $key"
-        fi
-    done
+    while IFS= read -r key; do
+        [ -n "$key" ] && plist_present="$plist_present $key"
+    done < <(grep -oE '^[[:space:]]*"STOREKIT_[^"]+"[[:space:]]*=>' <<<"$APP_PLIST_DUMP" \
+        | grep -oE '"STOREKIT_[^"]+"' | tr -d '"' | sort -u)
     if [ -n "$plist_present" ]; then
         note_fail "MERGED PLISTS" "this release ships no IAP — found STOREKIT keys that must not be present:$plist_present"
     else

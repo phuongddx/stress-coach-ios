@@ -1,27 +1,39 @@
 #!/bin/bash
 # Bidirectional tests for verify-archive.sh.
 #
-# Golden-archive tests (1-3) require the preserved build-13 archive at
+# Golden-archive tests (1, 2, 3, 4) require the preserved build-13 archive at
 # .asc/artifacts/StressMonitor.xcarchive — gitignored (*.xcarchive), so it
 # exists only on machines that kept it manually; no CI workflow provisions
 # it today. When it is absent those tests skip with a message below.
-# Tests 4-5 run on a planted temp archive and always execute.
+# Tests 5-7 run on planted temp archives and always execute.
 #
 # Proves the artifact gate detects what it claims to detect:
-#   1. GREEN  — verify-archive.sh exits 0 on the build-13 golden archive
-#               (.asc/artifacts/StressMonitor.xcarchive — preserve, never delete).
+#   1. ENTITLEMENTS checks pass on the golden build-13 archive; MERGED PLISTS is
+#               EXPECTED to FAIL there for the six legacy STOREKIT_* keys this frozen
+#               build predates removing (plans/260925-0819-remove-iap-mentions) — also
+#               asserts the exact "verify-archive: 1 check failure(s)" summary line, so
+#               a mere nonzero exit can't hide some other check also failing.
 #   2. RED    — a copy of the golden app binary with a planted JWT-shaped string
 #               appended makes the credential scan (scan mode) exit non-zero.
 #   3. ENTITLEMENTS — the per-bundle entitlements check reports PASS for all three
 #               bundles (app, widget appex, watch app) of the golden archive.
-#   4. RED    — a planted app Info.plist with an empty CFBundleURLSchemes array
+#   4. GREEN  — a copy of the golden archive with the six legacy STOREKIT_* keys
+#               deleted from its app Info.plist exits 0 and reports the
+#               no-STOREKIT-keys PASS line — proves the gate can fully pass (7/7
+#               internal checks) on a real post-cleanup archive, not just a
+#               synthetic planted one.
+#   5. RED    — a planted app Info.plist with an empty CFBundleURLSchemes array
 #               makes the merged-plists URL-schemes check report FAIL, and the
 #               PASS line must NOT appear (guards against the check passing on
 #               the key line's own quotes). This same planted plist has no
-#               STOREKIT_* keys (free-only release, plans/260925-0819-remove-iap-mentions),
-#               so it must also report PASS MERGED PLISTS for that check.
-#   5. GREEN  — the same planted plist with one scheme entry reports PASS.
-#               Tests 4-5 run on a planted temp archive and need no golden.
+#               STOREKIT_* keys (free-only release), so it must also report the
+#               no-STOREKIT-keys PASS.
+#   6. GREEN  — the same planted plist with one scheme entry reports PASS.
+#   7. RED    — a planted plist with exactly one STOREKIT_* key present must FAIL
+#               MERGED PLISTS naming that key, must NOT emit the no-STOREKIT-keys
+#               PASS line, and must exit non-zero — proves the gate's bite does not
+#               depend on the gitignored golden archive and can't be silently broken
+#               to always-pass.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,13 +55,13 @@ expect_pass() { # name, condition already evaluated by caller via $?
 }
 
 # The golden archive is gitignored (*.xcarchive) and exists only on machines that
-# preserved it manually — no CI workflow provisions it. Skip its three tests with
+# preserved it manually — no CI workflow provisions it. Skip its four tests with
 # a clear message instead of cascading failures; the planted-plist tests below
 # still run because they need no golden.
 GOLDEN_PRESENT=1
 if [ ! -d "$GOLDEN" ]; then
     GOLDEN_PRESENT=0
-    echo "SKIP: golden archive not present ($GOLDEN) — golden-archive tests (1-3) skipped; planted-plist URL-schemes tests still run"
+    echo "SKIP: golden archive not present ($GOLDEN) — golden-archive tests (1,2,3,4) skipped; planted-plist tests still run"
 fi
 
 if [ "$GOLDEN_PRESENT" -eq 1 ]; then
@@ -66,8 +78,10 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     a=$?
     grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present" /tmp/verify-archive-tests-green.$$
     s=$?
-    [ "$rc" -ne 0 ] && [ "$a" -eq 0 ] && [ "$s" -eq 0 ]
-    expect_pass $? "test_entitlements_pass_and_legacy_storekit_fail_on_golden_archive (exit=$rc, entitlements=$a, expected-legacy-storekit-fail=$s)"
+    grep -qF "verify-archive: 1 check failure(s)" /tmp/verify-archive-tests-green.$$
+    f=$?
+    [ "$rc" -ne 0 ] && [ "$a" -eq 0 ] && [ "$s" -eq 0 ] && [ "$f" -eq 0 ]
+    expect_pass $? "test_entitlements_pass_and_legacy_storekit_fail_on_golden_archive (exit=$rc, entitlements=$a, expected-legacy-storekit-fail=$s, exactly-one-failure=$f)"
     rm -f /tmp/verify-archive-tests-green.$$
 
     # Test 2 (red direction): planted JWT-shaped string in a binary copy must trip the scan.
@@ -102,9 +116,32 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     expect_pass $? "test_entitlements_all_three_bundles (app=$a widget=$b watch=$c)"
     rm -f /tmp/verify-archive-tests-ent.$$
 
+    # Test 4 (green direction): a copy of the golden archive with the six legacy
+    # STOREKIT_* keys deleted from its app Info.plist must fully pass (exit 0) —
+    # proves the gate can pass end-to-end on a real archive, not only a synthetic
+    # minimal one.
+    TMPD4=$(mktemp -d)
+    cp -R "$GOLDEN" "$TMPD4/golden-copy"
+    CLEAN_APP_PLIST="$TMPD4/golden-copy/Products/Applications/StressMonitor.app/Info.plist"
+    /usr/libexec/PlistBuddy \
+        -c 'Delete :STOREKIT_CREDITS_LARGE_PRODUCT_ID' \
+        -c 'Delete :STOREKIT_CREDITS_SMALL_PRODUCT_ID' \
+        -c 'Delete :STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID' \
+        -c 'Delete :STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID' \
+        -c 'Delete :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID' \
+        -c 'Delete :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID' \
+        "$CLEAN_APP_PLIST" >/dev/null 2>&1
+    bash "$VERIFY" --skip-entitlements "$TMPD4/golden-copy" > "$TMPD4/golden-clean.log" 2>&1
+    rc=$?
+    grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present in app Info.plist" "$TMPD4/golden-clean.log"
+    p=$?
+    [ "$rc" -eq 0 ] && [ "$p" -eq 0 ]
+    expect_pass $? "test_green_on_golden_archive_copy_with_storekit_keys_removed (exit=$rc, no-storekit-pass=$p)"
+    rm -rf "$TMPD4"
+
 fi
 
-# Tests 4 & 5 (URL-schemes direction): the CFBundleURLSchemes check must FAIL on
+# Tests 5 & 6 (URL-schemes direction): the CFBundleURLSchemes check must FAIL on
 # an empty array and PASS on a populated one. These run against a planted minimal
 # archive, so they exercise the check without needing the golden.
 TMPD2=$(mktemp -d)
@@ -118,7 +155,7 @@ plutil -create xml1 "$PPLIST" >/dev/null
     -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
     "$PPLIST" >/dev/null 2>&1
 
-# Test 4 (red direction): empty CFBundleURLSchemes must FAIL — and must not emit
+# Test 5 (red direction): empty CFBundleURLSchemes must FAIL — and must not emit
 # the PASS line (the vacuous form that matched the key line's own quotes). This
 # planted plist also has no STOREKIT_* keys (free-only release), so it must
 # report PASS MERGED PLISTS for that check too.
@@ -132,7 +169,7 @@ s=$?
 [ "$a" -eq 0 ] && [ "$b" -ne 0 ] && [ "$s" -eq 0 ]
 expect_pass $? "test_red_on_empty_cfbundleurlschemes (fail line present=$a, vacuous pass absent=$b, storekit-absent pass=$s)"
 
-# Test 5 (green direction): one scheme entry must PASS — and must not emit the
+# Test 6 (green direction): one scheme entry must PASS — and must not emit the
 # FAIL line.
 /usr/libexec/PlistBuddy \
     -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.googleusercontent.apps.planted' \
@@ -145,6 +182,32 @@ b=$?
 [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
 expect_pass $? "test_green_on_populated_cfbundleurlschemes (pass line present=$a, fail line absent=$b)"
 rm -rf "$TMPD2"
+
+# Test 7 (red direction): exactly one STOREKIT_* key present in an otherwise-clean
+# planted plist must FAIL MERGED PLISTS naming that key, must NOT emit the
+# no-STOREKIT-keys PASS line, and must exit non-zero — proves the bite doesn't
+# depend on the golden archive and can't be silently broken to always-pass.
+TMPD3=$(mktemp -d)
+SINGLE_KEY_APP="$TMPD3/singlekey/Products/Applications/StressMonitor.app"
+mkdir -p "$SINGLE_KEY_APP"
+SKPLIST="$SINGLE_KEY_APP/Info.plist"
+plutil -create xml1 "$SKPLIST" >/dev/null
+/usr/libexec/PlistBuddy \
+    -c 'Add :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID string premium.weekly.reintroduced' \
+    -c 'Add :CFBundleURLTypes array' \
+    -c 'Add :CFBundleURLTypes:0 dict' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
+    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.googleusercontent.apps.singlekey' \
+    "$SKPLIST" >/dev/null 2>&1
+bash "$VERIFY" --skip-entitlements "$TMPD3/singlekey" > "$TMPD3/singlekey.log" 2>&1
+rc=$?
+grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present: STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID" "$TMPD3/singlekey.log"
+a=$?
+grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present" "$TMPD3/singlekey.log"
+b=$?
+[ "$rc" -ne 0 ] && [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
+expect_pass $? "test_red_on_single_storekit_key_present (exit=$rc, fail-names-key=$a, no-storekit-pass-absent=$b)"
+rm -rf "$TMPD3"
 
 echo "verify-archive tests: $failures failure(s)"
 exit "$failures"
