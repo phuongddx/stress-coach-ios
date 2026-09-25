@@ -17,7 +17,9 @@
 #   4. RED    — a planted app Info.plist with an empty CFBundleURLSchemes array
 #               makes the merged-plists URL-schemes check report FAIL, and the
 #               PASS line must NOT appear (guards against the check passing on
-#               the key line's own quotes).
+#               the key line's own quotes). This same planted plist has no
+#               STOREKIT_* keys (free-only release, plans/260925-0819-remove-iap-mentions),
+#               so it must also report PASS MERGED PLISTS for that check.
 #   5. GREEN  — the same planted plist with one scheme entry reports PASS.
 #               Tests 4-5 run on a planted temp archive and need no golden.
 set -uo pipefail
@@ -52,11 +54,20 @@ fi
 
 if [ "$GOLDEN_PRESENT" -eq 1 ]; then
 
-    # Test 1 (green direction): the gate passes on the known-good build-13 archive.
+    # Test 1: the gate's ENTITLEMENTS checks pass on the known-good build-13 archive.
+    # NOTE: this frozen build predates the free-only-release IAP cleanup
+    # (plans/260925-0819-remove-iap-mentions) and still bakes in the six legacy
+    # STOREKIT_* keys, so under the inverted MERGED PLISTS check it is EXPECTED to
+    # report FAIL MERGED PLISTS for them and exit non-zero overall — that failure
+    # is correct, not a regression.
     bash "$VERIFY" "$GOLDEN" > /tmp/verify-archive-tests-green.$$ 2>&1
     rc=$?
-    [ "$rc" -eq 0 ] && grep -q "PASS ENTITLEMENTS" /tmp/verify-archive-tests-green.$$
-    expect_pass $? "test_green_on_golden_archive (exit=$rc)"
+    grep -q "PASS ENTITLEMENTS" /tmp/verify-archive-tests-green.$$
+    a=$?
+    grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present" /tmp/verify-archive-tests-green.$$
+    s=$?
+    [ "$rc" -ne 0 ] && [ "$a" -eq 0 ] && [ "$s" -eq 0 ]
+    expect_pass $? "test_entitlements_pass_and_legacy_storekit_fail_on_golden_archive (exit=$rc, entitlements=$a, expected-legacy-storekit-fail=$s)"
     rm -f /tmp/verify-archive-tests-green.$$
 
     # Test 2 (red direction): planted JWT-shaped string in a binary copy must trip the scan.
@@ -76,6 +87,9 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     rm -rf "$TMPD"
 
     # Test 3 (entitlements direction): all three bundles report the app group.
+    # NOTE: does not require overall exit=0 — this golden build predates the IAP
+    # cleanup and legitimately fails MERGED PLISTS for legacy STOREKIT_* keys (see
+    # Test 1 above); only the ENTITLEMENTS lines are asserted here.
     bash "$VERIFY" "$GOLDEN" > /tmp/verify-archive-tests-ent.$$ 2>&1
     rc=$?
     grep -q "PASS ENTITLEMENTS StressMonitor.app:" /tmp/verify-archive-tests-ent.$$
@@ -84,7 +98,7 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     b=$?
     grep -q "PASS ENTITLEMENTS Watch/StressMonitorWatch Watch App.app:" /tmp/verify-archive-tests-ent.$$
     c=$?
-    [ "$rc" -eq 0 ] && [ "$a" -eq 0 ] && [ "$b" -eq 0 ] && [ "$c" -eq 0 ]
+    [ "$a" -eq 0 ] && [ "$b" -eq 0 ] && [ "$c" -eq 0 ]
     expect_pass $? "test_entitlements_all_three_bundles (app=$a widget=$b watch=$c)"
     rm -f /tmp/verify-archive-tests-ent.$$
 
@@ -99,26 +113,24 @@ mkdir -p "$PLANTED_APP"
 PPLIST="$PLANTED_APP/Info.plist"
 plutil -create xml1 "$PPLIST" >/dev/null
 /usr/libexec/PlistBuddy \
-    -c 'Add :STOREKIT_CREDITS_LARGE_PRODUCT_ID string credits.large' \
-    -c 'Add :STOREKIT_CREDITS_SMALL_PRODUCT_ID string credits.small' \
-    -c 'Add :STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID string premium.annual' \
-    -c 'Add :STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID string premium.monthly' \
-    -c 'Add :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID string premium.weekly' \
-    -c 'Add :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID string group.premium' \
     -c 'Add :CFBundleURLTypes array' \
     -c 'Add :CFBundleURLTypes:0 dict' \
     -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
     "$PPLIST" >/dev/null 2>&1
 
 # Test 4 (red direction): empty CFBundleURLSchemes must FAIL — and must not emit
-# the PASS line (the vacuous form that matched the key line's own quotes).
+# the PASS line (the vacuous form that matched the key line's own quotes). This
+# planted plist also has no STOREKIT_* keys (free-only release), so it must
+# report PASS MERGED PLISTS for that check too.
 bash "$VERIFY" --skip-entitlements "$TMPD2/planted" > "$TMPD2/red-urlschemes.log" 2>&1
 grep -q "CFBundleURLSchemes missing or empty" "$TMPD2/red-urlschemes.log"
 a=$?
 grep -q "CFBundleURLSchemes has at least one entry" "$TMPD2/red-urlschemes.log"
 b=$?
-[ "$a" -eq 0 ] && [ "$b" -ne 0 ]
-expect_pass $? "test_red_on_empty_cfbundleurlschemes (fail line present=$a, vacuous pass absent=$b)"
+grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present in app Info.plist" "$TMPD2/red-urlschemes.log"
+s=$?
+[ "$a" -eq 0 ] && [ "$b" -ne 0 ] && [ "$s" -eq 0 ]
+expect_pass $? "test_red_on_empty_cfbundleurlschemes (fail line present=$a, vacuous pass absent=$b, storekit-absent pass=$s)"
 
 # Test 5 (green direction): one scheme entry must PASS — and must not emit the
 # FAIL line.

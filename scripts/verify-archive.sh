@@ -12,8 +12,9 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_GROUP="group.stress.ai.com"
 WIDGET_POINT_ID="com.apple.widgetkit-extension"
 
-# Merged-plist keys that must survive the INFOPLIST_KEY_STOREKIT_* merge (consumed by
-# StoreKitProductCatalog.swift via the 3-tier Info.plist resolution).
+# Merged-plist keys that must NOT be present in this free-only release — this app ships
+# no IAP (see plans/260925-0819-remove-iap-mentions). A merged app Info.plist containing
+# any of these keys means IAP evidence leaked back into the build.
 STOREKIT_KEYS=(
     STOREKIT_CREDITS_LARGE_PRODUCT_ID
     STOREKIT_CREDITS_SMALL_PRODUCT_ID
@@ -185,16 +186,16 @@ else
 fi
 
 if [ -n "$APP_PLIST_DUMP" ]; then
-    plist_missing=""
+    plist_present=""
     for key in "${STOREKIT_KEYS[@]}"; do
-        if ! grep -q "\"$key\"" <<<"$APP_PLIST_DUMP"; then
-            plist_missing="$plist_missing $key"
+        if grep -q "\"$key\"" <<<"$APP_PLIST_DUMP"; then
+            plist_present="$plist_present $key"
         fi
     done
-    if [ -n "$plist_missing" ]; then
-        note_fail "MERGED PLISTS" "missing STOREKIT keys:$plist_missing"
+    if [ -n "$plist_present" ]; then
+        note_fail "MERGED PLISTS" "this release ships no IAP — found STOREKIT keys that must not be present:$plist_present"
     else
-        note_pass "MERGED PLISTS" "all six STOREKIT_* keys present in app Info.plist"
+        note_pass "MERGED PLISTS" "no STOREKIT_* keys present in app Info.plist (expected for this free-only release)"
     fi
 
     # The URL-schemes check parses the canonical XML serialization instead of
