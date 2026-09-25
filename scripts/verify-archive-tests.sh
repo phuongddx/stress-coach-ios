@@ -19,9 +19,9 @@
 #               bundles (app, widget appex, watch app) of the golden archive.
 #   4. GREEN  — a copy of the golden archive with the six legacy STOREKIT_* keys
 #               deleted from its app Info.plist exits 0 and reports the
-#               no-STOREKIT-keys PASS line — proves the gate can fully pass (7/7
-#               internal checks) on a real post-cleanup archive, not just a
-#               synthetic planted one.
+#               no-STOREKIT-keys PASS line — proves the gate can fully pass (11/11
+#               internal checks, full mode — same mode Task 7's TestFlight gate
+#               uses) on a real post-cleanup archive, not just a synthetic one.
 #   5. RED    — a planted app Info.plist with an empty CFBundleURLSchemes array
 #               makes the merged-plists URL-schemes check report FAIL, and the
 #               PASS line must NOT appear (guards against the check passing on
@@ -121,7 +121,7 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     # proves the gate can pass end-to-end on a real archive, not only a synthetic
     # minimal one.
     TMPD4=$(mktemp -d)
-    cp -R "$GOLDEN" "$TMPD4/golden-copy"
+    cp -RH "$GOLDEN" "$TMPD4/golden-copy"
     CLEAN_APP_PLIST="$TMPD4/golden-copy/Products/Applications/StressMonitor.app/Info.plist"
     /usr/libexec/PlistBuddy \
         -c 'Delete :STOREKIT_CREDITS_LARGE_PRODUCT_ID' \
@@ -131,7 +131,7 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
         -c 'Delete :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID' \
         -c 'Delete :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID' \
         "$CLEAN_APP_PLIST" >/dev/null 2>&1
-    bash "$VERIFY" --skip-entitlements "$TMPD4/golden-copy" > "$TMPD4/golden-clean.log" 2>&1
+    bash "$VERIFY" "$TMPD4/golden-copy" > "$TMPD4/golden-clean.log" 2>&1
     rc=$?
     grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present in app Info.plist" "$TMPD4/golden-clean.log"
     p=$?
@@ -193,7 +193,7 @@ mkdir -p "$SINGLE_KEY_APP"
 SKPLIST="$SINGLE_KEY_APP/Info.plist"
 plutil -create xml1 "$SKPLIST" >/dev/null
 /usr/libexec/PlistBuddy \
-    -c 'Add :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID string premium.weekly.reintroduced' \
+    -c 'Add :STOREKIT_CREDITS_MEDIUM_PRODUCT_ID string credits.medium.reintroduced' \
     -c 'Add :CFBundleURLTypes array' \
     -c 'Add :CFBundleURLTypes:0 dict' \
     -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
@@ -201,7 +201,7 @@ plutil -create xml1 "$SKPLIST" >/dev/null
     "$SKPLIST" >/dev/null 2>&1
 bash "$VERIFY" --skip-entitlements "$TMPD3/singlekey" > "$TMPD3/singlekey.log" 2>&1
 rc=$?
-grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present: STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID" "$TMPD3/singlekey.log"
+grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present: STOREKIT_CREDITS_MEDIUM_PRODUCT_ID" "$TMPD3/singlekey.log"
 a=$?
 grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present" "$TMPD3/singlekey.log"
 b=$?
