@@ -41,9 +41,11 @@ SCAN_PATTERNS="PRIVATE KEY|sk-[A-Za-z0-9]|anon[_-]?key|api[_-]?secret|BEGIN RSA|
 #   - stress-api.dropitx.site — backend endpoint (StressAPIConfig.swift fallback URL).
 #   - stress.ai.com — bundle-id fragments.
 #   - com.googleusercontent.apps — GoogleSignIn URL-scheme prefix.
+#   - task-force-1996-hrv — ScienceCitation.swift id; contains "sk-f" and false-positives the
+#     sk-[A-Za-z0-9] pattern. Not a credential.
 # Anything else matching SCAN_PATTERNS fails the gate. The script prints pattern names and
 # files only — never the matched content; the operator re-runs strings manually to triage.
-ALLOWLIST="eyJlcnJvciI6IlVOS05PV05fRVJST1IifQ==|supabase(AccessToken|RefreshToken|SessionExpiresAt|ChatSessionId)|stress-api\.dropitx\.site|stress\.ai\.com|com\.googleusercontent\.apps"
+ALLOWLIST="eyJlcnJvciI6IlVOS05PV05fRVJST1IifQ==|supabase(AccessToken|RefreshToken|SessionExpiresAt|ChatSessionId)|stress-api\.dropitx\.site|stress\.ai\.com|com\.googleusercontent\.apps|task-force-1996-hrv"
 
 FAILURES=0
 
