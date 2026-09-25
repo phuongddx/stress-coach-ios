@@ -20,9 +20,9 @@ Bạn phải từ 18 tuổi trở lên để sử dụng StressMonitor.
 
 StressMonitor tích hợp với Apple Health để đọc dữ liệu HRV và nhịp tim. Dữ liệu HealthKit không được dùng cho quảng cáo hoặc chia sẻ với bên thứ ba.
 
-## Đăng ký
+## Phí sử dụng
 
-Nếu StressMonitor có đăng ký in-app, chúng tự động gia hạn qua tài khoản App Store. Quản lý hoặc hủy tại **App Store → Profile → Subscriptions**.
+Phiên bản hiện tại của StressMonitor hoàn toàn miễn phí và không có mua hàng trong ứng dụng, gói đăng ký, hay tính năng trả phí. Không có gì để mua và không có gì tự động gia hạn.
 
 ## Giới hạn trách nhiệm
 

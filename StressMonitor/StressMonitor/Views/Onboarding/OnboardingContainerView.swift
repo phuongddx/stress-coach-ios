@@ -8,7 +8,9 @@ import HealthKit
 struct OnboardingContainerView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var currentScreen = 0
-    @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+    /// `@AppStorage` (not `@State`) so the view re-renders when account
+    /// deletion resets the flag and the app has to fall back to onboarding.
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     /// Lazily-created repository
     @State private var stressRepository: StressRepository?

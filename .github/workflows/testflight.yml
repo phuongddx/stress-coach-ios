@@ -96,10 +96,17 @@ jobs:
       # Pulls the ACTIVE App Store profiles already registered in ASC.
       # No --create-missing: nothing should be created implicitly on a release path.
       - name: Fetch provisioning profiles
+        env:
+          # asc signing fetch validates --bundle-id against ASC_APP_ID when set,
+          # but the watch/widget extension bundle IDs are not the app's primary
+          # bundle ID, so that validation rejects them. Clear it for this step only.
+          ASC_APP_ID: ""
         run: |
           set -e
           for BUNDLE in stress.ai.com stress.ai.com.watchkitapp stress.ai.com.widget; do
-            asc signing fetch --bundle-id "$BUNDLE" --profile-type IOS_APP_STORE --output ./signing
+            # Separate output dir per bundle: all three bundles share the same
+            # distribution certificate, so a shared dir collides on the .cer filename.
+            asc signing fetch --bundle-id "$BUNDLE" --profile-type IOS_APP_STORE --output "./signing/$BUNDLE"
           done
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           find ./signing -name '*.mobileprovision' -exec cp {} ~/Library/MobileDevice/Provisioning\ Profiles/ \;
@@ -114,28 +121,54 @@ jobs:
             | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["data"][0]["attributes"]["version"])')
           NEXT=$((LATEST + 1))
           echo "Latest build in ASC: $LATEST → building $NEXT"
-          asc xcode version edit --build-number "$NEXT"
+          asc xcode version edit --build-number "$NEXT" --project "$PROJECT" --target "$SCHEME"
           echo "BUILD_NUMBER=$NEXT" >> "$GITHUB_ENV"
 
       - name: Archive
         run: |
           set -o pipefail
+          # Project uses Automatic (CODE_SIGN_STYLE=Automatic) signing. Manually
+          # placing .mobileprovision files does nothing under Automatic signing —
+          # xcodebuild needs -allowProvisioningUpdates plus API key auth so it can
+          # resolve/create the right profile itself (the signing identity from the
+          # previous step still has to be in the keychain for the actual signing).
+          printf '%s' "$ASC_PRIVATE_KEY" > "$RUNNER_TEMP/AuthKey.p8"
           asc xcode archive \
             --project "$PROJECT" \
             --scheme "$SCHEME" \
             --configuration Release \
             --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
+            --xcodebuild-flag=-allowProvisioningUpdates \
+            --xcodebuild-flag=-authenticationKeyPath \
+            --xcodebuild-flag="$RUNNER_TEMP/AuthKey.p8" \
+            --xcodebuild-flag=-authenticationKeyID \
+            --xcodebuild-flag="$ASC_KEY_ID" \
+            --xcodebuild-flag=-authenticationKeyIssuerID \
+            --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
+
+      - name: Verify archive (release gates)
+        run: |
+          set -o pipefail
+          bash scripts/verify-archive.sh "$RUNNER_TEMP/StressMonitor.xcarchive"
 
       - name: Export IPA
         run: |
           set -o pipefail
+          # Match Archive: automatic signing (asc default) + allowProvisioningUpdates
+          # and the same API key auth, instead of manual signing (which needs
+          # explicit profile mappings we don't have and don't need).
           asc xcode export \
             --archive-path "$RUNNER_TEMP/StressMonitor.xcarchive" \
             --method app-store-connect \
-            --signing-style manual \
-            --team-id K2TYLYAWMK \
             --ipa-path "$RUNNER_TEMP/export/StressMonitor.ipa" \
+            --xcodebuild-flag=-allowProvisioningUpdates \
+            --xcodebuild-flag=-authenticationKeyPath \
+            --xcodebuild-flag="$RUNNER_TEMP/AuthKey.p8" \
+            --xcodebuild-flag=-authenticationKeyID \
+            --xcodebuild-flag="$ASC_KEY_ID" \
+            --xcodebuild-flag=-authenticationKeyIssuerID \
+            --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
 
       - name: Upload to TestFlight

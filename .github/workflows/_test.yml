@@ -71,6 +71,22 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty
 
+      - name: Verify no StoreKit keys in merged Info.plist
+        run: |
+          set -e
+          PLIST="build/Build/Products/Debug-iphonesimulator/StressMonitor.app/Info.plist"
+          if [ ! -f "$PLIST" ]; then
+            echo "error: merged Info.plist not found at $PLIST" >&2
+            exit 1
+          fi
+          HITS=$(grep -c STOREKIT "$PLIST") || [ $? -eq 1 ]
+          if [ "$HITS" -ne 0 ]; then
+            echo "error: found $HITS STOREKIT_* reference(s) in merged Info.plist — this release ships no IAP." >&2
+            plutil -p "$PLIST" | grep STOREKIT >&2
+            exit 1
+          fi
+          echo "OK: no STOREKIT_* keys in merged Info.plist"
+
   build-watchos:
     name: Build watchOS
     runs-on: macos-15

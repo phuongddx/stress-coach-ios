@@ -16,6 +16,7 @@ final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
     private(set) var anonymousSignInCallCount = 0
     private(set) var tokenCallCount = 0
     private(set) var googleSignInCallCount = 0
+    private(set) var appleSignInCallCount = 0
     private(set) var lastPresentingViewController: UIViewController?
 
     init(
@@ -50,6 +51,11 @@ final class MockAuthService: AuthServiceProtocol, @unchecked Sendable {
         lastPresentingViewController = viewController
         try await Task.sleep(nanoseconds: 50_000_000)
         if let googleSignInError { throw googleSignInError }
+    }
+
+    func signInWithApple(presenting viewController: UIViewController) async throws {
+        appleSignInCallCount += 1
+        lastPresentingViewController = viewController
     }
 }
 

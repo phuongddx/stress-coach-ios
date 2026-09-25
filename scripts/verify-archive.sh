@@ -12,8 +12,11 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_GROUP="group.stress.ai.com"
 WIDGET_POINT_ID="com.apple.widgetkit-extension"
 
-# Merged-plist keys that must survive the INFOPLIST_KEY_STOREKIT_* merge (consumed by
-# StoreKitProductCatalog.swift via the 3-tier Info.plist resolution).
+# Merged-plist keys that must NOT be present in this free-only release — this app ships
+# no IAP (see plans/260925-0819-remove-iap-mentions). A merged app Info.plist containing
+# any of these keys means IAP evidence leaked back into the build. Kept for documentation
+# only: the actual check below matches ANY key prefixed STOREKIT_, not just these six, so
+# it also catches a future/renamed StoreKit key such as STOREKIT_CREDITS_MEDIUM_PRODUCT_ID.
 STOREKIT_KEYS=(
     STOREKIT_CREDITS_LARGE_PRODUCT_ID
     STOREKIT_CREDITS_SMALL_PRODUCT_ID
@@ -38,9 +41,11 @@ SCAN_PATTERNS="PRIVATE KEY|sk-[A-Za-z0-9]|anon[_-]?key|api[_-]?secret|BEGIN RSA|
 #   - stress-api.dropitx.site — backend endpoint (StressAPIConfig.swift fallback URL).
 #   - stress.ai.com — bundle-id fragments.
 #   - com.googleusercontent.apps — GoogleSignIn URL-scheme prefix.
+#   - task-force-1996-hrv — ScienceCitation.swift id; contains "sk-f" and false-positives the
+#     sk-[A-Za-z0-9] pattern. Not a credential.
 # Anything else matching SCAN_PATTERNS fails the gate. The script prints pattern names and
 # files only — never the matched content; the operator re-runs strings manually to triage.
-ALLOWLIST="eyJlcnJvciI6IlVOS05PV05fRVJST1IifQ==|supabase(AccessToken|RefreshToken|SessionExpiresAt|ChatSessionId)|stress-api\.dropitx\.site|stress\.ai\.com|com\.googleusercontent\.apps"
+ALLOWLIST="eyJlcnJvciI6IlVOS05PV05fRVJST1IifQ==|supabase(AccessToken|RefreshToken|SessionExpiresAt|ChatSessionId)|stress-api\.dropitx\.site|stress\.ai\.com|com\.googleusercontent\.apps|task-force-1996-hrv"
 
 FAILURES=0
 
@@ -185,16 +190,18 @@ else
 fi
 
 if [ -n "$APP_PLIST_DUMP" ]; then
-    plist_missing=""
-    for key in "${STOREKIT_KEYS[@]}"; do
-        if ! grep -q "\"$key\"" <<<"$APP_PLIST_DUMP"; then
-            plist_missing="$plist_missing $key"
-        fi
-    done
-    if [ -n "$plist_missing" ]; then
-        note_fail "MERGED PLISTS" "missing STOREKIT keys:$plist_missing"
+    # Prefix match (not the STOREKIT_KEYS list above) so a renamed/new StoreKit key
+    # is caught too. Anchored to the dump's "key" => line shape so a STOREKIT_-prefixed
+    # *value* under an unrelated key can't produce a false positive.
+    plist_present=""
+    while IFS= read -r key; do
+        [ -n "$key" ] && plist_present="$plist_present $key"
+    done < <(grep -oE '^[[:space:]]*"STOREKIT_[^"]+"[[:space:]]*=>' <<<"$APP_PLIST_DUMP" \
+        | grep -oE '"STOREKIT_[^"]+"' | tr -d '"' | sort -u)
+    if [ -n "$plist_present" ]; then
+        note_fail "MERGED PLISTS" "this release ships no IAP — found STOREKIT keys that must not be present:$plist_present"
     else
-        note_pass "MERGED PLISTS" "all six STOREKIT_* keys present in app Info.plist"
+        note_pass "MERGED PLISTS" "no STOREKIT_* keys present in app Info.plist (expected for this free-only release)"
     fi
 
     # The URL-schemes check parses the canonical XML serialization instead of

@@ -64,7 +64,7 @@ struct AboutView: View {
     private var acknowledgementsSection: some View {
         Section("Acknowledgements") {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Built with Apple HealthKit, SwiftData, CloudKit, and StoreKit.")
+                Text("Built with Apple HealthKit, SwiftData, and CloudKit.")
                     .font(.system(size: 13))
                     .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
                 Text("No third-party analytics or ad SDKs.")
