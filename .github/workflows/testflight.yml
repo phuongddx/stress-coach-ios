@@ -147,6 +147,11 @@ jobs:
             --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
 
+      - name: Verify archive (release gates)
+        run: |
+          set -o pipefail
+          bash scripts/verify-archive.sh "$RUNNER_TEMP/StressMonitor.xcarchive"
+
       - name: Export IPA
         run: |
           set -o pipefail
@@ -165,11 +170,6 @@ jobs:
             --xcodebuild-flag=-authenticationKeyIssuerID \
             --xcodebuild-flag="$ASC_ISSUER_ID" \
             --overwrite
-
-      - name: Verify archive has no StoreKit evidence
-        run: |
-          set -o pipefail
-          bash scripts/verify-archive.sh "$RUNNER_TEMP/StressMonitor.xcarchive"
 
       - name: Upload to TestFlight
         run: |
