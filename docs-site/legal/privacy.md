@@ -16,7 +16,7 @@ We may collect and process the following key categories of information:
 - **Product interaction data**: basic app-interaction data (for example, which features are used) shared via Google Firebase for app functionality; never used for tracking or advertising.
 - **Support communications**: if you contact us, we receive whatever information you choose to include (for example, your email address and the content of your message).
 
-We do not collect your name, phone number, or payment details. Payments for optional subscriptions are processed entirely by Apple and are not visible to us.
+We do not collect your name, phone number, or payment details. The current version of the app offers no in-app purchases or subscriptions.
 
 ## Health Information from Apple Health
 

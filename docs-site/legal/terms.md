@@ -55,11 +55,11 @@ You are solely responsible for the Content you provide and warrant that you own 
 
 You agree to use the Services only for lawful purposes and in compliance with all applicable laws and regulations. You will not use the Services for any fraudulent, unlawful, or abusive activity.
 
-## 9. Fees and Subscriptions
+## 9. Fees
 
-We may offer optional subscriptions that unlock premium features, purchased through the Apple App Store. Subscriptions automatically renew until you cancel, in accordance with the terms disclosed to you at the time of purchase. If you cancel, you continue to have access to subscription benefits until the end of the current period.
+The current version of StressMonitor is free to use and offers no in-app purchases, subscriptions, or paid features. There is nothing to buy and nothing that automatically renews.
 
-Payments are processed by Apple; the Company does not receive or store your payment details. To cancel a subscription made with your Apple ID, go to **App Store → Profile → Subscriptions** (or Settings → App Store → your Apple ID → Subscriptions), find the StressMonitor subscription, and follow the instructions, or request assistance at https://getsupport.apple.com. If you are a California resident, this section serves as notice of your subscription renewal terms and cancellation instructions pursuant to California's Automatic Renewal Law. If you initiate a chargeback or otherwise reverse a payment, the Company may terminate or downgrade your subscription access in its sole discretion.
+If we introduce optional purchases in a future version, the terms, pricing, and cancellation instructions disclosed at the time of purchase (and in this section) will apply, and payments will be processed by Apple; the Company does not receive or store your payment details.
 
 ## 10. License to the Services
 
@@ -74,7 +74,7 @@ You agree that you will not:
 - Probe, scan, or test the vulnerability of the Services or any system or network, or breach or circumvent any security or authentication measures;
 - Access or tamper with non-public areas of the Services;
 - Use the Services to monitor, track, harass, or surveil any person;
-- Circumvent storage, usage, or subscription limits, including attempting to circumvent our fees; or
+- Circumvent storage or usage limits, including attempting to circumvent our fees; or
 - Use the Services in any manner that could damage, disable, overburden, or impair it.
 
 ## 12. Third-Party Services
