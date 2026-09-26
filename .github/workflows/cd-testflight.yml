@@ -1,0 +1,56 @@
+name: CD TestFlight
+
+# After "Build" succeeds on main, start the Xcode Cloud "Beta" workflow through
+# the App Store Connect API, wait for the TestFlight build, and report to Slack.
+# Beta must have a Manual start condition on main (API builds count as manual).
+# Design: docs/text2prod/specs/2026-09-26-cicd-testflight-design.md
+
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cd-testflight
+  cancel-in-progress: false # never abandon a started Xcode Cloud run
+
+jobs:
+  deliver:
+    name: Xcode Cloud Beta → TestFlight
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ASC_APP_ID: "6778478266"
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      ASC_BYPASS_KEYCHAIN: "1"
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install asc
+        run: |
+          curl -fsSL https://asccli.sh/install | bash
+          asc version
+
+      - name: Run Xcode Cloud Beta and wait for TestFlight
+        id: cd
+        run: bash scripts/cd-testflight.sh
+
+      - name: Notify Slack
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            text: ${{ toJSON(steps.cd.outputs.slack_text || format('❌ CD TestFlight failed before Xcode Cloud started · {0}', env.RUN_URL)) }}
