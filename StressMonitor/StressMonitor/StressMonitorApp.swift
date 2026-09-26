@@ -313,3 +313,5 @@ struct StressMonitorApp: App {
         }
     }
 }
+
+let ciNegativeTestBrokenOnPurpose: Int = "not an int"
