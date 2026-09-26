@@ -87,9 +87,7 @@ which gates CD (3.3).
      failure `❌ Xcode Cloud Beta <status> · run N · <sha7> · <gh run url>`
      (also covers trigger/auth/timeout errors in steps 1–2).
   5. The job fails if the Xcode Cloud run did not succeed (visible in the Actions tab).
-- Known limit: `--branch main` builds the branch head at trigger time, which may be a
-  newer commit than the one `build.yml` verified. That newer commit gets its own
-  `build.yml` → CD run, so the gap self-heals.
+- Superseded guard: CD checks out the commit `Build` validated (`workflow_run.head_sha`) and, before starting Xcode Cloud, compares it with the live `main` (`git ls-remote`). If `main` has moved on, the run skips Xcode Cloud and Slack (`::notice::` only, job green); the newer commit's own `Build` → CD run ships it. A small race remains between that check and the `asc xcode-cloud run --branch main` call.
 
 ### 3.4 Xcode Cloud configuration (ASC, via API or web UI)
 
@@ -125,6 +123,7 @@ These settings are not in git; this section is their written record.
 |---|---|
 | CI red on PR | merge blocked; Slack ❌ |
 | `build.yml` red on `main` | CD not started; red run in Actions (no Slack in v1) |
+| `main` moved past the validated commit | CD skips (notice only, no Slack); the newer Build's CD run ships |
 | asc install/auth fails | CD job fails; Slack ❌ |
 | Xcode Cloud run FAILED/ERRORED/CANCELED | CD job fails; Slack ❌ with status |
 | Timeout (>60 min) | CD job fails; Slack ❌ "timeout"; the Xcode Cloud run keeps going |

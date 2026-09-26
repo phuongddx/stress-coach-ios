@@ -566,6 +566,7 @@ sleep 30; gh run watch "$(gh run list --workflow cd-testflight.yml --limit 1 --j
 gh run view "$(gh run list --workflow cd-testflight.yml --limit 1 --json databaseId -q '.[0].databaseId')" --log | grep -E '^.*(status|build_number|version|processing)='
 ```
 Expected: Build success; CD success; `status=SUCCEEDED`, `build_number=N` with N > 40, `processing=VALID` (or `PROCESSING` if Apple is slow).
+If another commit merged meanwhile, this CD run instead shows only a `::notice::main moved …` line and no `status=` lines — that is the correct superseded skip; verify the newer commit's CD run instead.
 
 - [ ] **Step 3: Verify in App Store Connect**
 
