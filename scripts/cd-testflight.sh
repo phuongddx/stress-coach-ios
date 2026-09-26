@@ -6,7 +6,7 @@
 #
 # Writes status, build_number, commit, version, processing, slack_text to
 # $GITHUB_OUTPUT (when set) and stdout. Exit 0 only if the Xcode Cloud run
-# SUCCEEDED and TestFlight processing did not fail.
+# SUCCEEDED and the TestFlight build is VALID or confirmed still PROCESSING.
 #
 # Env: ASC_APP_ID (required) · CD_WORKFLOW=Beta · CD_BRANCH=main · ASC_BIN=asc
 #      RUN_TIMEOUT=60m · PROCESS_ATTEMPTS=40 · PROCESS_SLEEP=30 (~20 min) · RUN_URL
@@ -61,14 +61,16 @@ fi
 
 version=""
 processing=""
-for ((i = 1; i <= PROCESS_ATTEMPTS; i++)); do
-    build_json="$("$ASC_BIN" builds list --app "$ASC_APP_ID" --build-number "$build_number" \
-        --include preReleaseVersion --output json 2>/dev/null)" || true
-    processing="$(field "$build_json" '.data[0].attributes.processingState')"
-    version="$(field "$build_json" '[.included[]? | select(.type == "preReleaseVersions") | .attributes.version][0]')"
-    case "$processing" in VALID | FAILED | INVALID) break ;; esac
-    if [ "$i" -lt "$PROCESS_ATTEMPTS" ]; then sleep "$PROCESS_SLEEP"; fi
-done
+if [ -n "$build_number" ]; then
+    for ((i = 1; i <= PROCESS_ATTEMPTS; i++)); do
+        build_json="$("$ASC_BIN" builds list --app "$ASC_APP_ID" --build-number "$build_number" \
+            --include preReleaseVersion --output json 2>/dev/null)" || true
+        processing="$(field "$build_json" '.data[0].attributes.processingState')"
+        version="$(field "$build_json" '[.included[]? | select(.type == "preReleaseVersions") | .attributes.version][0]')"
+        case "$processing" in VALID | FAILED | INVALID) break ;; esac
+        if [ "$i" -lt "$PROCESS_ATTEMPTS" ]; then sleep "$PROCESS_SLEEP"; fi
+    done
+fi
 
 emit version "$version"
 emit processing "${processing:-UNKNOWN}"
@@ -79,6 +81,9 @@ case "$processing" in
     FAILED | INVALID)
         emit slack_text "❌ TestFlight build $build_number processing $processing · $commit${title:+ $title} · $RUN_URL"
         exit 1 ;;
-    *)
+    PROCESSING)
         emit slack_text "✅ TestFlight ${version:-?} ($build_number) uploaded, still processing · $commit${title:+ $title} · $RUN_URL" ;;
+    *)
+        emit slack_text "⚠️ Xcode Cloud $WORKFLOW succeeded (run ${build_number:-?}) but TestFlight build not confirmed · ${commit:-?}${title:+ $title} · $RUN_URL"
+        exit 1 ;;
 esac

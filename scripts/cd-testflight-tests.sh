@@ -7,6 +7,10 @@
 #   5. still processing after all attempts → exit 0, "still processing"
 #   6. processing FAILED → exit 1, ❌ processing text
 #   7. missing ASC_APP_ID → exit non-zero, asc never called, clear error
+#   8. processing INVALID → exit 1, ❌ processing text
+#   9. builds list returns empty output → exit 1, processing=UNKNOWN, ⚠️ text
+#  10. builds list returns {"data":[]} → exit 1, processing=UNKNOWN
+#  11. SUCCEEDED with no buildNumber → skip polling, exit 1, processing=UNKNOWN
 # shellcheck disable=SC2319  # `[ ... ]; expect_pass $?` is the intended pattern
 set -uo pipefail
 
@@ -79,6 +83,26 @@ expect_pass $? "test_still_processing_after_attempts (rc=$rc)"
 run_case "$RUN_OK" 0 "$(build_json FAILED)"
 [ "$rc" -ne 0 ] && [ "$(out slack_text)" = "❌ TestFlight build 48 processing FAILED · abc1234 feat: x · $URL" ]
 expect_pass $? "test_processing_failed (rc=$rc)"
+
+run_case "$RUN_OK" 0 "$(build_json INVALID)"
+[ "$rc" -ne 0 ] && [ "$(out slack_text)" = "❌ TestFlight build 48 processing INVALID · abc1234 feat: x · $URL" ]
+expect_pass $? "test_processing_invalid (rc=$rc)"
+
+run_case "$RUN_OK" 0 ""
+[ "$rc" -ne 0 ] && [ "$(out processing)" = "UNKNOWN" ] \
+  && [ "$(out slack_text)" = "⚠️ Xcode Cloud Beta succeeded (run 48) but TestFlight build not confirmed · abc1234 feat: x · $URL" ] \
+  && [ "$(grep -c 'builds list' "$FAKE_LOG")" -eq 2 ]
+expect_pass $? "test_build_lookup_empty_output (rc=$rc)"
+
+run_case "$RUN_OK" 0 '{"data":[]}'
+[ "$rc" -ne 0 ] && [ "$(out processing)" = "UNKNOWN" ]
+expect_pass $? "test_build_lookup_empty_data (rc=$rc)"
+
+RUN_OK_NO_BUILD_NUMBER='{"completionStatus":"SUCCEEDED","sourceCommit":{"commitSha":"abc1234def","message":"feat: x"}}'
+run_case "$RUN_OK_NO_BUILD_NUMBER" 0 "$(build_json VALID)"
+[ "$rc" -ne 0 ] && [ "$(out processing)" = "UNKNOWN" ] && ! grep -q "builds list" "$FAKE_LOG" \
+  && [[ "$(out slack_text)" == "⚠️ Xcode Cloud Beta succeeded (run ?)"* ]]
+expect_pass $? "test_succeeded_without_build_number_skips_polling (rc=$rc)"
 
 run_case "$RUN_OK" 0 "$(build_json VALID)" ""
 [ "$rc" -ne 0 ] && [ ! -s "$FAKE_LOG" ] && grep -qF "ASC_APP_ID is required" "$TMP/stdout"
