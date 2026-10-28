@@ -169,8 +169,8 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
           xcodebuild -version
 
-      - name: Install xcpretty
-        run: gem install xcpretty --no-document
+      - name: Install xcbeautify
+        run: command -v xcbeautify || brew install xcbeautify
 
       - name: Cache DerivedData
         uses: actions/cache@v4
@@ -208,7 +208,24 @@ jobs:
             -maximum-concurrent-test-simulator-destinations 1 \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            2>&1 | tee raw-test-output.log | xcpretty
+            2>&1 | tee raw-test-output.log | xcbeautify --renderer github-actions
+
+      # The console counts XCTest and Swift Testing separately; the result
+      # bundle is the one place with the combined totals per suite.
+      - name: Summarize test results
+        if: always()
+        run: |
+          [ -d TestResults.xcresult ] || exit 0
+          xcrun xcresulttool get test-results summary --path TestResults.xcresult > summary.json
+          xcrun xcresulttool get test-results tests --path TestResults.xcresult > tests.json
+          {
+            echo "### Tests"
+            jq -r '"\(.result): \(.passedTests) passed, \(.failedTests) failed, \(.skippedTests) skipped of \(.totalTestCount)"' summary.json
+            echo
+            echo "| Suite | Tests |"
+            echo "|---|---|"
+            jq -r '[.. | objects | select(.nodeType == "Test Suite")] | sort_by(.name)[] | "| \(.name) | \([.children[]? | select(.nodeType == "Test Case")] | length) |"' tests.json
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload raw test log on failure
         if: failure()
@@ -218,8 +235,8 @@ jobs:
           path: raw-test-output.log
           retention-days: 5
 
-      - name: Upload xcresult on failure
-        if: failure()
+      - name: Upload xcresult
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-xcresult
