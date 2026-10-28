@@ -14,7 +14,7 @@ import Testing
 ///   orchestrator must propagate as `DeletionError.cloudKitError`).
 /// - `.draining` — deletes actually mutate the store (the honest double).
 ///
-/// Constructor-injected only — no statics (WINDOWS.md #12 lineage).
+/// Constructor-injected only — no statics, so state can't leak between tests.
 @MainActor
 final class SeededCloudKitResetService: CloudKitResetServiceProtocol, @unchecked Sendable {
     enum Behavior {
@@ -82,9 +82,7 @@ final class SeededCloudKitResetService: CloudKitResetServiceProtocol, @unchecked
 /// CI-visible regression suite for the v1.0 CR-01 failure mode: CloudKit
 /// batch delete reports success while records survive. The suite is
 /// deliberately UNGATED (no enable/disable trait on the @Suite) so the
-/// default CI run proves this coverage — unlike the older failure test in
-/// `DataDeletionConsolidationTests`, which sits behind the WINDOWS.md #8
-/// GSD_CI gate and is invisible on CI.
+/// default CI run proves this coverage.
 ///
 /// The contract under test: emptiness is only ever established by querying
 /// the store (here, `remainingRecords`), never by trusting a success
@@ -98,8 +96,7 @@ struct DataDeleterCloudKitTruthinessTests {
 
     /// In-memory context with one seeded measurement. The container is
     /// returned alongside its context and must stay alive for the whole
-    /// test — dropping it first crashes SwiftData (the WINDOWS.md #8
-    /// lineage this suite must not add to).
+    /// test — dropping it first crashes SwiftData.
     private func makeContextWithOneMeasurement() throws -> (ModelContainer, ModelContext) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(
@@ -270,8 +267,7 @@ struct FactoryResetSweepCompletenessTests {
     /// In-memory context seeded with one row each of StressMeasurement,
     /// CharacterUnlock, and Habit — the full local sweep set
     /// `performFactoryReset` must empty. The container is returned
-    /// alongside its context and must stay alive for the whole test
-    /// (WINDOWS.md #8 lineage this suite must not add to).
+    /// alongside its context and must stay alive for the whole test.
     private func makeContextWithMeasurementCharacterAndHabit() throws -> (ModelContainer, ModelContext) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(

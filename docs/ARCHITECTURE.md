@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 # Architecture
 
 StressMonitor is a privacy-first iOS 18+ / watchOS 11+ stress monitoring app that computes a composite stress score from HealthKit biometric data, presents it through a character-driven SwiftUI UI, and optionally syncs across devices via CloudKit. The app ships as a single Xcode project with three targets: the iOS app, a watchOS companion/standalone app, and a Home Screen widget extension.

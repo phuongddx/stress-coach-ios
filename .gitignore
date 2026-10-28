@@ -156,7 +156,6 @@ DerivedData/
 .claude/session-state/
 .claude/worktrees/
 tmp-home/
-.gitnexus
 vendor/bundle
 build/
 .worktrees/

@@ -190,10 +190,8 @@ jobs:
           restore-keys: |
             spm-${{ runner.os }}-
 
-      # 2026-09-04 (02-04/ENV-01): TEST_RUNNER_GSD_CI env gate removed here —
-      # WINDOWS.md #8's container-lifetime bug (fixed in
-      # DataDeletionConsolidationTests.swift/CharacterEntitlementSyncTests.swift)
-      # was the actual cause of the CI host stall; no CI-only skip is needed.
+      # No CI-only test gate: the past CI host stall was a SwiftData
+      # container-lifetime bug in test fixtures (now kept alive per test).
       - name: Run Tests
         run: |
           set -o pipefail

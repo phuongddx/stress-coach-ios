@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 # Getting Started
 
 A quick guide to get StressMonitor running locally on a simulator or device.

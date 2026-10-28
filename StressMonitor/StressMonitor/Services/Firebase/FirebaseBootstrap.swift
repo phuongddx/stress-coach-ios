@@ -38,8 +38,7 @@ enum FirebaseBootstrap {
                 GoogleService-Info.plist is missing from the app bundle — Firebase is unconfigured, \
                 so sign-in, AI Chat, credits, and purchases are all inert. \
                 Restore the file by copying the per-app GoogleService-Info.plist into \
-                StressMonitor/StressMonitor/ (gitignored by design). CI provisioning is deferred — \
-                see .planning/quick/260829-kby-provision-googleservice-info-plist-in-ci.
+                StressMonitor/StressMonitor/ (gitignored by design).
                 """
             )
             return state

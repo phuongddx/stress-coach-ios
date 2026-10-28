@@ -227,19 +227,6 @@ final class FakeCloudKitResetService: CloudKitResetServiceProtocol {
     }
 }
 
-// WINDOWS.md #8 — FIXED 2026-09-04: this suite's host stalls (exit 65, zero
-// assertion failures) traced to a container-lifetime bug, not a test-host
-// defect. makeContextWithOneMeasurement() returned only mainContext while
-// the owning ModelContainer (the in-memory store's sole owner) fell out of
-// scope at fixture return; the next SwiftData operation against the
-// orphaned context trapped (EXC_BREAKPOINT, faulting frame #0 in SwiftData —
-// six 2026-09-03 .ips reports on coalition
-// com.apple.CoreSimulator.SimDevice.5DD825B4-…). Fixture now returns
-// (ModelContainer, ModelContext) with the container kept alive for the
-// whole test. Green on two simulator rounds (current iPhone 17 + fresh
-// E004C4FA-20EC-4768-B70F-2815EADE4A04), zero host restarts either round —
-// see 02-04-SUMMARY.md. CI gate and its TEST_RUNNER_GSD_CI plumbing removed;
-// suite runs in the default invocation everywhere.
 @Suite("CloudKit Failure & Cancellation Ordering")
 @MainActor
 struct DataDeleterFailureAndCancellationTests {
@@ -248,7 +235,7 @@ struct DataDeleterFailureAndCancellationTests {
     /// returned alongside its context and must stay alive for the whole
     /// test — returning the context alone lets the container (the only
     /// owner of the in-memory store) deallocate, and the next SwiftData
-    /// operation on the orphaned context traps (WINDOWS.md #8 lineage).
+    /// operation on the orphaned context traps.
     private func makeContextWithOneMeasurement() throws -> (ModelContainer, ModelContext) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(for: StressMeasurement.self, configurations: config)
@@ -381,15 +368,6 @@ struct DataDeleterFailureAndCancellationTests {
     }
 }
 
-// WINDOWS.md #8 — FIXED 2026-09-04: same container-lifetime bug as the
-// Cancellation suite above (fixture returned mainContext only; the owning
-// ModelContainer deallocated at fixture return, next SwiftData op trapped).
-// makeContext() now returns (ModelContainer, ModelContext) with the
-// container kept alive for the whole test. Green on two simulator rounds
-// (current iPhone 17 + fresh E004C4FA-20EC-4768-B70F-2815EADE4A04), zero
-// host restarts either round — see 02-04-SUMMARY.md. CI gate and its
-// TEST_RUNNER_GSD_CI plumbing removed; suite runs in the default invocation
-// everywhere.
 @Suite("Data Export Field Selection")
 @MainActor
 struct DataExportFieldSelectionTests {
@@ -398,9 +376,7 @@ struct DataExportFieldSelectionTests {
     /// alongside its context and must stay alive for the whole test —
     /// returning the context alone lets the container (the only owner of
     /// the in-memory store) deallocate, and the next SwiftData operation
-    /// on the orphaned context traps (WINDOWS.md #8 lineage; both
-    /// 2026-09-03 .ips crash reports fault in SwiftData with this suite's
-    /// test bodies as the direct callers).
+    /// on the orphaned context traps.
     private func makeContext() throws -> (ModelContainer, ModelContext) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(for: StressMeasurement.self, configurations: config)

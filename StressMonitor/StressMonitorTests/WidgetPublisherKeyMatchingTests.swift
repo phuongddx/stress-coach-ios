@@ -116,7 +116,7 @@ struct WidgetPublisherKeyMatchingTests {
 
         // Real repository over an in-memory container — the same shape
         // DashboardView's default init uses. The container must outlive its
-        // mainContext for the whole test (v1.1 crash lineage, WINDOWS.md #8).
+        // mainContext for the whole test, or SwiftData traps.
         let container = try ModelContainer(
             for: StressMeasurement.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)

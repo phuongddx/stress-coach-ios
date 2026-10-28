@@ -108,8 +108,7 @@ struct DataDeleterServerWipeTests {
     /// too — the container's schema must declare every model type the
     /// reset touches, or `modelContext.delete(model:)` crashes). The
     /// container is returned alongside its context and must stay alive for
-    /// the whole test — dropping it first crashes SwiftData (the WINDOWS.md
-    /// #8 lineage this suite must not add to).
+    /// the whole test — dropping it first crashes SwiftData.
     private func makeContextWithOneMeasurement() throws -> (ModelContainer, ModelContext) {
         let config = ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         let container = try ModelContainer(
