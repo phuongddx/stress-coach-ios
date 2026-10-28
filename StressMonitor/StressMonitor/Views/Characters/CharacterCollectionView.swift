@@ -235,7 +235,7 @@ struct CharacterCollectionView: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.Wellness.adaptivePrimaryText)
 
-            Text("Stay consistent — forms change, new animations unlock at 30, 90, 180 days.")
+            Text("Take a reading every day — forms change after a 30-day and a 90-day streak.")
                 .font(.system(size: 12))
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
                 .lineSpacing(3)

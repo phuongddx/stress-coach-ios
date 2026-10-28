@@ -74,38 +74,33 @@ struct RippleRecommendationCard: View {
         )
     }
 
-    /// Voice line matching the HTML editorial style with accent highlight.
+    /// Voice line matching the HTML editorial style, with the stress tier
+    /// highlighted. Says nothing about the user's data until a reading exists.
     private var voiceLine: AttributedString {
-        let level = stressLevel ?? 0
-        let hrv = hrvValue(for: level)
+        guard let level = stressLevel else {
+            return AttributedString("No stress reading yet. A slow Box Breath is a good place to start.")
+        }
+        let (tier, suffix) = recommendation(for: level)
 
-        var text = AttributedString("HRV held at ")
-        var accent = AttributedString("\(Int(hrv)) ms")
+        var text = AttributedString("Stress is ")
+        var accent = AttributedString(tier)
         accent.foregroundColor = HomeCharacterDesignTokens.Ripple.primary
         text += accent
-
-        let suffix = recommendationSuffix(for: level)
         text += AttributedString(suffix)
 
         return text
     }
 
-    /// Derive a plausible HRV ms from the stress level (inverse).
-    private func hrvValue(for level: Double) -> Double {
-        // Higher stress → lower HRV. Baseline ~52ms at mild (42).
-        max(20, 70 - level * 0.4)
-    }
-
-    private func recommendationSuffix(for level: Double) -> String {
+    private func recommendation(for level: Double) -> (tier: String, suffix: String) {
         switch level {
         case ..<25:
-            return " all morning. You're settled — a slow breath keeps you here."
+            return ("low", ". You're settled — a slow breath keeps you here.")
         case 25..<50:
-            return " all morning. A 2-minute Box Breath keeps your parasympathetic tone primed."
+            return ("mild", ". A 2-minute Box Breath keeps your parasympathetic tone primed.")
         case 50..<75:
-            return " this hour. Stress is climbing — let's bring it down with a quick reset."
+            return ("climbing", " — let's bring it down with a quick reset.")
         default:
-            return " right now. High stress detected. Box breathing first, then move."
+            return ("high", ". Box breathing first, then move.")
         }
     }
 }

@@ -4,15 +4,14 @@ import SwiftUI
 ///
 /// Each bar's height encodes the peak stress for that day; the bar's color
 /// encodes the stress tier. Subtle gridlines at 25 / 50 / 75 imply the 0–100
-/// scale without needing axis labels. Today's bar gets a thin outline. A tier
-/// legend summarizes the distribution across the week.
+/// scale without needing axis labels. Today's bar gets a thin outline. Days
+/// without a reading stay empty. A tier legend summarizes the distribution
+/// across the days that have readings.
 ///
 /// Spec reference: design/screens/04-home.html — `.stress-chart`.
 struct StressOverTimeChart: View {
     let data: [StressDataPoint]
     var onOpenHistory: (() -> Void)?
-
-    private let days = ["M", "T", "W", "T", "F", "S", "S"]
 
     init(
         data: [StressDataPoint],
@@ -71,12 +70,11 @@ struct StressOverTimeChart: View {
     // MARK: - Bars
 
     private var chartArea: some View {
-        let display = paddedData
-        return ZStack(alignment: .bottom) {
+        ZStack(alignment: .bottom) {
             gridlines
             HStack(alignment: .bottom, spacing: 7) {
-                ForEach(Array(display.enumerated()), id: \.offset) { index, point in
-                    barColumn(for: point, isToday: index == display.count - 1, dayLabel: dayLabel(at: index))
+                ForEach(displayData, id: \.date) { point in
+                    barColumn(for: point)
                 }
             }
         }
@@ -104,22 +102,25 @@ struct StressOverTimeChart: View {
             .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func barColumn(for point: StressDataPoint, isToday: Bool, dayLabel: String) -> some View {
-        VStack(spacing: 6) {
+    private func barColumn(for point: StressDataPoint) -> some View {
+        let isToday = Calendar.current.isDateInToday(point.date)
+        return VStack(spacing: 6) {
             GeometryReader { geo in
-                let height = max(2, CGFloat(point.value) / 100.0 * geo.size.height)
-                RoundedRectangle(cornerRadius: 4, style: .continuous)
-                    .fill(Color.stressColor(for: point.category))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .stroke(Color.Wellness.adaptivePrimaryText, lineWidth: isToday ? 1.5 : 0)
-                    )
-                    .frame(height: height)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
+                if let value = point.value, let category = point.category {
+                    let height = max(2, CGFloat(value) / 100.0 * geo.size.height)
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.stressColor(for: category))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(Color.Wellness.adaptivePrimaryText, lineWidth: isToday ? 1.5 : 0)
+                        )
+                        .frame(height: height)
+                        .frame(maxHeight: .infinity, alignment: .bottom)
+                }
             }
             .frame(height: 100)
 
-            Text(dayLabel)
+            Text(dayLabel(for: point.date, isToday: isToday))
                 .font(.system(size: 9, weight: isToday ? .bold : .regular, design: .monospaced))
                 .tracking(0.4)
                 .foregroundStyle(isToday ? Color.Wellness.adaptivePrimaryText : Color.Wellness.adaptiveSecondaryText)
@@ -131,9 +132,17 @@ struct StressOverTimeChart: View {
 
     private var legend: some View {
         let distribution = tierDistribution
-        return FlowLayout(spacing: 12, lineSpacing: 6) {
-            ForEach(StressCategory.allCases, id: \.self) { tier in
-                legendPill(tier: tier, percent: distribution[tier] ?? 0)
+        return Group {
+            if distribution.isEmpty {
+                Text("No readings in the last 7 days")
+                    .font(.system(size: 10.5, weight: .regular))
+                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            } else {
+                FlowLayout(spacing: 12, lineSpacing: 6) {
+                    ForEach(StressCategory.allCases, id: \.self) { tier in
+                        legendPill(tier: tier, percent: distribution[tier] ?? 0)
+                    }
+                }
             }
         }
     }
@@ -154,29 +163,23 @@ struct StressOverTimeChart: View {
 
     // MARK: - Data shaping
 
-    /// Pad/truncate to exactly 7 entries; fill missing trailing days with the
-    /// today entry so the grid never collapses.
-    private var paddedData: [StressDataPoint] {
-        if data.count >= 7 {
-            return Array(data.suffix(7))
-        }
-        var result = data
-        let today = data.last ?? StressDataPoint(day: "TODAY", value: 0, category: .relaxed)
-        while result.count < 7 { result.append(today) }
-        return result
+    private var displayData: [StressDataPoint] {
+        Array(data.suffix(7))
     }
 
-    private func dayLabel(at index: Int) -> String {
-        index == 6 ? "TODAY" : days[index]
+    private func dayLabel(for date: Date, isToday: Bool) -> String {
+        guard !isToday else { return "TODAY" }
+        let calendar = Calendar.current
+        return calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: date) - 1]
     }
 
+    /// Share of days with a reading per tier. Empty when no day has a reading.
     private var tierDistribution: [StressCategory: Int] {
-        guard !data.isEmpty else {
-            return [:]
-        }
+        let categories = displayData.compactMap(\.category)
+        guard !categories.isEmpty else { return [:] }
         var counts: [StressCategory: Int] = [:]
-        for point in data { counts[point.category, default: 0] += 1 }
-        let total = data.count
+        for category in categories { counts[category, default: 0] += 1 }
+        let total = categories.count
         return StressCategory.allCases.reduce(into: [:]) { result, tier in
             let raw = Double(counts[tier] ?? 0) / Double(total) * 100
             result[tier] = Int(raw.rounded())
@@ -193,11 +196,12 @@ struct StressOverTimeChart: View {
 
 // MARK: - StressDataPoint
 
+/// One day on the chart. `value` and `category` are nil when the day has no reading.
 struct StressDataPoint: Identifiable {
     let id = UUID()
-    let day: String
-    let value: Int
-    let category: StressCategory
+    let date: Date
+    let value: Int?
+    let category: StressCategory?
 }
 
 // MARK: - FlowLayout (legend wrapping)
@@ -250,14 +254,16 @@ private struct FlowLayout: Layout {
 // MARK: - Preview
 
 #Preview("StressOverTimeChart") {
+    let today = Calendar.current.startOfDay(for: Date())
+    func day(_ offset: Int) -> Date { Calendar.current.date(byAdding: .day, value: offset, to: today) ?? today }
     let data: [StressDataPoint] = [
-        .init(day: "M", value: 24, category: .relaxed),
-        .init(day: "T", value: 58, category: .moderate),
-        .init(day: "W", value: 38, category: .mild),
-        .init(day: "T", value: 72, category: .moderate),
-        .init(day: "F", value: 81, category: .high),
-        .init(day: "S", value: 22, category: .relaxed),
-        .init(day: "TODAY", value: 42, category: .mild)
+        .init(date: day(-6), value: 24, category: .relaxed),
+        .init(date: day(-5), value: 58, category: .moderate),
+        .init(date: day(-4), value: nil, category: nil),
+        .init(date: day(-3), value: 72, category: .moderate),
+        .init(date: day(-2), value: 81, category: .high),
+        .init(date: day(-1), value: 22, category: .relaxed),
+        .init(date: day(0), value: 42, category: .mild)
     ]
     return VStack {
         StressOverTimeChart(data: data)

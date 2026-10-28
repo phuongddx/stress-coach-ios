@@ -14,19 +14,23 @@ struct StressHeroCard: View {
     let confidence: Double?
     let measuredAt: Date?
     let substate: String
+    /// Number of factors that fed the score. Nil leaves the factor count off the confidence line.
+    let factorCount: Int?
 
     init(
         level: Double,
         category: StressCategory,
         confidence: Double? = nil,
         measuredAt: Date? = nil,
-        substate: String = "Steady"
+        substate: String = "Steady",
+        factorCount: Int? = nil
     ) {
         self.level = level
         self.category = category
         self.confidence = confidence
         self.measuredAt = measuredAt
         self.substate = substate
+        self.factorCount = factorCount
     }
 
     private var hasData: Bool { level > 0 }
@@ -135,7 +139,7 @@ struct StressHeroCard: View {
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
 
             if hasData, let confidence {
-                Text("\(Int((confidence * 100).rounded()))% confidence · 5-factor HRV")
+                Text(confidenceLine(confidence))
                     .font(.system(size: 10, weight: .regular, design: .monospaced))
                     .tracking(0.5)
                     .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.85))
@@ -146,6 +150,12 @@ struct StressHeroCard: View {
     }
 
     // MARK: - Helpers
+
+    private func confidenceLine(_ confidence: Double) -> String {
+        let percent = "\(Int((confidence * 100).rounded()))% confidence"
+        guard let factorCount else { return percent }
+        return "\(percent) · \(factorCount)-factor analysis"
+    }
 
     private var fillColor: Color {
         hasData ? Color.stressColor(for: category) : Color(hex: "#8E8E93")
@@ -219,7 +229,7 @@ private struct TickMarker: View {
 // MARK: - Preview
 
 #Preview("StressHeroCard — Mild") {
-    StressHeroCard(level: 42, category: .mild, confidence: 0.96, measuredAt: Date(), substate: "Focused · steady morning")
+    StressHeroCard(level: 42, category: .mild, confidence: 0.96, measuredAt: Date(), substate: "Focused · steady morning", factorCount: 5)
         .padding()
         .background(HomeCharacterDesignTokens.homeBackground)
 }

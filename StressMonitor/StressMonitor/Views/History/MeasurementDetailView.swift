@@ -9,7 +9,9 @@ import SwiftData
 struct MeasurementDetailView: View {
     let measurement: StressMeasurement
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppRouter.self) private var router
     @State private var viewModel: DetailViewModel?
+    @State private var showChatSheet = false
     @Environment(\.dismiss) private var dismiss
 
     init(measurement: StressMeasurement) {
@@ -65,6 +67,12 @@ struct MeasurementDetailView: View {
             viewModel = DetailViewModel(measurement: measurement, modelContext: modelContext)
             await viewModel?.loadData()
         }
+        .sheet(isPresented: $showChatSheet) {
+            ChatBottomSheetView(
+                stressResult: measurement.stressResult,
+                baseline: viewModel?.baseline
+            )
+        }
     }
 
     // MARK: - Score hero (big number + state + time)
@@ -104,9 +112,9 @@ struct MeasurementDetailView: View {
             }
 
             GeometryReader { proxy in
-                let segmentWidth = proxy.size.width / 5
-                HStack(spacing: 2) {
-                    ForEach(0..<5, id: \.self) { i in
+                let width = proxy.size.width
+                HStack(spacing: 0) {
+                    ForEach(0..<Self.scaleCategories.count, id: \.self) { i in
                         RoundedRectangle(cornerRadius: 2)
                             .fill(segmentColor(i))
                             .frame(height: 8)
@@ -116,25 +124,33 @@ struct MeasurementDetailView: View {
                                         .stroke(Color.Wellness.adaptivePrimaryText, lineWidth: 2)
                                     : nil
                             )
+                            .padding(.trailing, i == Self.scaleCategories.count - 1 ? 0 : 2)
+                            .frame(width: width * segmentFraction(i))
                     }
                 }
                 .overlay(alignment: .leading) {
                     Image(systemName: "arrowtriangle.down.fill")
                         .font(.system(size: 10))
                         .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                        .offset(x: markerOffset(segmentWidth: segmentWidth), y: -12)
+                        .offset(x: markerOffset(barWidth: width), y: -12)
                 }
             }
             .frame(height: 8)
 
-            HStack(spacing: 2) {
-                ForEach([0, 25, 50, 75, 100], id: \.self) { val in
-                    Text("\(val)")
-                        .font(.system(size: 9, weight: .medium, design: .monospaced))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                        .frame(maxWidth: .infinity)
+            GeometryReader { proxy in
+                ZStack(alignment: .leading) {
+                    ForEach(Self.scaleLabels, id: \.self) { value in
+                        let fraction = CGFloat(value) / 100
+                        Text("\(value)")
+                            .font(.system(size: 9, weight: .medium, design: .monospaced))
+                            .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                            .fixedSize()
+                            .alignmentGuide(.leading) { $0.width * fraction }
+                            .offset(x: proxy.size.width * fraction)
+                    }
                 }
             }
+            .frame(height: 12)
         }
         .padding(12)
         .background(Color.Wellness.adaptiveCardBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -190,11 +206,9 @@ struct MeasurementDetailView: View {
                 .padding(.horizontal, 4)
 
             VStack(spacing: 0) {
-                contextRow(label: "Heart rate", value: "\(Int(measurement.restingHeartRate)) bpm")
+                contextRow(label: "Heart rate", value: heartRateText)
                 contextDivider
-                contextRow(label: "HRV (RMSSD)", value: "\(Int(measurement.hrv)) ms")
-                contextDivider
-                contextRow(label: "Sleep last night", value: sleepText)
+                contextRow(label: "HRV (SDNN)", value: hrvText)
                 contextDivider
                 contextRow(label: "Confidence", value: confidenceText)
             }
@@ -244,18 +258,22 @@ struct MeasurementDetailView: View {
 
     private var actionBar: some View {
         HStack(spacing: 6) {
-            actionButton(icon: "wind", label: "Breathe")
-            actionButton(icon: "bubble.left.fill", label: "Ask Ripple")
+            actionButton(icon: "wind", label: "Breathe") {
+                router.deepLink(to: .boxBreathing, in: .action)
+            }
+            actionButton(icon: "bubble.left.fill", label: "Ask Ripple") {
+                showChatSheet = true
+            }
             actionButton(icon: "square.and.arrow.up", label: "Share") {
                 viewModel?.shareMeasurement()
             }
         }
     }
 
-    private func actionButton(icon: String, label: String, action: (() -> Void)? = nil) -> some View {
+    private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button {
             HapticManager.shared.buttonPress()
-            action?()
+            action()
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon)
@@ -309,14 +327,16 @@ struct MeasurementDetailView: View {
         )
     }
 
-    private var hrvDetailText: String { "\(Int(measurement.hrv)) ms" }
-    private var hrDetailText: String { "\(Int(measurement.restingHeartRate)) bpm" }
-
-    private var sleepText: String {
-        guard let sleep = measurement.sleepComponent else { return "—" }
-        let pct = Int((sleep * 100).rounded())
-        return "\(pct)% quality"
+    private var hrvText: String {
+        measurement.hrv > 0 ? "\(Int(measurement.hrv)) ms" : "—"
     }
+
+    private var heartRateText: String {
+        measurement.restingHeartRate > 0 ? "\(Int(measurement.restingHeartRate)) bpm" : "—"
+    }
+
+    private var hrvDetailText: String? { measurement.hrv > 0 ? hrvText : nil }
+    private var hrDetailText: String? { measurement.restingHeartRate > 0 ? heartRateText : nil }
 
     private var confidenceText: String {
         guard let confidences = measurement.confidences, !confidences.isEmpty else { return "—" }
@@ -324,19 +344,22 @@ struct MeasurementDetailView: View {
         return "\(Int(avg * 100))%"
     }
 
+    private static let scaleCategories: [StressCategory] = [.relaxed, .mild, .moderate, .high, .severe]
+    /// Lower edge of each tier, then the scale maximum. Mirrors `StressResult.category(for:)`.
+    private static let scaleBounds: [Double] = [0, 25, 50, 75, 90, 100]
+    private static let scaleLabels = [0, 25, 50, 75, 100]
+
     private var activeSegmentIndex: Int {
-        switch measurement.stressLevel {
-        case ..<20:   return 0
-        case 20..<40: return 1
-        case 40..<60: return 2
-        case 60..<80: return 3
-        default:      return 4
-        }
+        Self.scaleCategories.firstIndex(of: StressResult.category(for: measurement.stressLevel)) ?? 0
     }
 
-    private func markerOffset(segmentWidth: CGFloat) -> CGFloat {
+    private func segmentFraction(_ index: Int) -> CGFloat {
+        CGFloat(Self.scaleBounds[index + 1] - Self.scaleBounds[index]) / 100
+    }
+
+    private func markerOffset(barWidth: CGFloat) -> CGFloat {
         let clamped = min(1, max(0, measurement.stressLevel / 100))
-        return segmentWidth * 5 * clamped - 3
+        return barWidth * clamped - 5
     }
 
     private func segmentColor(_ index: Int) -> Color {

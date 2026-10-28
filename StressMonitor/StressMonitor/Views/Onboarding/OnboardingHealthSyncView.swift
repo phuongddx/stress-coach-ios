@@ -50,7 +50,7 @@ struct OnboardingHealthSyncView: View {
                         .multilineTextAlignment(.center)
 
                     // Subtitle
-                    Text("Ripple reads these data types to calculate your stress. Nothing is shared.")
+                    Text("Ripple reads these data types to calculate your stress on your device. Nothing is shared unless you turn on Health Data Sync or use AI coaching.")
                         .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
                         .multilineTextAlignment(.center)

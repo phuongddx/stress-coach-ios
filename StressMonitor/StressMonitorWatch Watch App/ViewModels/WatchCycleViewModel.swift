@@ -76,7 +76,7 @@ final class WatchCycleViewModel {
         let length = cycleLength ?? ((defaults.object(forKey: cycleLengthKey) as? Int) ?? 28)
         let calendar = Calendar.current
         let now = Date()
-        let dayOfCycle = max(1, calendar.dateComponents([.day], from: calendar.startOfDay(for: start), to: calendar.startOfDay(for: now)).day ?? 0 + 1)
+        let dayOfCycle = max(1, calendar.dateComponents([.day], from: calendar.startOfDay(for: start), to: calendar.startOfDay(for: now)).day.map { $0 + 1 } ?? 1)
         let phase = CyclePhase.phase(forDay: dayOfCycle)
         let nextPrediction = calendar.date(byAdding: .day, value: max(length, 1), to: start)
         cycleData = CycleData(

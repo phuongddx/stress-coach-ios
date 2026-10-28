@@ -17,8 +17,8 @@ struct WatchHomeView: View {
 
     private var theme: WatchFaceTheme { WatchFaceTheme(rawValue: themeRaw) ?? .ripple }
     private var creature: CharacterCreature { theme.creature }
-    private var category: StressCategory { StressCategory.category(for: viewModel.currentLevel) }
-    private var score: Int { Int(viewModel.currentLevel.rounded()) }
+    private var category: StressCategory? { viewModel.currentLevel.map(StressCategory.category(for:)) }
+    private var score: Int? { viewModel.currentLevel.map { Int($0.rounded()) } }
 
     var body: some View {
         VStack(spacing: 6) {
@@ -61,23 +61,23 @@ struct WatchHomeView: View {
     /// uppercase tier label in tier colour, and an "out of 100" caption.
     private var readout: some View {
         VStack(spacing: 3) {
-            Text("\(score)")
+            Text(score.map(String.init) ?? "—")
                 .font(.system(size: 42, weight: .bold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
                 .tracking(-0.028 * 42)
-                .foregroundStyle(category.inkColor)
-                .contentTransition(.numericText(value: Double(score)))
+                .foregroundStyle(category?.inkColor ?? WatchDesignTokens.muted)
+                .contentTransition(.numericText(value: Double(score ?? 0)))
 
-            Text(category.displayName.uppercased())
+            Text(category?.displayName.uppercased() ?? "NO READING YET")
                 .font(.system(size: 9, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
                 .tracking(0.08 * 9)
-                .foregroundStyle(category.color)
+                .foregroundStyle(category?.color ?? WatchDesignTokens.muted)
 
             Text("out of 100")
                 .font(.system(size: 9.5, weight: .regular, design: .default)) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
                 .foregroundStyle(WatchDesignTokens.muted)
         }
         .accessibilityElement()
-        .accessibilityLabel(category.accessibilityValue(level: viewModel.currentLevel))
+        .accessibilityLabel(viewModel.currentLevel.map { StressCategory.category(for: $0).accessibilityValue(level: $0) } ?? "No stress reading yet")
     }
 
     // MARK: - Helpers

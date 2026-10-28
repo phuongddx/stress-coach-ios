@@ -34,6 +34,7 @@ struct WatchLoggingView: View {
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { selectedMood = moodViewModel.latest?.mood }
+        .task { await habitViewModel.refreshAutoHabits() }
     }
 
     // MARK: - Header
@@ -85,7 +86,11 @@ struct WatchLoggingView: View {
             if isManual { habitViewModel.logManual(habit.type, amount: 1) }
         } label: {
             VStack(spacing: 4) {
-                HabitRingView(habit: habit, size: 60)
+                if habit.hasDisplayValue {
+                    HabitRingView(habit: habit, size: 60)
+                } else {
+                    emptyHabitRing(habit)
+                }
                 Text(habit.type.displayName.uppercased())
                     .font(.system(size: 7, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: 3-across habit-card single-word micro-label — cannot wrap
                     .tracking(0.06 * 7)
@@ -113,7 +118,27 @@ struct WatchLoggingView: View {
         }
         .buttonStyle(.plain)
         .disabled(!isManual)
-        .accessibilityLabel("\(habit.type.displayName), \(habit.currentValue) of \(habit.goalValue) \(habit.type.unit)")
+        .accessibilityLabel(habit.hasDisplayValue
+            ? "\(habit.type.displayName), \(habit.currentValue) of \(habit.goalValue) \(habit.type.unit)"
+            : "\(habit.type.displayName), no reading yet")
+    }
+
+    /// Stand-in for the ring of an AUTO habit HealthKit has not reported.
+    private func emptyHabitRing(_ habit: WatchHabit) -> some View {
+        let size: CGFloat = 60
+        return ZStack {
+            Circle()
+                .stroke(WatchDesignTokens.separator, lineWidth: max(5, size * 0.085))
+            VStack(spacing: 1) {
+                Image(systemName: habit.type.icon)
+                    .font(.system(size: size * 0.22, weight: .semibold)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
+                    .foregroundStyle(WatchDesignTokens.ink)
+                Text("—")
+                    .font(.system(size: size * 0.16, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
+                    .foregroundStyle(WatchDesignTokens.inkSecondary)
+            }
+        }
+        .frame(width: size, height: size)
     }
 
     // MARK: - Mood

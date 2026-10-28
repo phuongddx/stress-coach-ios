@@ -3,20 +3,22 @@ import SwiftUI
 /// Ripple's voice — the AI insight card that sits right under the hero.
 ///
 /// Per the 04-home spec the status → AI summary flow: a Ripple avatar on the
-/// left, a "Ripple · just now" eyebrow, the insight message (which may
+/// left, a "Ripple · <age of the reading>" eyebrow, the insight message (which may
 /// emphasize a fragment), and an optional "Ask Ripple" link.
 ///
 /// Spec reference: design/screens/04-home.html — `.ai-insight`.
 struct RippleInsightCard: View {
     let insight: AIInsight
     var onAskRipple: (() -> Void)?
+    /// When the reading behind this insight was taken; nil omits the age from the eyebrow.
+    var generatedAt: Date?
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             avatar
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("RIPPLE · JUST NOW")
+                Text(eyebrow)
                     .font(.system(size: 10, weight: .semibold, design: .monospaced))
                     .tracking(0.8)
                     .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
@@ -50,6 +52,14 @@ struct RippleInsightCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ripple insight. \(insight.message)")
+    }
+
+    private var eyebrow: String {
+        guard let generatedAt else { return "RIPPLE" }
+        let formatter = RelativeDateTimeFormatter()
+        formatter.dateTimeStyle = .named
+        formatter.unitsStyle = .abbreviated
+        return "RIPPLE · \(formatter.localizedString(for: generatedAt, relativeTo: Date()).uppercased())"
     }
 
     private var avatar: some View {

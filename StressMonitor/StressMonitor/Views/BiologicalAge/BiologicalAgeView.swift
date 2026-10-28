@@ -2,9 +2,10 @@ import SwiftData
 import SwiftUI
 
 /// Biological Age analytics screen matching `design/screens/18-bio-age.html`.
-/// Hero result → honest driver rows (7-day HRV/RHR averages only) → daily
+/// Hero result → honest driver rows (7-day HRV/heart-rate averages only) → daily
 /// estimate chart with a chronological-age reference line → Ripple insight →
-/// disclaimer. Thin history shows an insufficient-data card, never a fake age.
+/// disclaimer. A missing date of birth or thin history shows an explanatory
+/// card, never a fake age.
 struct BiologicalAgeView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var viewModel: BiologicalAgeViewModel?
@@ -16,10 +17,12 @@ struct BiologicalAgeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if let viewModel {
-                    if !viewModel.hasSufficientData && !viewModel.isLoading {
+                    if viewModel.chronologicalAge == nil && !viewModel.isLoading {
+                        dateOfBirthCard
+                    } else if !viewModel.hasSufficientData && !viewModel.isLoading {
                         insufficientDataCard
-                    } else if let result = viewModel.result {
-                        hero(result, viewModel: viewModel)
+                    } else if let result = viewModel.result, let chronologicalAge = viewModel.chronologicalAge {
+                        hero(result, chronologicalAge: chronologicalAge)
                         driversSection(viewModel)
                         if !viewModel.dailyEstimates.isEmpty {
                             chartSection(viewModel)
@@ -70,7 +73,7 @@ struct BiologicalAgeView: View {
 
     // MARK: - Hero
 
-    private func hero(_ result: BioAgeResult, viewModel: BiologicalAgeViewModel) -> some View {
+    private func hero(_ result: BioAgeResult, chronologicalAge: Int) -> some View {
         let tint = heroTint(for: result.difference)
 
         return VStack(spacing: 6) {
@@ -93,9 +96,7 @@ struct BiologicalAgeView: View {
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(tint)
 
-            trendRow(result.trend)
-
-            Text("Chronological \(viewModel.chronologicalAge)")
+            Text("Chronological \(chronologicalAge)")
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
         }
@@ -104,33 +105,8 @@ struct BiologicalAgeView: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
             "Biological age \(result.estimatedAge) years, \(result.differenceLabel), "
-                + "\(result.trend.label), chronological \(viewModel.chronologicalAge)"
+                + "chronological \(chronologicalAge)"
         )
-    }
-
-    /// Trend is dual-coded (icon + text) and tinted with existing adaptive
-    /// colors — no prototype-only purple.
-    private func trendRow(_ trend: BioAgeTrend) -> some View {
-        let tint: Color
-        switch trend {
-        case .improving:
-            tint = .primaryGreen
-        case .declining:
-            tint = .stressColor(for: .high)
-        case .stable:
-            tint = .primaryBlue
-        }
-
-        return HStack(spacing: 6) {
-            Image(systemName: trend.icon)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(tint)
-                .accessibilityHidden(true)
-            Text(trend.label)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(tint)
-        }
-        .accessibilityElement(children: .combine)
     }
 
     private func heroTint(for difference: Int) -> Color {
@@ -160,7 +136,7 @@ struct BiologicalAgeView: View {
                 )
                 driverDivider
                 driverRow(
-                    title: "Resting heart rate",
+                    title: "Heart rate",
                     detail: "7-day avg",
                     value: viewModel.restingHRAverage.map { "\(Int($0.rounded())) bpm" } ?? "—"
                 )
@@ -213,10 +189,12 @@ struct BiologicalAgeView: View {
                 Text("Day-by-day estimate")
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                BioAgeDailyChart(
-                    estimates: viewModel.dailyEstimates,
-                    chronologicalAge: viewModel.chronologicalAge
-                )
+                if let chronologicalAge = viewModel.chronologicalAge {
+                    BioAgeDailyChart(
+                        estimates: viewModel.dailyEstimates,
+                        chronologicalAge: chronologicalAge
+                    )
+                }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -230,12 +208,36 @@ struct BiologicalAgeView: View {
     // MARK: - States
 
     private var disclaimer: some View {
-        Text("Biological age is an estimate based on HRV and resting heart rate. Not a medical diagnosis.")
+        Text("Biological age is an estimate based on HRV and heart rate. Not a medical diagnosis.")
             .font(.system(size: 11, weight: .regular))
             .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
             .padding(.top, 2)
+    }
+
+    private var dateOfBirthCard: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "calendar.badge.plus")
+                .font(.system(size: 34))
+                .foregroundStyle(Color.primaryBlue.opacity(0.7))
+                .accessibilityHidden(true)
+            Text("Date of birth needed")
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+            Text("Add your date of birth in the Health app to see biological age.")
+                .font(.system(size: 13))
+                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .multilineTextAlignment(.center)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(
+            Color.Wellness.adaptiveCardBackground,
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
+        .accessibilityElement(children: .combine)
+        .padding(.top, 24)
     }
 
     private var insufficientDataCard: some View {

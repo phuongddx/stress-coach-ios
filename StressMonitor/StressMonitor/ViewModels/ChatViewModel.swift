@@ -66,7 +66,7 @@ final class ChatViewModel {
     private var streamingTask: Task<Void, Never>?
     private let contextBuilder = ChatContextBuilder.self
 
-    private var stressResult: StressResult?
+    private(set) var stressResult: StressResult?
     private var baseline: PersonalBaseline?
     private var recentHistory: [StressMeasurement] = []
 
@@ -150,11 +150,13 @@ final class ChatViewModel {
     func fetchQuickActions() async {
         guard !fetchedQuickActions else { return }
         fetchedQuickActions = true
-        guard let apiClient else { return }
+        // The endpoint needs a stress level; without a reading the local
+        // fallback chips stay rather than querying with an invented one.
+        guard let apiClient, let stressResult else { return }
 
         do {
             let serverActions = try await apiClient.getQuickActions(
-                stressLevel: stressResult.map { Int($0.level) } ?? 50,
+                stressLevel: Int(stressResult.level),
                 language: preferencesService?.language ?? "en",
                 coachingStyle: preferencesService?.coachingStyle ?? "supportive"
             )

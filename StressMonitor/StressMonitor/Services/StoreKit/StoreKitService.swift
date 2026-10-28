@@ -4,8 +4,7 @@ import StoreKit
 
 /// Minimal transaction surface the grant flow needs, abstracted so the
 /// redeem-before-finish ordering is pinnable by unit tests without a
-/// StoreKitTest session (whose suite is disabled for session-isolation
-/// reasons — see StoreKitServiceTests.swift).
+/// StoreKitTest session.
 ///
 /// The signed JWS is deliberately NOT part of this surface: StoreKit 2
 /// exposes it on `VerificationResult.jwsRepresentation`, not on

@@ -225,6 +225,11 @@ struct StressMonitorApp: App {
                 .environment(preferencesService)
                 .environment(\.storeKitService, storeKitService)
                 .preferredColorScheme(AppearanceManager.shared.colorScheme)
+                .onReceive(NotificationCenter.default.publisher(for: .breathingSessionComplete)) { _ in
+                    Task { @MainActor in
+                        CharacterCollectionViewModel.recordBreathingSession(in: sharedModelContainer.mainContext)
+                    }
+                }
                 #if DEBUG
                 .onAppear {
                     let elapsed = (CFAbsoluteTimeGetCurrent() - Self.initTimestamp) * 1000

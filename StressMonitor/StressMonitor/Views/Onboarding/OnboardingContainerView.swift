@@ -52,6 +52,7 @@ struct OnboardingContainerView: View {
             HKCategoryType(.sleepAnalysis),
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKCharacteristicType(.dateOfBirth),
         ]
         try? await store.requestAuthorization(toShare: [], read: types)
     }

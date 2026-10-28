@@ -19,7 +19,7 @@ struct WatchMenuView: View {
 
     private var theme: WatchFaceTheme { WatchFaceTheme(rawValue: themeRaw) ?? .ripple }
     private var creature: CharacterCreature { theme.creature }
-    private var category: StressCategory { StressCategory.category(for: viewModel.currentLevel) }
+    private var category: StressCategory? { viewModel.currentLevel.map(StressCategory.category(for:)) }
 
     @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
     @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
@@ -49,16 +49,16 @@ struct WatchMenuView: View {
             )
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(category.displayName.uppercased())
+                Text(category?.displayName.uppercased() ?? "NO READING YET")
                     .font(.system(size: 9 * caption2Scale, weight: .semibold, design: .monospaced))
                     .tracking(0.08 * 9)
-                    .foregroundStyle(category.color)
+                    .foregroundStyle(category?.color ?? WatchDesignTokens.muted)
 
-                Text("\(Int(viewModel.currentLevel.rounded()))")
+                Text(viewModel.currentLevel.map { "\(Int($0.rounded()))" } ?? "—")
                     .font(.system(size: 24 * title2Scale, weight: .bold, design: .rounded).monospacedDigit())
                     .tracking(-0.02 * 24)
-                    .foregroundStyle(category.inkColor)
-                    .contentTransition(.numericText(value: viewModel.currentLevel))
+                    .foregroundStyle(category?.inkColor ?? WatchDesignTokens.muted)
+                    .contentTransition(.numericText(value: viewModel.currentLevel ?? 0))
             }
 
             Spacer(minLength: 0)
@@ -112,17 +112,6 @@ struct WatchMenuView: View {
                     iconColor: Color(hex: "#FE9901"),
                     title: "Today",
                     subtitle: "Habits & mood check-in"
-                )
-            }
-
-            NavigationLink {
-                WatchWorkoutView()
-            } label: {
-                menuRow(
-                    icon: "figure.run",
-                    iconColor: Color(hex: "#FF6B6B"),
-                    title: "Workout",
-                    subtitle: "Live heart rate zones"
                 )
             }
 

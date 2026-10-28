@@ -85,7 +85,8 @@ extension CharacterCreature {
 /// can be drawn behind the character.
 struct CharacterFaceView: View {
     let creature: CharacterCreature
-    var category: StressCategory = .relaxed
+    /// `nil` renders a neutral face with no tier colour, for when there is no reading.
+    var category: StressCategory? = .relaxed
     var size: CGFloat = 80
     var showsRing: Bool = false
     var showsHalo: Bool = false
@@ -106,7 +107,7 @@ struct CharacterFaceView: View {
 
             if showsRing {
                 Circle()
-                    .stroke(category.color.opacity(0.22),
+                    .stroke((category?.color ?? WatchDesignTokens.mutedSystem).opacity(0.22),
                             style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
             }
 
@@ -136,6 +137,7 @@ struct CharacterFaceView: View {
     }
 
     private var accessibilityLabel: String {
+        guard let category else { return "\(creature.displayName), no reading yet" }
         let mood: String
         switch category {
         case .relaxed, .mild:
@@ -184,13 +186,18 @@ private extension StressCategory {
     }
 }
 
+private extension Optional where Wrapped == StressCategory {
+    var isFrowning: Bool { self?.isFrowning ?? false }
+    var isSmiling: Bool { self?.isSmiling ?? false }
+}
+
 // MARK: - Ripple · Water Otter
 
 /// Inline vector otter — exact shapes from iOS Design System §11.
 /// Slate ink (#0A1929) features on a light muzzle (#E1F5FE).
 struct RippleOtter: View {
     let size: CGFloat
-    let category: StressCategory
+    let category: StressCategory?
 
     private let fur    = Color(hex: "#4FC3F7")
     private let deep   = Color(hex: "#0288D1")
@@ -237,7 +244,7 @@ struct RippleOtter: View {
 
 struct BlossomSprite: View {
     let size: CGFloat
-    let category: StressCategory
+    let category: StressCategory?
 
     private let leaf   = Color(hex: "#A5D6A7")
     private let cheek  = Color(hex: "#C8E6C9")
@@ -285,7 +292,7 @@ private struct CrownLeaf: Shape {
 
 struct EmberFox: View {
     let size: CGFloat
-    let category: StressCategory
+    let category: StressCategory?
 
     private let flame  = Color(hex: "#FFAB91")
     private let flameCore = Color(hex: "#FF7043")
@@ -349,7 +356,7 @@ private struct Triangle: Shape {
 
 struct ZephyrWisp: View {
     let size: CGFloat
-    let category: StressCategory
+    let category: StressCategory?
 
     private let pelt   = Color(hex: "#EDE7F6")
     private let crown  = Color(hex: "#D1C4E9")
@@ -400,7 +407,7 @@ private struct WindSwirl: Shape {
 
 struct LumiOwl: View {
     let size: CGFloat
-    let category: StressCategory
+    let category: StressCategory?
 
     private let pelt    = Color(hex: "#7986CB")
     private let head    = Color(hex: "#9FA8DA")

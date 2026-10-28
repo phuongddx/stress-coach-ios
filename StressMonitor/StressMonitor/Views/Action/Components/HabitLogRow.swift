@@ -13,7 +13,7 @@ struct HabitLogRow: View {
     var onTap: (() -> Void)? = nil
 
     private var progress: Double {
-        guard habit.goalValue > 0 else { return 0 }
+        guard habit.hasDisplayValue, habit.goalValue > 0 else { return 0 }
         return min(1.0, habit.currentValue / habit.goalValue)
     }
 
@@ -88,9 +88,10 @@ struct HabitLogRow: View {
     }
 
     /// Value text in "current / goal unit" format matching the HTML reference.
-    /// e.g. "1.4 / 2.0 L", "2 / 3 cups", "42 / 60 min"
+    /// e.g. "1.4 / 2.0 L", "2 / 3 cups", "42 / 60 min". "—" stands in for the
+    /// current value of an AUTO habit HealthKit has not reported.
     private var valueText: String {
-        let cur = formatValue(habit.currentValue)
+        let cur = habit.hasDisplayValue ? formatValue(habit.currentValue) : "—"
         let goal = formatValue(habit.goalValue)
         return "\(cur) / \(goal) \(habit.type.unit)"
     }
@@ -107,11 +108,11 @@ struct HabitLogRow: View {
 #Preview("HabitLogRow") {
     ScrollView {
         VStack(spacing: 0) {
-            HabitLogRow(habit: Habit(type: .hydration, currentValue: 1.4, goalValue: 2.0))
+            HabitLogRow(habit: Habit(type: .hydration, currentValue: 1.4, goalValue: 2.0, isAutoValueAvailable: true))
             ActionRowDivider()
             HabitLogRow(habit: Habit(type: .caffeine, currentValue: 2, goalValue: 3)) { }
             ActionRowDivider()
-            HabitLogRow(habit: Habit(type: .sunlight, currentValue: 42, goalValue: 60))
+            HabitLogRow(habit: Habit(type: .sunlight, goalValue: 60))
         }
         .background(Color.Wellness.adaptiveCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))

@@ -13,11 +13,6 @@ struct WatchHistoryView: View {
 
     private let readings: [SharedReading]
 
-    /// Optional BioAge estimate shown in the header card.
-    @State private var bioAgeResult: BioAgeResult?
-    /// Selected time range (7D / 30D / 90D) for the chart and heatmap.
-    @State private var selectedRange: HistoryRange = .week
-
     init(viewModel: WatchStressViewModel) {
         self.viewModel = viewModel
         self.readings = WatchSharedDataStore.shared.history7Days
@@ -45,11 +40,7 @@ struct WatchHistoryView: View {
     private var filledContent: some View {
         ScrollView {
             VStack(spacing: WatchDesignTokens.Spacing.sm) {
-                if let bioAge = bioAgeResult {
-                    WatchBioAgeCardView(result: bioAge)
-                }
                 statRow
-                rangePicker
                 chartCard
                 heatmapCard
                 readingList
@@ -58,12 +49,6 @@ struct WatchHistoryView: View {
             .padding(.top, 4)
             .padding(.bottom, 10)
         }
-    }
-
-    // MARK: - Range picker
-
-    private var rangePicker: some View {
-        RangePickerRow(selectedRange: $selectedRange)
     }
 
     // MARK: - Heatmap
@@ -85,11 +70,9 @@ struct WatchHistoryView: View {
     }
 
     /// Adapt `SharedReading` list into the `WatchStressMeasurement` shape
-    /// the heatmap expects, filtered by the active range.
+    /// the heatmap expects.
     private var heatmapReadings: [WatchStressMeasurement] {
-        let cutoff = Date().addingTimeInterval(-Double(selectedRange.dayCount) * 24 * 3600)
-        return readings
-            .filter { $0.timestamp >= cutoff }
+        readings
             .map { WatchStressMeasurement(
                 timestamp: $0.timestamp,
                 stressLevel: $0.level,
@@ -202,7 +185,7 @@ struct WatchHistoryView: View {
     private var emptyState: some View {
         VStack(spacing: 6) {
             Spacer(minLength: 0)
-            CharacterFaceView(creature: .ripple, category: .relaxed, size: 48, showsHalo: true)
+            CharacterFaceView(creature: .ripple, category: nil, size: 48, showsHalo: true)
             Text("No readings yet")
                 .font(.system(size: 11 * caption2Scale, weight: .semibold, design: .default))
                 .foregroundStyle(WatchDesignTokens.ink)

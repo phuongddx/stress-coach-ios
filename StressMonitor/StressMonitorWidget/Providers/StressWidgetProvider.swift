@@ -22,8 +22,13 @@ public struct StressWidgetProvider: TimelineProvider {
 
     // MARK: - Snapshot Entry
 
-    /// Provides a preview entry for widget gallery
+    /// Sample data only for the widget gallery; a snapshot of an installed
+    /// widget shows the user's real data like the timeline does.
     public func getSnapshot(in context: Context, completion: @escaping (StressEntry) -> Void) {
+        guard context.isPreview else {
+            completion(currentEntry(at: Date()))
+            return
+        }
         let entry = StressEntry(
             date: Date(),
             latestStress: createSampleStress(),
@@ -38,25 +43,8 @@ public struct StressWidgetProvider: TimelineProvider {
 
     /// Provides the actual timeline entries for widget updates
     public func getTimeline(in context: Context, completion: @escaping (Timeline<StressEntry>) -> Void) {
-        let dataProvider = WidgetDataProvider.shared
         let currentDate = Date()
-
-        // Get current stress data
-        let latestStress = dataProvider.getLatestStress()
-        let history = dataProvider.getHistory(limit: 20)
-        let baseline = dataProvider.getBaseline()
-
-        let dataState = WidgetDataState.resolve(latestTimestamp: latestStress?.timestamp, now: currentDate)
-
-        // Create the entry
-        let entry = StressEntry(
-            date: currentDate,
-            latestStress: latestStress,
-            history: history,
-            baseline: baseline,
-            isPlaceholder: false,
-            dataState: dataState
-        )
+        let entry = currentEntry(at: currentDate)
 
         // Calculate next update time (every 15 minutes)
         let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: currentDate) ?? currentDate
@@ -65,6 +53,19 @@ public struct StressWidgetProvider: TimelineProvider {
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
 
         completion(timeline)
+    }
+
+    private func currentEntry(at date: Date) -> StressEntry {
+        let dataProvider = WidgetDataProvider.shared
+        let latestStress = dataProvider.getLatestStress()
+        return StressEntry(
+            date: date,
+            latestStress: latestStress,
+            history: dataProvider.getHistory(limit: 20),
+            baseline: dataProvider.getBaseline(),
+            isPlaceholder: false,
+            dataState: WidgetDataState.resolve(latestTimestamp: latestStress?.timestamp, now: date)
+        )
     }
 
     // MARK: - Placeholder Data

@@ -8,11 +8,10 @@ final class WatchStressViewModel {
   var isLoading = false
   var errorMessage: String?
 
-  /// Convenience access to the current 0–100 level used by the character face.
-  /// Falls back to the last reading in the shared store so the Home face is
-  /// expressive even before the first in-session measurement.
-  var currentLevel: Double {
-    currentStress?.level ?? WatchSharedDataStore.shared.latest?.level ?? 30
+  /// The current 0–100 level, falling back to the last stored reading.
+  /// `nil` until a real measurement exists — views render an empty state.
+  var currentLevel: Double? {
+    currentStress?.level ?? WatchSharedDataStore.shared.latest?.level
   }
 
   private let healthKit: WatchHealthKitManager
@@ -33,9 +32,6 @@ final class WatchStressViewModel {
     self.connectivity = connectivity
     self.complicationProvider = complicationProvider
     self.sharedStore = sharedStore
-    // Seed demo readings so the character face + history are expressive on
-    // first launch, before any real HealthKit data is available.
-    sharedStore.seedDemoDataIfNeeded()
   }
 
   func requestAuthorization() async {

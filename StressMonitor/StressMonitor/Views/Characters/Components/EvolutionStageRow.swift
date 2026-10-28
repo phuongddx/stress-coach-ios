@@ -106,8 +106,8 @@ struct EvolutionStageRow: View {
         }
         switch stage {
         case .droplet: return "DAY 1"
-        case .ripple:  return "30 DAYS"
-        case .tidal:   return "90 DAYS"
+        case .ripple:  return "\(requirement.streakDays) DAYS + \(requirement.sessionsCompleted) BREATHING SESSIONS"
+        case .tidal:   return "\(requirement.streakDays) DAYS"
         }
     }
 }

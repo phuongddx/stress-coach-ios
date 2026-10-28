@@ -49,14 +49,10 @@ class TrendsViewModel {
     // MARK: - New properties for Figma design
     var weeklyMeasurements: [StressMeasurement] = []
     var dailyStressData: [DailyStressData] = []
-    var stressSources: [StressSource] = [
-        StressSource(name: "Finance", percentage: 35, color: Color(hex: "#F6C453")),
-        StressSource(name: "Relationship", percentage: 15, color: Color(hex: "#B388FF")),
-        StressSource(name: "Health", percentage: 50, color: Color(hex: "#FFB74D")),
-        StressSource(name: "Family", percentage: 0, color: Color(hex: "#81C784")),
-        StressSource(name: "Work", percentage: 0, color: TrendsPalette.rippleBlue),
-        StressSource(name: "Environment", percentage: 0, color: Color(hex: "#66D9A8"))
-    ]
+    /// Last 7 days vs the 7 days before, independent of the selected range.
+    /// Nil when either window has no measurements.
+    var stressWeekComparison: WeekComparison?
+    var hrvWeekComparison: WeekComparison?
 
     // MARK: - Ripple Trends Helpers
 
@@ -78,16 +74,6 @@ class TrendsViewModel {
         let recent = dailyStressData.suffix(3).map { $0.averageStress }.reduce(0, +) / Double(min(3, dailyStressData.count))
         let older = dailyStressData.prefix(3).map { $0.averageStress }.reduce(0, +) / Double(min(3, dailyStressData.count))
         return recent <= older
-    }
-
-    /// Percentage change of recent HRV vs older period (for the "vs Last Month" tile).
-    var hrvChangePercent: Double? {
-        guard hrvData.count >= 4 else { return nil }
-        let mid = hrvData.count / 2
-        let older = hrvData.prefix(mid).map { $0.value }.reduce(0, +) / Double(mid)
-        let recent = hrvData.suffix(hrvData.count - mid).map { $0.value }.reduce(0, +) / Double(hrvData.count - mid)
-        guard older > 0 else { return nil }
-        return ((recent - older) / older) * 100
     }
 
     /// Day name with the best (highest) HRV, for the "Best Day" tile.
@@ -141,19 +127,19 @@ class TrendsViewModel {
         }
     }
 
-    /// Personal HRV baseline used as the chart reference line. Defaults to 52 ms
-    /// when there is not enough data to compute a real average.
+    /// Personal HRV average used as the chart reference line. Zero only when
+    /// there are no HRV points, in which case the chart shows its empty state.
     var hrvAvg: Double {
-        let computed = averageHRV
-        return computed > 0 ? computed : 52
+        averageHRV
     }
 
-    /// Week-over-week HRV delta text for the chart summary. Returns nil when
-    /// there isn't enough data yet.
+    /// Week-over-week HRV delta text for the chart summary: average HRV over
+    /// the last 7 days vs the 7 days before. Nil without data in both windows.
     var hrvDeltaText: String? {
-        guard let pct = hrvChangePercent, pct != 0 else { return nil }
-        let sign = pct > 0 ? "+" : ""
-        return "\(sign)\(Int(pct)) vs last week"
+        guard let pct = hrvWeekComparison?.percentChange else { return nil }
+        let rounded = Int(pct.rounded())
+        guard rounded != 0 else { return nil }
+        return "\(rounded > 0 ? "+" : "")\(rounded)% vs prior 7 days"
     }
 
     /// Day counts per stress tier for the current week, used by DistributionBar.
@@ -171,13 +157,23 @@ class TrendsViewModel {
         return (r, m, mo, h)
     }
 
-    /// Distribution comment derived from the current week's dominant tier.
+    /// Label for the window `dailyStressData` and `distributionDays` cover.
+    var dailyWindowLabel: String {
+        let count = dailyStressData.count
+        return count == 1 ? "1 day" : "\(count) days"
+    }
+
+    /// Distribution comment derived from the dominant tier of the daily window.
+    /// States the tier only; no trend is checked here.
     var distributionComment: String? {
         guard dailyStressData.contains(where: { $0.averageStress > 0 }) else { return nil }
         let d = distributionDays
         let maxTier = max(d.relaxed, d.mild, d.moderate, d.high)
-        if d.mild == maxTier {
-            return "Most days landed in Mild — your baseline is shifting in the right direction."
+        let tiesAtTop = [d.relaxed, d.mild, d.moderate, d.high].filter { $0 == maxTier }.count > 1
+        if tiesAtTop {
+            return "Your days were split across stress tiers."
+        } else if d.mild == maxTier {
+            return "Most days landed in Mild."
         } else if d.relaxed == maxTier {
             return "Most days were Relaxed — great recovery this week."
         } else if d.moderate == maxTier {
@@ -196,34 +192,36 @@ class TrendsViewModel {
         return Int(avg.rounded())
     }
 
-    /// Editorial one-liner derived from the current week's data. Falls back to a
-    /// neutral prompt when there isn't enough data yet.
-    /// Format: "You're X% calmer. Hardest day was Day (NN), best was Day (NN)."
+    /// Days with at least one measurement, from the daily bar window.
+    private var daysWithData: [DailyStressData] {
+        dailyStressData.filter { $0.averageStress > 0 }
+    }
+
+    /// Editorial one-liner naming the hardest and best day of the daily window.
+    /// Falls back to a neutral prompt until two days have data.
     var editorialSummary: String {
-        guard let hardest = dailyStressData.max(by: { $0.averageStress < $1.averageStress }),
-              let best = dailyStressData.min(by: { $0.averageStress < $1.averageStress }),
-              !dailyStressData.isEmpty,
-              hardest.averageStress > 0 else {
+        let days = daysWithData
+        guard days.count >= 2,
+              let hardest = days.max(by: { $0.averageStress < $1.averageStress }),
+              let best = days.min(by: { $0.averageStress < $1.averageStress }) else {
             return "Track for a full week to unlock your trends story."
         }
-        // Calmer percentage = how much lower best is vs hardest
-        let calmerPct = Int(((hardest.averageStress - best.averageStress) / max(hardest.averageStress, 1)) * 100)
-        let calmerWord = calmerPct >= 0 ? "calmer" : "more stressed"
-        return "You're \(abs(calmerPct))% \(calmerWord). " +
-               "Hardest day was \(hardest.dayLabel) (\(Int(hardest.averageStress))), " +
+        return "Hardest day was \(hardest.dayLabel) (\(Int(hardest.averageStress))), " +
                "best was \(best.dayLabel) (\(Int(best.averageStress)))."
+    }
+
+    /// Percent change in average stress, last 7 days vs the 7 days before.
+    /// Positive = calmer. Nil without data in both windows.
+    var stressCalmerPercent: Int? {
+        guard let pct = stressWeekComparison?.percentChange else { return nil }
+        return Int((-pct).rounded())
     }
 
     /// Short delta label for the editorial header (e.g. "18% calmer").
     var editorialDelta: String? {
-        guard let hardest = dailyStressData.max(by: { $0.averageStress < $1.averageStress }),
-              let best = dailyStressData.min(by: { $0.averageStress < $1.averageStress }),
-              !dailyStressData.isEmpty,
-              hardest.averageStress > 0 else {
-            return nil
-        }
-        let calmerPct = Int(((hardest.averageStress - best.averageStress) / max(hardest.averageStress, 1)) * 100)
-        return "\(abs(calmerPct))% \(calmerPct >= 0 ? "calmer" : "more stressed")"
+        guard let calmer = stressCalmerPercent else { return nil }
+        if calmer == 0 { return "about the same" }
+        return "\(abs(calmer))% \(calmer > 0 ? "calmer" : "more stressed")"
     }
 
     private let repository: StressRepositoryProtocol
@@ -293,6 +291,11 @@ class TrendsViewModel {
 
             let measurements = try await repository.fetchMeasurements(from: startDate, to: now)
 
+            let comparisonStart = calendar.date(byAdding: .day, value: -14, to: now) ?? now
+            let comparisonWindow = try await repository.fetchMeasurements(from: comparisonStart, to: now)
+            stressWeekComparison = Self.weekComparison(measurements: comparisonWindow, now: now) { $0.stressLevel }
+            hrvWeekComparison = Self.weekComparison(measurements: comparisonWindow, now: now) { $0.hrv }
+
             hrvData = processChartData(measurements: measurements, groupBy: groupBy)
             averageHRV = calculateAverage(from: hrvData)
             hrvRange = calculateRange(from: hrvData)
@@ -309,19 +312,39 @@ class TrendsViewModel {
 
         } catch {
             hrvData = []
+            stressWeekComparison = nil
+            hrvWeekComparison = nil
         }
+    }
+
+    /// Averages `value` over the 7 days ending at `now` and the 7 days before
+    /// it. Nil when either window has no measurements.
+    static func weekComparison(
+        measurements: [StressMeasurement],
+        now: Date,
+        calendar: Calendar = .current,
+        value: (StressMeasurement) -> Double
+    ) -> WeekComparison? {
+        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now),
+              let twoWeeksAgo = calendar.date(byAdding: .day, value: -14, to: now) else { return nil }
+        let current = measurements.filter { $0.timestamp > weekAgo && $0.timestamp <= now }
+        let previous = measurements.filter { $0.timestamp > twoWeeksAgo && $0.timestamp <= weekAgo }
+        guard !current.isEmpty, !previous.isEmpty else { return nil }
+        return WeekComparison(
+            currentAverage: current.map(value).reduce(0, +) / Double(current.count),
+            previousAverage: previous.map(value).reduce(0, +) / Double(previous.count)
+        )
     }
 
     private func processChartData(measurements: [StressMeasurement], groupBy: Calendar.Component) -> [ChartDataPoint] {
         let calendar = Calendar.current
         let grouped = Dictionary(grouping: measurements) { measurement in
-            calendar.dateComponents([groupBy], from: measurement.timestamp)
+            calendar.dateInterval(of: groupBy, for: measurement.timestamp)?.start ?? measurement.timestamp
         }
 
-        return grouped.map { components, measurements in
+        return grouped.map { bucketStart, measurements in
             let avgHRV = measurements.map { $0.hrv }.reduce(0, +) / Double(measurements.count)
-            let date = components.date ?? Date()
-            return ChartDataPoint(date: date, value: avgHRV)
+            return ChartDataPoint(date: bucketStart, value: avgHRV)
         }.sorted { $0.date < $1.date }
     }
 
@@ -366,28 +389,16 @@ class TrendsViewModel {
             return "Continue tracking for 7 days to unlock weekly insights"
         }
 
-        let calendar = Calendar.current
-        let now = Date()
-        let thisWeekStart = calendar.date(from: calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)) ?? now
-        let lastWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: thisWeekStart) ?? thisWeekStart
-
-        let thisWeek = measurements.filter { $0.timestamp >= thisWeekStart }
-        let lastWeek = measurements.filter { $0.timestamp >= lastWeekStart && $0.timestamp < thisWeekStart }
-
-        guard !thisWeek.isEmpty, !lastWeek.isEmpty else {
+        guard let change = hrvWeekComparison?.percentChange else {
             return "Track for another week to see week-over-week changes"
         }
 
-        let thisWeekAvg = thisWeek.map { $0.hrv }.reduce(0, +) / Double(thisWeek.count)
-        let lastWeekAvg = lastWeek.map { $0.hrv }.reduce(0, +) / Double(lastWeek.count)
-        let change = ((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100
-
         if change > 10 {
-            return "Your HRV is \(Int(change))% higher this week - great recovery!"
+            return "Your HRV is \(Int(change))% higher than the 7 days before - great recovery!"
         } else if change < -10 {
-            return "Your HRV is \(Int(abs(change)))% lower this week - prioritize rest"
+            return "Your HRV is \(Int(abs(change)))% lower than the 7 days before - prioritize rest"
         } else {
-            return "Your HRV is stable compared to last week"
+            return "Your HRV is stable compared to the 7 days before"
         }
     }
 
@@ -481,6 +492,19 @@ class TrendsViewModel {
     }
 }
 
+/// Average of a metric over the last 7 days vs the 7 days before.
+struct WeekComparison: Equatable {
+    let currentAverage: Double
+    let previousAverage: Double
+
+    /// Percent change from the previous window to the current one; nil when
+    /// the previous average is not positive.
+    var percentChange: Double? {
+        guard previousAverage > 0 else { return nil }
+        return (currentAverage - previousAverage) / previousAverage * 100
+    }
+}
+
 struct ChartDataPoint: Identifiable, Equatable {
     let id = UUID()
     let date: Date
@@ -518,6 +542,17 @@ enum TrendsTimeRange: String, CaseIterable {
         case .twoWeeks: return "Last 14 days"
         case .month: return "Last 30 days"
         case .threeMonths: return "Last 3 months"
+        }
+    }
+
+    /// Compact window label for chart headers.
+    var periodLabel: String {
+        switch self {
+        case .day: return "24 hours"
+        case .week: return "7 days"
+        case .twoWeeks: return "14 days"
+        case .month: return "30 days"
+        case .threeMonths: return "3 months"
         }
     }
 

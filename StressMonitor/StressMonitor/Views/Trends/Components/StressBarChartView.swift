@@ -46,7 +46,7 @@ struct StressBarChartView: View {
     private var accessibilityTrendSummary: String {
         let values = daysWithData.map(\.averageStress)
         guard !values.isEmpty else { return "No data yet" }
-        return VoiceOverLabels.trendSummary(metric: "Daily stress", values: values, period: "7 days")
+        return VoiceOverLabels.trendSummary(metric: "Daily stress", values: values, period: dailyStress.count == 1 ? "1 day" : "\(dailyStress.count) days")
     }
 
     private var accessibilityPoints: [String] {

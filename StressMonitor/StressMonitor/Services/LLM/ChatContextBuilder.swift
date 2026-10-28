@@ -40,9 +40,12 @@ struct ChatContextBuilder {
             CURRENT USER DATA:
             - Stress level: \(Int(stress.level))/100 (\(categoryName(stress.category)))
             - HRV: \(String(format: "%.1f", stress.hrv))ms
-            - Heart rate: \(String(format: "%.0f", stress.heartRate)) bpm
             - Confidence: \(String(format: "%.0f", stress.confidence * 100))%
             """
+
+            if stress.heartRate > 0 {
+                prompt += "\n- Heart rate: \(String(format: "%.0f", stress.heartRate)) bpm"
+            }
 
             if let breakdown = stress.factorBreakdown {
                 prompt += "\n- Data completeness: \(String(format: "%.0f", breakdown.dataCompleteness * 100))%"

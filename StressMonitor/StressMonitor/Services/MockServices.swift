@@ -284,7 +284,6 @@ enum PreviewDataFactory {
         viewModel.historicalData = generateMockHistoricalData()
         viewModel.weeklyCurrentAvg = 38.5
         viewModel.weeklyPreviousAvg = 42.0
-        viewModel.heartRateTrend = .down
         viewModel.aiInsight = mockAIInsight()
         viewModel.dataQualityInfo = DataQualityInfo(
             activeFactors: ["hrv", "heartRate", "sleep", "activity"],

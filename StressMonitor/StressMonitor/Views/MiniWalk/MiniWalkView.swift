@@ -6,8 +6,7 @@ import SwiftUI
 /// - Header row (mode label + LIVE indicator)
 /// - Circular timer ring (WalkTimer) with walk icon, time, target
 /// - Target line (goal + percent)
-/// - Live stats tiles (steps / heart rate / distance)
-/// - Route card with mini map, location, pace
+/// - Stats tiles (steps / heart rate at start / estimated distance)
 /// - Pause / End Session buttons
 struct MiniWalkView: View {
     @Environment(\.dismiss) private var dismiss
@@ -68,10 +67,6 @@ struct MiniWalkView: View {
                 liveStats
                     .padding(.top, 20)
 
-                // Route card
-                routeCard
-                    .padding(.top, 12)
-
                 // Buttons
                 actionButtons
                     .padding(.top, 16)
@@ -102,7 +97,7 @@ struct MiniWalkView: View {
 
     private var walkHead: some View {
         HStack {
-            Text("Mini walk · Outdoor")
+            Text("Mini walk")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .tracking(0.8)
                 .textCase(.uppercase)
@@ -133,7 +128,7 @@ struct MiniWalkView: View {
 
     private var targetLine: some View {
         HStack {
-            Text("Goal · \(targetSteps) steps · \(targetTimeLabel)")
+            Text("Goal · \(viewModel.targetSteps) steps · \(targetTimeLabel)")
                 .font(.system(size: 13))
                 .foregroundStyle(fgSecondary)
             Spacer()
@@ -157,13 +152,13 @@ struct MiniWalkView: View {
             liveStatTile(
                 value: viewModel.bpmDisplay,
                 suffix: viewModel.hasBPM ? "bpm" : nil,
-                label: "HEART RATE",
+                label: "HR AT START",
                 color: hrColor
             )
             liveStatTile(
                 value: distanceLabel,
                 suffix: "mi",
-                label: "DISTANCE",
+                label: "EST. DIST.",
                 color: success
             )
         }
@@ -186,6 +181,8 @@ struct MiniWalkView: View {
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .tracking(0.4)
                 .foregroundStyle(muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
@@ -194,60 +191,6 @@ struct MiniWalkView: View {
                 .fill(surface.opacity(0.8))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(separator, lineWidth: 1))
         )
-    }
-
-    // MARK: - Route Card
-
-    private var routeCard: some View {
-        HStack(spacing: 12) {
-            // Mini map placeholder
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 165/255, green: 214/255, blue: 167/255).opacity(0.4),
-                                Color(red: 79/255, green: 195/255, blue: 247/255).opacity(0.3),
-                                Color(red: 241/255, green: 248/255, blue: 233/255)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 60, height: 60)
-
-                // Dashed route path
-                Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
-                    .font(.system(size: 24))
-                    .foregroundStyle(blossom)
-                    .opacity(0.4)
-            }
-            .frame(width: 60, height: 60)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Local Route")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(fg)
-                Text("Outdoor walk · live tracking")
-                    .font(.system(size: 11))
-                    .foregroundStyle(muted)
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(viewModel.paceDisplay ?? "—")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(blossom)
-                Text("pace")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .tracking(0.4)
-                    .foregroundStyle(muted)
-            }
-        }
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14).fill(surface))
-        .frame(maxWidth: 260)
     }
 
     // MARK: - Buttons
@@ -301,11 +244,7 @@ struct MiniWalkView: View {
         return "\(mins):00"
     }
 
-    private var targetSteps: Int {
-        // Roughly 100 steps per minute of walking
-        viewModel.durationSeconds / 60 * 100
-    }
-
+    /// Step-based estimate (~2.1 ft per step), not tracked distance.
     private var distanceLabel: String {
         guard viewModel.stepCount > 0 else { return "0.00" }
         let feet = Double(viewModel.stepCount) * 2.1

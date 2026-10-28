@@ -3,14 +3,17 @@ import SwiftUI
 /// HRV trend line chart matching `06-trends.html` section 5.
 ///
 /// Draws a Path-based line chart with:
-/// - A dashed reference line at the personal baseline (default 52 ms)
+/// - A dashed reference line at the personal average
 /// - An area fill gradient below the line
 /// - A glowing endpoint halo dot
 /// - A summary header showing the average + week-over-week delta
 struct HRVTrendChart: View {
     let dataPoints: [ChartDataPoint]
-    var referenceValue: Double = 52
+    var referenceValue: Double = 0
     var deltaText: String? = nil
+    /// Window the points span (e.g. "7 days"), shown in the header and used
+    /// for VoiceOver.
+    var periodLabel: String = "7 days"
 
     /// HRV accent color — see `Color.hrvTrendAccent`.
     private let hrvColor = Color.hrvTrendAccent
@@ -35,7 +38,9 @@ struct HRVTrendChart: View {
                 .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
         )
         .accessibilityChart(
-            description: "HRV trend chart. Average \(Int(referenceValue)) milliseconds. Reference line at \(Int(referenceValue)) milliseconds.",
+            description: dataPoints.isEmpty
+                ? "HRV trend chart. No data yet."
+                : "HRV trend chart. Average \(Int(referenceValue)) milliseconds. Reference line at \(Int(referenceValue)) milliseconds.",
             summary: accessibilityTrendSummary,
             points: accessibilityPoints
         )
@@ -54,7 +59,7 @@ struct HRVTrendChart: View {
         return VoiceOverLabels.trendSummary(
             metric: "HRV",
             values: dataPoints.map(\.value),
-            period: "7 days"
+            period: periodLabel
         )
     }
 
@@ -76,7 +81,7 @@ struct HRVTrendChart: View {
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(Color.Wellness.adaptivePrimaryText)
             Spacer()
-            Text("ms · 7 days")
+            Text("ms · \(periodLabel)")
                 .font(.system(size: 11, weight: .medium, design: .monospaced))
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
         }
@@ -124,7 +129,7 @@ struct HRVTrendChart: View {
 
             // Endpoint annotation (top-right)
             if let last = dataPoints.last {
-                Text("today · \(Int(last.value))ms")
+                Text("\(endpointDayLabel(for: last.date)) · \(Int(last.value))ms")
                     .font(.system(size: 10, weight: .medium, design: .monospaced))
                     .foregroundStyle(hrvColor)
                     .padding(.horizontal, 4)
@@ -132,6 +137,11 @@ struct HRVTrendChart: View {
                     .zIndex(2)
             }
         }
+    }
+
+    /// "today" only when the last point falls on today; otherwise its date.
+    private func endpointDayLabel(for date: Date) -> String {
+        Calendar.current.isDateInToday(date) ? "today" : Self.pointDateFormatter.string(from: date)
     }
 
     // MARK: - Chart Layers
@@ -267,7 +277,7 @@ private struct ChartLayout {
         ChartDataPoint(date: cal.date(byAdding: .day, value: -(6 - index), to: now) ?? now, value: value)
     }
     return VStack {
-        HRVTrendChart(dataPoints: points, referenceValue: 52, deltaText: "+8 vs last week")
+        HRVTrendChart(dataPoints: points, referenceValue: 52, deltaText: "+8% vs prior 7 days")
         Spacer()
     }
     .padding()

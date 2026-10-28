@@ -3,8 +3,11 @@ import Foundation
 /// Local rules engine for generating stress insights
 enum InsightGenerator {
 
-    /// Generate an insight from current stress and historical data
-    static func generate(from stress: StressResult, history: [StressMeasurement]) -> AIInsight? {
+    /// Generate an insight from current stress and historical data.
+    /// `baselineHRV` is the user's own HRV baseline; without it no HRV-versus-normal claim is made.
+    static func generate(from stress: StressResult, history unorderedHistory: [StressMeasurement], baselineHRV: Double? = nil) -> AIInsight? {
+        let history = unorderedHistory.sorted { $0.timestamp < $1.timestamp }
+
         // Check for high stress
         if stress.level > 75 {
             return AIInsight(
@@ -35,11 +38,11 @@ enum InsightGenerator {
             )
         }
 
-        // Check for excellent HRV
-        if stress.hrv > 60 {
+        // Check for HRV well above the user's own baseline
+        if let baselineHRV, baselineHRV > 0, stress.hrv > baselineHRV * hrvAboveBaselineRatio {
             return AIInsight(
                 title: "Excellent Recovery",
-                message: "Your HRV is great today, indicating good recovery. This is a good time for challenging activities.",
+                message: "Your HRV is well above your usual baseline today, indicating good recovery. This is a good time for challenging activities.",
                 actionTitle: nil,
                 trendData: extractTrendData(from: history)
             )
@@ -60,6 +63,8 @@ enum InsightGenerator {
     }
 
     // MARK: - Helpers
+
+    private static let hrvAboveBaselineRatio = 1.15
 
     /// Calculate trend direction from history (negative = improving, positive = worsening)
     private static func calculateTrend(from history: [StressMeasurement]) -> Double? {

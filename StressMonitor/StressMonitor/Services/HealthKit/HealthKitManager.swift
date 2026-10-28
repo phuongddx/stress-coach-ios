@@ -15,6 +15,8 @@ final class HealthKitManager: HealthKitServiceProtocol {
     let respiratoryRateType = HKQuantityType.quantityType(forIdentifier: .respiratoryRate)!
     let oxygenSaturationType = HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)!
     let restingHeartRateType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate)!
+    let dietaryWaterType = HKQuantityType.quantityType(forIdentifier: .dietaryWater)!
+    let timeInDaylightType = HKQuantityType.quantityType(forIdentifier: .timeInDaylight)!
 
     init(healthStore: HKHealthStore = .init()) {
         self.healthStore = healthStore
@@ -31,6 +33,8 @@ final class HealthKitManager: HealthKitServiceProtocol {
             hrvType, heartRateType, sleepType,
             stepCountType, activeEnergyType, appleStandTimeType,
             respiratoryRateType, oxygenSaturationType, restingHeartRateType,
+            dietaryWaterType, timeInDaylightType,
+            HKCharacteristicType(.dateOfBirth),
             HKObjectType.workoutType()
         ]
         try await healthStore.requestAuthorization(toShare: [] as Set<HKSampleType>, read: readTypes)

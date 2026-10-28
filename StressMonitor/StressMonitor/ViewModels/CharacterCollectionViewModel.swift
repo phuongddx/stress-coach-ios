@@ -21,6 +21,7 @@ final class CharacterCollectionViewModel {
     func configure(modelContext: ModelContext) {
         self.modelContext = modelContext
         seedDefaultUnlocksIfNeeded(in: modelContext)
+        Self.syncProgress(in: modelContext)
         fetchUnlocks()
         fetchLatestStressLevel()
     }
@@ -76,6 +77,64 @@ final class CharacterCollectionViewModel {
         }
 
         try? context.save()
+    }
+
+    /// Writes the real measurement streak onto every `CharacterUnlock`, then applies
+    /// the unlock and evolution rules against it. Unlocks and evolutions are
+    /// permanent: a later streak break never reverts them.
+    @MainActor
+    static func syncProgress(in context: ModelContext, now: Date = Date(), calendar: Calendar = .current) {
+        guard let unlocks = try? context.fetch(FetchDescriptor<CharacterUnlock>()) else { return }
+
+        let streak = currentMeasurementStreak(in: context, now: now, calendar: calendar)
+        var activeEvolved: CharacterUnlock?
+
+        for unlock in unlocks {
+            unlock.streakDays = streak
+
+            if !unlock.isUnlocked,
+               let creature = CharacterCreature.find(by: unlock.characterId),
+               creature.unlockType == .streakGated,
+               streak >= creature.streakRequired {
+                unlock.isUnlocked = true
+                unlock.unlockedAt = now
+            }
+
+            if unlock.isUnlocked, unlock.canEvolve,
+               let next = EvolutionStage.allCases.first(where: { $0.sortOrder == unlock.evolutionStage.sortOrder + 1 }) {
+                unlock.evolutionStage = next
+                unlock.lastEvolvedAt = now
+                if unlock.isActive { activeEvolved = unlock }
+            }
+        }
+
+        try? context.save()
+
+        if let activeEvolved {
+            CharacterSelectionSync.shared.saveActiveCharacter(
+                characterId: activeEvolved.characterId,
+                evolution: activeEvolved.evolutionStage
+            )
+        }
+    }
+
+    /// Counts a completed breathing session toward the active character's evolution.
+    @MainActor
+    static func recordBreathingSession(in context: ModelContext, now: Date = Date()) {
+        let descriptor = FetchDescriptor<CharacterUnlock>(predicate: #Predicate { $0.isActive })
+        guard let active = (try? context.fetch(descriptor))?.first else { return }
+        active.sessionsCompleted += 1
+        try? context.save()
+        syncProgress(in: context, now: now)
+    }
+
+    private static func currentMeasurementStreak(in context: ModelContext, now: Date, calendar: Calendar) -> Int {
+        guard let start = calendar.date(byAdding: .day, value: -MeasurementStreak.lookbackDays, to: calendar.startOfDay(for: now)) else {
+            return 0
+        }
+        let descriptor = FetchDescriptor<StressMeasurement>(predicate: #Predicate { $0.timestamp >= start })
+        let measurements = (try? context.fetch(descriptor)) ?? []
+        return MeasurementStreak.days(from: measurements.map(\.timestamp), calendar: calendar, now: now)
     }
 
     /// Reconciles premium-character unlocks with live subscription status.

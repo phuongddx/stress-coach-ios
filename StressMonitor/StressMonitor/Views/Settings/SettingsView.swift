@@ -94,7 +94,11 @@ struct SettingsView: View {
             SafariView(url: url).ignoresSafeArea()
         }
         .sheet(isPresented: $showChatSheet) {
-            ChatBottomSheetView(stressResult: nil, baseline: nil)
+            ChatBottomSheetView(
+                stressResult: viewModel.chatStressResult,
+                baseline: viewModel.chatBaseline,
+                recentHistory: viewModel.chatHistory
+            )
         }
         // Explanation + grant sheet for the first "Health Data Sync" enable.
         // Allow performs the PUT inside the sheet; Not Now reverts the
@@ -170,7 +174,7 @@ struct SettingsView: View {
         CompanionBanner(
             companionName: activeCreature.displayName,
             companionSubtitle: activeCreature.element.rawValue.capitalized,
-            mood: RippleMood.from(stressLevel: viewModel.latestStressLevel),
+            mood: RippleMood.from(stressLevel: viewModel.latestStressLevel ?? 0),
             onSwitch: { router.settingsPath.append(Route.characters) }
         )
     }
@@ -814,6 +818,7 @@ struct SettingsView: View {
             HKCategoryType(.sleepAnalysis),
             HKQuantityType.quantityType(forIdentifier: .stepCount)!,
             HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!,
+            HKCharacteristicType(.dateOfBirth),
         ]
 
         store.requestAuthorization(toShare: [], read: types) { _, _ in

@@ -23,12 +23,6 @@ struct RecommendationCard: View {
             }
 
             Spacer()
-
-            if recommendation.action != .none {
-                Image(systemName: AppIconSystem.Nav.forward.sfSymbol)
-                    .font(Typography.caption1)
-                    .foregroundColor(.secondary)
-            }
         }
         .padding(12)
         .background(Color.secondary.opacity(0.05))

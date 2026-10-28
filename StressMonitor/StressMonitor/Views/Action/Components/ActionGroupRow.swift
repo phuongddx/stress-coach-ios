@@ -101,14 +101,6 @@ struct ActionRowDivider: View {
                             tint: HomeCharacterDesignTokens.Ripple.primary,
                             route: .boxBreathing
                         )
-                        ActionRowDivider()
-                        ActionGroupRow(
-                            icon: "brain.head.profile",
-                            title: "Body Scan",
-                            subtitle: "90s · somatic reset",
-                            tint: HomeCharacterDesignTokens.Zephyr.accent,
-                            route: .boxBreathing
-                        )
                     }
                 }
                 ActionGroupCard {
@@ -116,17 +108,9 @@ struct ActionRowDivider: View {
                         ActionGroupRow(
                             icon: "figure.walk",
                             title: "Mini Walk",
-                            subtitle: "5 min reset",
+                            subtitle: "10 min · target 1,000 steps",
                             tint: Color(hex: "#34C759"),
                             route: .miniWalk
-                        )
-                        ActionRowDivider()
-                        ActionGroupRow(
-                            icon: "drop.fill",
-                            title: "Cold Splash",
-                            subtitle: "30s vagus nerve reset",
-                            tint: HomeCharacterDesignTokens.Ember.accent,
-                            route: .boxBreathing
                         )
                     }
                 }

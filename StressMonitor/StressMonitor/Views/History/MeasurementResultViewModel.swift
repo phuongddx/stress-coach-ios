@@ -39,12 +39,12 @@ final class MeasurementResultViewModel {
             ResultFactorRow(
                 factor: .hrv,
                 value: breakdown.hrvComponent,
-                detailText: "\(Int(result.hrv.rounded())) ms"
+                detailText: result.hrv > 0 ? "\(Int(result.hrv.rounded())) ms" : "—"
             ),
             ResultFactorRow(
                 factor: .heartRate,
                 value: breakdown.hrComponent,
-                detailText: "\(Int(result.heartRate.rounded())) bpm"
+                detailText: result.heartRate > 0 ? "\(Int(result.heartRate.rounded())) bpm" : "—"
             ),
             ResultFactorRow(factor: .sleep, value: breakdown.sleepComponent),
             ResultFactorRow(factor: .activity, value: breakdown.activityComponent),

@@ -5,11 +5,6 @@ import Foundation
 final class OnboardingSuccessViewModel {
     var personalBaseline: PersonalBaseline?
 
-    // Preview metrics for onboarding dashboard preview
-    let previewStressScore = 28
-    let previewHRV = 62
-    let previewHeartRate = 68
-
     private let repository: StressRepositoryProtocol
 
     init(repository: StressRepositoryProtocol) {

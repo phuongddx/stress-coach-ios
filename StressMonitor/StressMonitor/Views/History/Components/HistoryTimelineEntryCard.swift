@@ -17,7 +17,7 @@ struct HistoryTimelineEntryCard: View {
             parts.append("HRV \(Int(measurement.hrv.rounded())) ms")
         }
         if measurement.restingHeartRate > 0 {
-            parts.append("RHR \(Int(measurement.restingHeartRate.rounded())) bpm")
+            parts.append("HR \(Int(measurement.restingHeartRate.rounded())) bpm")
         }
         return parts.isEmpty ? "—" : parts.joined(separator: " · ")
     }

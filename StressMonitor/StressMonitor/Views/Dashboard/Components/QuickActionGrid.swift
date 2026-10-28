@@ -103,7 +103,7 @@ extension QuickActionTile {
             accent: .breathing,
             symbol: "wind",
             title: "Box Breathing",
-            meta: "3 MIN · CALM FOCUS",
+            meta: "2 MIN · CALM FOCUS",
             route: .boxBreathing
         )
     }
@@ -113,7 +113,7 @@ extension QuickActionTile {
             accent: .walk,
             symbol: "figure.walk",
             title: "Mini Walk",
-            meta: "3 MIN · RESET",
+            meta: "10 MIN · RESET",
             route: .miniWalk
         )
     }
