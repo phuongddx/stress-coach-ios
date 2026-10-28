@@ -8,18 +8,23 @@ import SwiftData
 //   2. Ripple recommendation hero
 //   3. Breathe group → BreathingExerciseView
 //   4. Move group → MiniWalkView
-//   5. Reflect group → NoteEntryView (Journal) + Chat sheet
+//   5. Reflect group → Chat sheet
 //   6. Today's habits — 3× HabitLogRow (Hydration / Sunlight AUTO, Caffeine LOG)
 
 struct ActionView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var habitViewModel: HabitViewModel?
     @State private var isChatPresented = false
-    @State private var isJournalPresented = false
 
-    /// Live stress level passed in from the Home tab. Defaults to nil
-    /// (no data) — the recommendation card handles that case gracefully.
-    var stressLevel: Double? = nil
+    /// Latest real reading from the shared Home-tab view model. Defaults to
+    /// nil (no data) — the header, recommendation card, and chat context all
+    /// handle that case.
+    var stressResult: StressResult? = nil
+    var baseline: PersonalBaseline? = nil
+
+    private var stressLevel: Double? {
+        stressResult?.level
+    }
 
     /// True only when Chat is reachable in this build. Compile-time under
     /// `#if DEBUG`, so the Release build elides the enabled branch entirely.
@@ -57,10 +62,7 @@ struct ActionView: View {
         .navigationTitle("Action")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isChatPresented) {
-            ChatBottomSheetView(stressResult: nil, baseline: nil)
-        }
-        .sheet(isPresented: $isJournalPresented) {
-            NoteEntryView(isPresented: $isJournalPresented)
+            ChatBottomSheetView(stressResult: stressResult, baseline: baseline)
         }
         .onAppear {
             if habitViewModel == nil {
@@ -114,25 +116,15 @@ struct ActionView: View {
 
     private var breatheGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            groupLabel("Breathe", hint: "90s — 2 min")
+            groupLabel("Breathe", hint: "2 min")
             ActionGroupCard {
-                VStack(spacing: 0) {
-                    ActionGroupRow(
-                        icon: "wind",
-                        title: "Box Breathing",
-                        subtitle: "4-4-4-4 · 2 min · ~14% HRV lift",
-                        tint: HomeCharacterDesignTokens.Ripple.primary,
-                        route: .boxBreathing
-                    )
-                    ActionRowDivider()
-                    ActionGroupRow(
-                        icon: "brain.head.profile",
-                        title: "Body Scan",
-                        subtitle: "90s · somatic reset · head to feet",
-                        tint: HomeCharacterDesignTokens.Zephyr.accent,
-                        route: .boxBreathing
-                    )
-                }
+                ActionGroupRow(
+                    icon: "wind",
+                    title: "Box Breathing",
+                    subtitle: "4-4-4-4 · 2 min",
+                    tint: HomeCharacterDesignTokens.Ripple.primary,
+                    route: .boxBreathing
+                )
             }
         }
     }
@@ -140,26 +132,19 @@ struct ActionView: View {
     // MARK: - 4. Move Group
 
     private var moveGroup: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            groupLabel("Move", hint: "30s — 5 min")
+        let seconds = MiniWalkViewModel.defaultDurationSeconds
+        let minutes = seconds / 60
+        let targetSteps = MiniWalkViewModel.targetSteps(forDurationSeconds: seconds)
+        return VStack(alignment: .leading, spacing: 8) {
+            groupLabel("Move", hint: "\(minutes) min")
             ActionGroupCard {
-                VStack(spacing: 0) {
-                    ActionGroupRow(
-                        icon: "figure.walk",
-                        title: "Mini Walk",
-                        subtitle: "5 min · target 600 steps",
-                        tint: Color(hex: "#34C759"),
-                        route: .miniWalk
-                    )
-                    ActionRowDivider()
-                    ActionGroupRow(
-                        icon: "drop.fill",
-                        title: "Cold Splash",
-                        subtitle: "30s · vagus nerve reset",
-                        tint: HomeCharacterDesignTokens.Ember.accent,
-                        route: .boxBreathing
-                    )
-                }
+                ActionGroupRow(
+                    icon: "figure.walk",
+                    title: "Mini Walk",
+                    subtitle: "\(minutes) min · target \(targetSteps.formatted()) steps",
+                    tint: Color(hex: "#34C759"),
+                    route: .miniWalk
+                )
             }
         }
     }
@@ -168,27 +153,14 @@ struct ActionView: View {
 
     private var reflectGroup: some View {
         VStack(alignment: .leading, spacing: 8) {
-            groupLabel("Reflect", hint: "2 — 5 min")
+            groupLabel("Reflect")
             ActionGroupCard {
                 VStack(spacing: 0) {
-                    // NoteEntryView is sheet-presented (its own NavigationStack +
-                    // dismiss binding), so we open it as a sheet rather than push.
-                    reflectRow(
-                        icon: "face.smiling",
-                        title: "Gratitude",
-                        subtitle: "3-line journal · what went well today",
-                        tint: Color(hex: "#FE9901"),
-                        action: {
-                            HapticManager.shared.buttonPress()
-                            isJournalPresented = true
-                        }
-                    )
-                    ActionRowDivider()
                     reflectRow(
                         icon: "bubble.left",
                         title: "Talk to Ripple",
                         subtitle: isChatAvailable
-                            ? "Process today's stressor · 5 min"
+                            ? "Process today's stressor"
                             : "Process today's stressor · coming soon",
                         tint: HomeCharacterDesignTokens.Ripple.primary,
                         action: {
@@ -289,7 +261,7 @@ struct ActionView: View {
 
 #Preview {
     NavigationStack {
-        ActionView(stressLevel: 62)
+        ActionView(stressResult: StressResult(level: 62, category: .moderate, confidence: 0.9, hrv: 38, heartRate: 78))
             .stressNavigationDestinations()
     }
 }

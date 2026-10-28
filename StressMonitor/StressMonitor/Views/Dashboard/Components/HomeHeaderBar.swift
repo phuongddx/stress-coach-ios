@@ -77,11 +77,11 @@ struct HomeHeaderBar: View {
     private func streakChip(days: Int) -> some View {
         HeaderChip(
             symbol: AppIconSystem.Metric.streak.sfSymbol,
-            numberText: "\(max(1, days))",
+            numberText: "\(days)",
             suffix: "D",
             accent: Color.stressRelaxed
         )
-        .accessibilityLabel("\(max(1, days)) day streak")
+        .accessibilityLabel("\(days) day streak")
     }
 
     private var bioAccessibility: String {
@@ -89,7 +89,7 @@ struct HomeHeaderBar: View {
     }
 
     private var streakAccessibility: String {
-        "\(max(1, streakDays)) day streak."
+        "\(streakDays) day streak."
     }
 }
 

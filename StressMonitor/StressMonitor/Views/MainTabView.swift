@@ -5,7 +5,9 @@ struct MainTabView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
     @Environment(PaywallController.self) private var paywall
-    @State private var stressRepository: StressRepository?
+    /// Single source of the latest reading: the Home dashboard drives it and the
+    /// Action tab reads it, so both show the same real result.
+    @State private var stressViewModel: StressViewModel?
     // Health-sync consent prompt state. The service is the signal source:
     // a 403 CONSENT_REQUIRED during the foreground upload flips
     // `needsConsent`, and the explanation sheet presents from here — above
@@ -43,7 +45,10 @@ struct MainTabView: View {
 
             Tab(value: TabItem.action) {
                 NavigationStack(path: router.binding(for: .action)) {
-                    ActionView()
+                    ActionView(
+                        stressResult: stressViewModel?.currentStress,
+                        baseline: stressViewModel?.baseline
+                    )
                         .stressNavigationDestinations()
                 }
             } label: {
@@ -89,10 +94,15 @@ struct MainTabView: View {
             // may have flipped `needsConsent` before this view existed
             // (e.g. while onboarding was still up).
             showConsentSheet = healthSync.needsConsent
-            if stressRepository == nil {
-                stressRepository = StressRepository(modelContext: modelContext)
+            if stressViewModel == nil {
+                stressViewModel = makeStressViewModel(repository: StressRepository(modelContext: modelContext))
             }
             restoreNavigationIfNeeded()
+            // The dashboard loads the shared reading when Home appears; a launch
+            // restored onto another tab would otherwise leave Action without one.
+            if router.selectedTab != .home, let viewModel = stressViewModel, viewModel.currentStress == nil {
+                Task { await viewModel.loadCurrentStress() }
+            }
         }
         // Persist on push/pop (counts change). NavigationPath isn't Equatable,
         // but every push/pop changes `.count`, so counts are a sufficient trigger.
@@ -129,24 +139,27 @@ struct MainTabView: View {
 
     @ViewBuilder
     private var homeView: some View {
-        if let repo = stressRepository {
-            #if DEBUG
-            if DemoMode.isEnabled {
-                DashboardView(
-                    viewModel: StressViewModel(
-                        healthKit: SimulatorHealthKitService(),
-                        algorithm: MultiFactorStressCalculator(),
-                        repository: repo
-                    )
-                )
-            } else {
-                DashboardView(repository: repo)
-            }
-            #else
-            DashboardView(repository: repo)
-            #endif
+        if let viewModel = stressViewModel {
+            DashboardView(viewModel: viewModel)
         }
-        // Empty until onAppear fills stressRepository (avoids throwaway repo on first body eval)
+        // Empty until onAppear fills stressViewModel (avoids a throwaway repository on first body eval)
+    }
+
+    private func makeStressViewModel(repository: StressRepository) -> StressViewModel {
+        #if DEBUG
+        if DemoMode.isEnabled {
+            return StressViewModel(
+                healthKit: SimulatorHealthKitService(),
+                algorithm: MultiFactorStressCalculator(),
+                repository: repository
+            )
+        }
+        #endif
+        return StressViewModel(
+            healthKit: HealthKitManager(),
+            algorithm: MultiFactorStressCalculator(),
+            repository: repository
+        )
     }
 
     /// SF Symbol for a tab, switching to the filled variant when selected.

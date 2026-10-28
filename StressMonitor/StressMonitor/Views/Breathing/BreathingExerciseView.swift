@@ -12,7 +12,7 @@ struct BreathingExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppRouter.self) private var router
 
-    @State private var currentHRV: Double = 0
+    @State private var currentHRV: Double?
     @State private var hrvTimestamp: Date?
 
     // Design tokens from app.css
@@ -75,7 +75,7 @@ struct BreathingExerciseView: View {
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .tracking(-0.02 * 32)
                     .foregroundStyle(fg)
-                Text("Navy SEAL pattern. Lowers stress, sharpens focus. Used by Alex's HRV to recover +14ms on average.")
+                Text("Navy SEAL pattern. Lowers stress, sharpens focus.")
                     .font(.system(size: 15))
                     .foregroundStyle(fgSecondary)
                     .multilineTextAlignment(.center)
@@ -176,7 +176,7 @@ struct BreathingExerciseView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(Int(currentHRV)) ms")
+                Text(currentHRV.map { "\(Int($0)) ms" } ?? "— ms")
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(fg)
                 Text("Current HRV · \(hrvTimeLabel)")
@@ -185,11 +185,6 @@ struct BreathingExerciseView: View {
             }
 
             Spacer()
-
-            Text("+14 ms\npredicted")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(success)
-                .multilineTextAlignment(.trailing)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -199,28 +194,31 @@ struct BreathingExerciseView: View {
     }
 
     private var hrvTimeLabel: String {
+        guard let hrvTimestamp else { return "no recent reading" }
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
-        return formatter.string(from: hrvTimestamp ?? Date())
+        return formatter.string(from: hrvTimestamp)
     }
 
     // MARK: - Session Config
 
     private var sessionConfig: some View {
         VStack(spacing: 0) {
-            configRow(label: "Duration", value: "2 min · 8 cycles")
-            divider
-            configRow(label: "Audio guide", value: "Soft tones")
+            configRow(label: "Duration", value: durationLabel)
             divider
             configRow(label: "Haptic feedback", value: "On")
-            divider
-            configRow(label: "Background sound", value: "Rain")
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(
             RoundedRectangle(cornerRadius: 18).fill(surface)
         )
+    }
+
+    private var durationLabel: String {
+        let duration = BreathingSessionViewModel.defaultSessionDuration
+        let cycles = BreathingSessionViewModel.cycleCount(forDuration: duration)
+        return "\(Int(duration) / 60) min · \(cycles) cycles"
     }
 
     private func configRow(label: String, value: String) -> some View {
@@ -286,9 +284,6 @@ struct BreathingExerciseView: View {
         if let hrv = try? await manager.fetchLatestHRV() {
             currentHRV = hrv.value
             hrvTimestamp = hrv.timestamp
-        } else {
-            currentHRV = 52
-            hrvTimestamp = Date()
         }
     }
 }

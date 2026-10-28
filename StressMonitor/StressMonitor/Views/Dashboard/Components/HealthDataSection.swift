@@ -20,7 +20,7 @@ struct HealthDataSection: View {
 
     init(
         exerciseMinutes: Int? = nil,
-        exerciseDelta: String? = "yesterday",
+        exerciseDelta: String? = nil,
         sleepHours: Double? = nil,
         sleepDelta: String? = nil,
         daylightMinutes: Int? = nil,
@@ -38,23 +38,23 @@ struct HealthDataSection: View {
         HStack(alignment: .top, spacing: 12) {
             item(
                 symbol: "figure.run",
-                value: exerciseMinutes.map { "\($0)" } ?? "--",
+                value: exerciseMinutes.map { "\($0)" } ?? "—",
                 unit: "min",
-                label: "Exercise",
+                label: "Last workout",
                 delta: exerciseDelta,
                 deltaGood: false
             )
             item(
                 symbol: "moon.stars",
-                value: sleepHours.map { sleepText($0) } ?? "--",
-                unit: sleepHours == nil ? "" : "h",
+                value: sleepHours.map { sleepParts($0).value } ?? "—",
+                unit: sleepHours.map { sleepParts($0).unit } ?? "",
                 label: "Sleep",
                 delta: sleepDelta,
                 deltaGood: sleepDelta != nil
             )
             item(
                 symbol: "sun.max",
-                value: daylightMinutes.map { "\($0)" } ?? "--",
+                value: daylightMinutes.map { "\($0)" } ?? "—",
                 unit: "min",
                 label: "Daylight",
                 delta: daylightDelta,
@@ -65,7 +65,7 @@ struct HealthDataSection: View {
         .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Health behaviors. Exercise \(exerciseMinutes.map { "\($0) minutes" } ?? "unknown"). Sleep \(sleepHours.map { sleepText($0) + " hours" } ?? "unknown"). Daylight \(daylightMinutes.map { "\($0) minutes" } ?? "unknown").")
+        .accessibilityLabel("Health behaviors. Last workout \(exerciseMinutes.map { "\($0) minutes" } ?? "unknown"). Sleep \(sleepHours.map { sleepSpoken($0) } ?? "unknown"). Daylight \(daylightMinutes.map { "\($0) minutes" } ?? "unknown").")
     }
 
     private func item(
@@ -108,12 +108,18 @@ struct HealthDataSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Sleep renders as "6h 50" (hours + remaining minutes) per the spec.
-    private func sleepText(_ hours: Double) -> String {
-        let total = Int(hours.rounded(.toNearestOrEven) * 60)
+    /// Sleep renders as "6h 50" + "m" (hours + remaining minutes) per the spec,
+    /// or "7" + "h" when the minutes are zero.
+    private func sleepParts(_ hours: Double) -> (value: String, unit: String) {
+        let total = Int((hours * 60).rounded())
         let h = total / 60
-        let m = abs(total) % 60
-        return m == 0 ? "\(h)h" : "\(h)h \(m)"
+        let m = total % 60
+        return m == 0 ? ("\(h)", "h") : ("\(h)h \(m)", "m")
+    }
+
+    private func sleepSpoken(_ hours: Double) -> String {
+        let total = Int((hours * 60).rounded())
+        return "\(total / 60) hours \(total % 60) minutes"
     }
 }
 

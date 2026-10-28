@@ -1,21 +1,34 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 @Observable
-class SettingsViewModel {
+final class SettingsViewModel {
     var userProfile: UserProfile
     var notificationSettings: NotificationSettings
     var exportSettings: ExportSettings
     var isDeletingAllData = false
-    var latestStressLevel: Double = 35
+    var latestStressLevel: Double?
     var bioAge: Int? = nil
     var streakDays: Int = 0
+    private(set) var chatStressResult: StressResult?
+    private(set) var chatBaseline: PersonalBaseline?
+    /// Oldest first, as `ChatContextBuilder` expects for trend analysis.
+    private(set) var chatHistory: [StressMeasurement] = []
 
     private let repository: StressRepositoryProtocol
+    private let healthKit: HealthKitServiceProtocol
     private let bioAgeCalculator = BioAgeCalculator()
 
-    init(modelContext: ModelContext, baselineCalculator: BaselineCalculator? = nil) {
+    private static let chatContextFreshness: TimeInterval = 24 * 60 * 60
+
+    init(
+        modelContext: ModelContext,
+        baselineCalculator: BaselineCalculator? = nil,
+        healthKit: HealthKitServiceProtocol? = nil
+    ) {
         self.repository = StressRepository(modelContext: modelContext, baselineCalculator: baselineCalculator)
+        self.healthKit = healthKit ?? HealthKitManager()
         self.userProfile = UserProfile(name: UserDefaults.standard.string(forKey: "profile.name") ?? "",
                                         age: nil,
                                         restingHeartRate: 60,
@@ -25,7 +38,8 @@ class SettingsViewModel {
     }
 
     func loadUserProfile() async {
-        if let baseline = try? await repository.getBaseline() {
+        let baseline = try? await repository.getBaseline()
+        if let baseline {
             userProfile = UserProfile(
                 name: userProfile.name,
                 age: userProfile.age,
@@ -34,13 +48,21 @@ class SettingsViewModel {
             )
         }
 
-        let recent = (try? await repository.fetchRecent(limit: 30)) ?? []
-        if let latestMeasurement = recent.first {
-            latestStressLevel = latestMeasurement.stressLevel
-        }
+        let calendar = Calendar.current
+        let now = Date()
+        let lookbackStart = calendar.date(byAdding: .day, value: -MeasurementStreak.lookbackDays, to: now) ?? now
+        // Newest first.
+        let measurements = (try? await repository.fetchMeasurements(from: lookbackStart, to: now)) ?? []
 
-        streakDays = Self.computeStreak(from: recent)
-        bioAge = computeBioAge(recent: recent)
+        latestStressLevel = measurements.first?.stressLevel
+        streakDays = MeasurementStreak.days(from: measurements.map(\.timestamp))
+
+        let windowStart = calendar.date(byAdding: .day, value: -BioAgeCalculator.minimumDataDays, to: now) ?? now
+        let window = measurements.filter { $0.timestamp >= windowStart }
+        userProfile.age = healthKit.chronologicalAge()
+        bioAge = computeBioAge(window: window)
+
+        updateChatContext(measurements: measurements, window: window, baseline: baseline, now: now)
 
         notificationSettings.persist()
     }
@@ -72,30 +94,38 @@ class SettingsViewModel {
         try await repository.deleteAllMeasurements()
     }
 
-    private func computeBioAge(recent: [StressMeasurement]) -> Int? {
-        let chronological = userProfile.age ?? 35
-        let avgHRV = recent.isEmpty ? nil : recent.map(\.hrv).reduce(0, +) / Double(recent.count)
-        let rhr = userProfile.restingHeartRate > 0 ? userProfile.restingHeartRate : nil
-        guard let result = bioAgeCalculator.calculate(
-            chronologicalAge: chronological,
-            hrv: avgHRV,
-            restingHeartRate: rhr,
+    private func computeBioAge(window: [StressMeasurement]) -> Int? {
+        guard let chronologicalAge = userProfile.age,
+              bioAgeCalculator.hasEnoughData(measurements: window) else { return nil }
+        return bioAgeCalculator.calculate(
+            chronologicalAge: chronologicalAge,
+            hrv: Self.average(of: window.map(\.hrv)),
+            restingHeartRate: Self.average(of: window.map(\.restingHeartRate)),
             sleepEfficiency: nil
-        ) else { return nil }
-        return result.estimatedAge
+        )?.estimatedAge
     }
 
-    private static func computeStreak(from measurements: [StressMeasurement]) -> Int {
-        guard !measurements.isEmpty else { return 0 }
-        let calendar = Calendar.current
-        let grouped = Dictionary(grouping: measurements) { calendar.startOfDay(for: $0.timestamp) }
-        var streak = 0
-        var cursor = calendar.startOfDay(for: Date())
-        while grouped[cursor] != nil {
-            streak += 1
-            cursor = calendar.date(byAdding: .day, value: -1, to: cursor) ?? cursor
+    /// Only a recent reading is offered as "current" chat context, and the
+    /// baseline only once real readings exist (an empty store yields defaults).
+    private func updateChatContext(
+        measurements: [StressMeasurement],
+        window: [StressMeasurement],
+        baseline: PersonalBaseline?,
+        now: Date
+    ) {
+        if let latest = measurements.first, now.timeIntervalSince(latest.timestamp) <= Self.chatContextFreshness {
+            chatStressResult = latest.stressResult
+        } else {
+            chatStressResult = nil
         }
-        return streak
+        chatBaseline = measurements.isEmpty ? nil : baseline
+        chatHistory = Array(window.reversed())
+    }
+
+    private static func average(of values: [Double]) -> Double? {
+        let present = values.filter { $0 > 0 }
+        guard !present.isEmpty else { return nil }
+        return present.reduce(0, +) / Double(present.count)
     }
 }
 

@@ -22,7 +22,7 @@ final class CharacterUnlock {
     var streakDays: Int = 0
     /// Breathing/mindfulness sessions completed toward evolution
     var sessionsCompleted: Int = 0
-    /// Resilience score at last check
+    /// No tracker writes this; kept only so existing stores keep their schema.
     var resilienceScore: Double = 0
 
     init(
@@ -65,10 +65,8 @@ final class CharacterUnlock {
             // Need 30-day streak
             return min(Double(streakDays) / 30.0, 1.0)
         case .ripple:
-            // Need 90-day streak + resilience 80+
-            let streakProgress = min(Double(streakDays) / 90.0, 1.0)
-            let resilienceProgress = min(resilienceScore / 80.0, 1.0)
-            return min((streakProgress + resilienceProgress) / 2.0, 1.0)
+            // Need 90-day streak
+            return min(Double(streakDays) / 90.0, 1.0)
         case .tidal:
             return 1.0 // Max evolution
         }
@@ -83,7 +81,7 @@ final class CharacterUnlock {
         case .ripple:
             return streakDays >= 30 && sessionsCompleted >= 5
         case .tidal:
-            return streakDays >= 90 && resilienceScore >= 80
+            return streakDays >= 90
         }
     }
 }

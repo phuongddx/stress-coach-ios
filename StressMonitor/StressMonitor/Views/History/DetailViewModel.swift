@@ -8,8 +8,6 @@ class DetailViewModel {
     var todayAverage: Double?
     var weeklyAverage: Double?
     var trend: TrendDirection?
-    var percentile: Double?
-    var contributingFactors: [ContributingFactor] = []
     var recommendations: [Recommendation] = []
 
     private let repository: StressRepositoryProtocol
@@ -30,9 +28,6 @@ class DetailViewModel {
             weeklyAverage = try await week
 
             trend = calculateTrend()
-            percentile = calculatePercentile()
-
-            contributingFactors = generateContributingFactors()
             recommendations = generateRecommendations()
         } catch {}
     }
@@ -42,13 +37,16 @@ class DetailViewModel {
     }
 
     func shareMeasurement() {
-        let text = """
-        Stress Measurement - \(formatDate(measurement.timestamp))
-
-        Stress Level: \(Int(measurement.stressLevel))/100
-        HRV: \(Int(measurement.hrv)) ms
-        Category: \(categoryTitle(category))
-        """
+        var lines = [
+            "Stress Measurement - \(formatDate(measurement.timestamp))",
+            "",
+            "Stress Level: \(Int(measurement.stressLevel))/100"
+        ]
+        if measurement.hrv > 0 {
+            lines.append("HRV: \(Int(measurement.hrv)) ms")
+        }
+        lines.append("Category: \(categoryTitle(category))")
+        let text = lines.joined(separator: "\n")
 
         let activityVC = UIActivityViewController(
             activityItems: [text],
@@ -67,51 +65,6 @@ class DetailViewModel {
         if diff > 5 { return .up }
         if diff < -5 { return .down }
         return .stable
-    }
-
-    private func calculatePercentile() -> Double {
-        guard let baseline = baseline else { return 50 }
-        let lowerBound = baseline.baselineHRV - 10
-        let upperBound = baseline.baselineHRV + 10
-        let normalized = (measurement.hrv - lowerBound) / (upperBound - lowerBound)
-        return max(0, min(100, normalized * 100))
-    }
-
-    private func generateContributingFactors() -> [ContributingFactor] {
-        return [
-            ContributingFactor(
-                name: "HRV Deviation",
-                value: calculateHRVDeviation(),
-                category: .high,
-                label: "Higher than avg = Good"
-            ),
-            ContributingFactor(
-                name: "Resting HR",
-                value: 0.45,
-                category: .normal,
-                label: "Normal"
-            ),
-            ContributingFactor(
-                name: "Sleep Quality",
-                value: 0.60,
-                category: .fair,
-                label: "(7h 23m)"
-            ),
-            ContributingFactor(
-                name: "Recent Activity",
-                value: 0.30,
-                category: .low,
-                label: "(45 min workout)"
-            )
-        ]
-    }
-
-    private func calculateHRVDeviation() -> Double {
-        guard let baseline = baseline else { return 0.5 }
-        let lowerBound = baseline.baselineHRV - 10
-        let upperBound = baseline.baselineHRV + 10
-        let normalized = (measurement.hrv - lowerBound) / (upperBound - lowerBound)
-        return max(0, min(1, normalized))
     }
 
     private func generateRecommendations() -> [Recommendation] {
@@ -157,17 +110,6 @@ class DetailViewModel {
         formatter.dateFormat = "MMM d, YYYY"
         return formatter.string(from: date)
     }
-}
-
-struct ContributingFactor {
-    let name: String
-    let value: Double
-    let category: FactorCategory
-    let label: String
-}
-
-enum FactorCategory {
-    case low, normal, fair, high
 }
 
 struct Recommendation {

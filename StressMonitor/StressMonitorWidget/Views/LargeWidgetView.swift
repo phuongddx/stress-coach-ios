@@ -2,7 +2,7 @@ import SwiftUI
 import Charts
 import WidgetKit
 
-/// Large widget — **character face + trend chart + mood descriptors, no numeric score**.
+/// Large widget — **character face + trend chart + stress-tier descriptor, no numeric score**.
 @available(iOS 17.0, *)
 public struct LargeWidgetView: View {
 
@@ -139,7 +139,6 @@ public struct LargeWidgetView: View {
     private func moodDescriptorsSection(tier: WidgetStressTier) -> some View {
         HStack(spacing: 8) {
             moodPill(icon: "heart.fill", label: moodDescriptor(tier: tier), color: tier.accent)
-            moodPill(icon: "leaf.fill", label: recoveryLabel(tier: tier), color: WidgetPalette.blossom)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -163,21 +162,11 @@ public struct LargeWidgetView: View {
 
     private func moodDescriptor(tier: WidgetStressTier) -> String {
         switch tier {
-        case .resting:     return "Deep recovery"
-        case .calm:        return "In flow"
-        case .balanced:    return "Steady"
-        case .tense:       return "Elevated"
-        case .overwhelmed: return "High alert"
-        }
-    }
-
-    private func recoveryLabel(tier: WidgetStressTier) -> String {
-        switch tier {
-        case .resting:     return "Optimal"
-        case .calm:        return "Good"
-        case .balanced:    return "Fair"
-        case .tense:       return "Low"
-        case .overwhelmed: return "Depleted"
+        case .resting:     return "Very low stress"
+        case .calm:        return "Low stress"
+        case .balanced:    return "Moderate stress"
+        case .tense:       return "Elevated stress"
+        case .overwhelmed: return "High stress"
         }
     }
 

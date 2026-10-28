@@ -70,22 +70,6 @@ final class WatchSharedDataStore {
         return (try? decoder.decode([SharedReading].self, from: data)) ?? []
     }
 
-    /// Seed a few demo readings so the History screen isn't empty during
-    /// first-run / when HealthKit has no data yet. No-op once real data exists.
-    func seedDemoDataIfNeeded() {
-        guard latest == nil else { return }
-        let now = Date()
-        let demos: [SharedReading] = [
-            .init(level: 18, timestamp: now.addingTimeInterval(-6 * 3600)),
-            .init(level: 44, timestamp: now.addingTimeInterval(-30 * 3600)),
-            .init(level: 62, timestamp: now.addingTimeInterval(-52 * 3600)),
-            .init(level: 30, timestamp: now.addingTimeInterval(-2 * 24 * 3600)),
-            .init(level: 88, timestamp: now.addingTimeInterval(-3 * 24 * 3600)),
-            .init(level: 55, timestamp: now.addingTimeInterval(-5 * 24 * 3600))
-        ]
-        for r in demos.reversed() { save(r) }
-    }
-
     func clear() {
         defaults?.removeObject(forKey: Keys.latest)
         defaults?.removeObject(forKey: Keys.history)

@@ -25,8 +25,19 @@ final class MiniWalkViewModel {
 
     // MARK: - Config
 
-    /// 10-minute walk per spec header subtitle.
-    var durationSeconds: Int = 600
+    nonisolated static let defaultDurationSeconds = 600
+    private nonisolated static let targetStepsPerMinute = 100
+
+    /// Step goal for a walk of the given length (a steady ~100 steps per minute).
+    nonisolated static func targetSteps(forDurationSeconds seconds: Int) -> Int {
+        seconds / 60 * targetStepsPerMinute
+    }
+
+    var durationSeconds: Int = MiniWalkViewModel.defaultDurationSeconds
+
+    var targetSteps: Int {
+        Self.targetSteps(forDurationSeconds: durationSeconds)
+    }
 
     // MARK: - Computed
 
@@ -63,24 +74,12 @@ final class MiniWalkViewModel {
         hasBPM ? "\(heartRateBPM)" : "—"
     }
 
-    /// Formatted calories.
+    /// Formatted calories (a step-based estimate, not a measurement).
     var calorieDisplay: String {
         if caloriesBurned >= 100 {
             return String(format: "%.0f", caloriesBurned)
         }
         return String(format: "%.1f", caloriesBurned)
-    }
-
-    /// Estimated walking pace in mph from elapsed time and step count.
-    /// Roughly 2.1 ft per step. Returns nil until enough data exists.
-    var paceDisplay: String? {
-        guard elapsedSeconds > 0, stepCount > 0 else { return nil }
-        let feet = Double(stepCount) * 2.1
-        let miles = feet / 5280.0
-        let hours = Double(elapsedSeconds) / 3600.0
-        guard hours > 0 else { return nil }
-        let mph = miles / hours
-        return String(format: "%.1f mph", mph)
     }
 
     // MARK: - Private
@@ -89,7 +88,7 @@ final class MiniWalkViewModel {
     private let pedometer = CMPedometer()
     private var walkStartDate: Date?
 
-    init(durationSeconds: Int = 600) {
+    init(durationSeconds: Int = MiniWalkViewModel.defaultDurationSeconds) {
         self.durationSeconds = durationSeconds
         self.remainingSeconds = durationSeconds
     }

@@ -4,10 +4,10 @@ import Observation
 /// Loads and updates the three daily habits shown on the Action tab.
 ///
 /// The watch app does not use SwiftData. One row per habit per day is kept in
-/// `UserDefaults`. On first load of a day with no rows, AUTO habits
-/// (hydration, sunlight) are seeded at 0 so they render with their AUTO pill
-/// immediately; the LOG habit (caffeine) is seeded the same way and bumped via
-/// `logManual(_:amount:)`.
+/// `UserDefaults`. On first load of a day with no rows, every habit is seeded at
+/// 0 so each card renders. The LOG habit (caffeine) is bumped via
+/// `logManual(_:amount:)`; AUTO habits (hydration, sunlight) stay "—" until
+/// HealthKit reports today's value.
 @Observable
 @MainActor
 final class WatchHabitViewModel {
@@ -16,6 +16,8 @@ final class WatchHabitViewModel {
 
     /// Storage key for the persisted `[WatchHabit]` array (today's rows only).
     private let storageKey = "WatchHabitViewModel.today"
+
+    private let healthKit = WatchHealthKitManager()
 
     init() {
         loadToday()
@@ -37,10 +39,24 @@ final class WatchHabitViewModel {
     }
 
     /// Replace the live value of an AUTO habit (HealthKit feed updates this).
-    func setAutoValue(_ type: HabitType, value: Double) {
+    /// A nil value means HealthKit has nothing for today, so the card goes back
+    /// to "—" rather than showing a measured zero.
+    func setAutoValue(_ type: HabitType, value: Double?) {
         guard today[type] != nil else { return }
-        today[type]?.currentValue = max(0, value)
+        today[type]?.isAutoValueAvailable = value != nil
+        today[type]?.currentValue = max(0, value ?? 0)
         save()
+    }
+
+    /// Reads today's water and daylight totals from HealthKit into the AUTO rows.
+    func refreshAutoHabits() async {
+        // Re-asking is silent unless a type is still undetermined; this is how
+        // installs that predate these two read types get prompted for them.
+        try? await healthKit.requestAuthorization()
+        let water = try? await healthKit.fetchTodayWaterLiters()
+        let daylight = try? await healthKit.fetchTodayDaylightMinutes()
+        setAutoValue(.hydration, value: water)
+        setAutoValue(.sunlight, value: daylight)
     }
 
     // MARK: - Loading

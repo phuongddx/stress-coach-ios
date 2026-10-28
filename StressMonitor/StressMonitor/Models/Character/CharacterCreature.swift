@@ -96,24 +96,6 @@ enum EvolutionStage: String, Codable, CaseIterable, Sendable {
         case .tidal:   return 1.0
         }
     }
-
-    /// Evolution trigger description
-    func triggerDescription(for element: CharacterElement) -> String {
-        switch self {
-        case .droplet:
-            return "🌱 Start: 7-day streak"
-        case .ripple:
-            switch element {
-            case .water: return "🌊 30-day streak + 5 breathing sessions"
-            case .earth: return "🌿 30-day streak + 10 journal entries"
-            case .fire:  return "🔥 30-day streak + 20 workouts"
-            case .air:   return "🌬️ 30-day streak + 15 mindfulness sessions"
-            case .moon:  return "🌙 30-day streak + 20 good sleep nights"
-            }
-        case .tidal:
-            return "⚡ 90-day streak + Resilience Score 80+"
-        }
-    }
 }
 
 // MARK: - Character Unlock Type
@@ -158,7 +140,7 @@ struct CharacterCreature: Identifiable, Equatable, Sendable {
             personality: "Curious, nurturing, warm",
             unlockType: .free,
             streakRequired: 0,
-            description: "Growth & resilience. Leaves perk up with good habits, wilts when you need rest."
+            description: "Growth & resilience. A forest fox who stands for steady habits and rest when you need it."
         ),
         CharacterCreature(
             id: "ember",
@@ -168,7 +150,7 @@ struct CharacterCreature: Identifiable, Equatable, Sendable {
             personality: "Bold, motivating, fierce",
             unlockType: .premium,
             streakRequired: 0,
-            description: "Energy & motivation. Flames grow with activity, dims when you need recovery."
+            description: "Energy & motivation. A fiery phoenix who stands for momentum and recovery in balance."
         ),
         CharacterCreature(
             id: "zephyr",
@@ -188,7 +170,7 @@ struct CharacterCreature: Identifiable, Equatable, Sendable {
             personality: "Wise, serene, mystical",
             unlockType: .streakGated,
             streakRequired: 30,
-            description: "Sleep & wisdom. Glows bright with good sleep, dims when sleep-deprived."
+            description: "Sleep & wisdom. A moon owl who stands for rest and calm reflection."
         ),
     ]
 
@@ -217,45 +199,25 @@ struct EvolutionRequirement: Sendable {
     let sessionsCompleted: Int
     let description: String
 
-    static func forStage(_ stage: EvolutionStage, element: CharacterElement) -> EvolutionRequirement {
+    static func forStage(_ stage: EvolutionStage) -> EvolutionRequirement {
         switch stage {
         case .droplet:
             return EvolutionRequirement(
                 streakDays: 0,
                 sessionsCompleted: 0,
-                description: "🌱 Starter form"
+                description: "Starter form"
             )
         case .ripple:
-            let sessions: Int
-            let desc: String
-            switch element {
-            case .water:
-                sessions = 5
-                desc = "🌊 30-day streak + 5 breathing sessions"
-            case .earth:
-                sessions = 10
-                desc = "🌿 30-day streak + 10 journal entries"
-            case .fire:
-                sessions = 20
-                desc = "🔥 30-day streak + 20 workouts"
-            case .air:
-                sessions = 15
-                desc = "🌬️ 30-day streak + 15 mindfulness sessions"
-            case .moon:
-                sessions = 20
-                desc = "🌙 30-day streak + 20 good sleep nights"
-            }
-
             return EvolutionRequirement(
                 streakDays: 30,
-                sessionsCompleted: sessions,
-                description: desc
+                sessionsCompleted: 5,
+                description: "30-day streak + 5 breathing sessions"
             )
         case .tidal:
             return EvolutionRequirement(
                 streakDays: 90,
                 sessionsCompleted: 0,
-                description: "⚡ 90-day streak + Resilience Score 80+"
+                description: "90-day streak"
             )
         }
     }
@@ -264,7 +226,7 @@ struct EvolutionRequirement: Sendable {
 extension CharacterCreature {
     /// Evolution requirement for reaching the supplied stage.
     func evolutionRequirement(for stage: EvolutionStage) -> EvolutionRequirement {
-        .forStage(stage, element: element)
+        .forStage(stage)
     }
 
     /// Display emoji for the character's element.

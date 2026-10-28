@@ -16,19 +16,20 @@ import SwiftUI
 /// allowed per screen — but the stroke uses the *stress scale* gradient,
 /// not pure accent, so the budget is preserved.
 struct SemicircleStressGauge: View {
-    let score: Double
+    /// `nil` draws the empty track.
+    let score: Double?
     var radius: CGFloat = 55
     var strokeWidth: CGFloat = 10
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private let category: StressCategory
+    private let category: StressCategory?
 
-    init(score: Double, radius: CGFloat = 55, strokeWidth: CGFloat = 10) {
-        self.score = max(0, min(150, score))
+    init(score: Double?, radius: CGFloat = 55, strokeWidth: CGFloat = 10) {
+        self.score = score.map { max(0, min(150, $0)) }
         self.radius = radius
         self.strokeWidth = strokeWidth
-        self.category = StressCategory.category(for: score)
+        self.category = score.map(StressCategory.category(for:))
     }
 
     var body: some View {
@@ -53,11 +54,11 @@ struct SemicircleStressGauge: View {
         }
         .frame(width: dim, height: dim * 0.58)
         .accessibilityElement()
-        .accessibilityLabel(category.accessibilityValue(level: score))
+        .accessibilityLabel(score.flatMap { level in category?.accessibilityValue(level: level) } ?? "No stress reading yet")
     }
 
     private var progress: CGFloat {
-        CGFloat(min(score, 100) / 100.0)
+        CGFloat(min(score ?? 0, 100) / 100.0)
     }
 
     /// Multi-stop gradient that reveals the stress spectrum as the score

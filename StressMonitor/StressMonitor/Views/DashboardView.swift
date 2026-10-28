@@ -137,7 +137,7 @@ struct DashboardView: View {
         HomeHeaderBar(
             date: Date(),
             bioAge: viewModel.bioAgeResult?.estimatedAge,
-            streakDays: viewModel.todayMeasurements.count
+            streakDays: viewModel.streakDays
         )
         .opacity(appearAnimation ? 1 : 0)
 
@@ -152,7 +152,8 @@ struct DashboardView: View {
                 category: stress?.category ?? .relaxed,
                 confidence: stress?.confidence,
                 measuredAt: viewModel.lastRefresh,
-                substate: substate(for: stress)
+                substate: substate(for: stress),
+                factorCount: factorCount(for: stress)
             )
         }
         .buttonStyle(.plain)
@@ -175,19 +176,18 @@ struct DashboardView: View {
 
         // 3. AI insight — Ripple's voice right under the hero
         if let insight = viewModel.aiInsight {
-            RippleInsightCard(insight: insight, onAskRipple: nil)
+            RippleInsightCard(insight: insight, onAskRipple: nil, generatedAt: stress?.timestamp)
                 .opacity(appearAnimation ? 1 : 0)
         }
 
         // 4. Vitals triplet — HRV / Heart / Breath (color-coded, trend lines)
         VitalsTriplet(
-            hrvValue: stress.map { "\(Int($0.hrv.rounded()))" } ?? "--",
-            hrvTrend: hrvTrendLabel(stress),
-            hrvTrendGood: viewModel.heartRateTrend != .down,
-            hrValue: stress.map { "\(Int($0.heartRate.rounded()))" } ?? "--",
-            hrTrend: "resting",
-            rrValue: respiratoryDisplayValue(stress),
-            rrTrend: stress == nil ? nil : "steady"
+            hrvValue: stress.map { "\(Int($0.hrv.rounded()))" } ?? "—",
+            hrvTrend: deltaLabel(viewModel.hrvDeltaVsWeeklyAverage),
+            hrvTrendGood: (viewModel.hrvDeltaVsWeeklyAverage ?? 0) > 0,
+            hrValue: heartRateDisplayValue(stress),
+            hrTrend: deltaLabel(viewModel.heartRateDeltaVsWeeklyAverage),
+            rrValue: respiratoryDisplayValue(stress)
         )
         .opacity(appearAnimation ? 1 : 0)
 
@@ -199,12 +199,10 @@ struct DashboardView: View {
 
         // 6. Health data — Exercise / Sleep / Daylight (behavioral signals)
         HealthDataSection(
-            exerciseMinutes: viewModel.todayExerciseMinutes,
-            exerciseDelta: "yesterday",
+            exerciseMinutes: viewModel.lastWorkoutMinutes,
+            exerciseDelta: workoutDayLabel,
             sleepHours: viewModel.todaySleepHours,
-            sleepDelta: sleepDeltaLabel,
-            daylightMinutes: viewModel.todayDaylightMinutes,
-            daylightDelta: viewModel.todayDaylightMinutes == nil ? nil : "on target"
+            daylightMinutes: viewModel.todayDaylightMinutes
         )
         .opacity(appearAnimation ? 1 : 0)
 
@@ -246,24 +244,42 @@ struct DashboardView: View {
         }
     }
 
-    private func hrvTrendLabel(_ stress: StressResult?) -> String? {
-        guard stress != nil else { return nil }
-        switch viewModel.heartRateTrend {
-        case .up:     return "+ vs avg"
-        case .down:   return "- vs avg"
-        case .stable: return "steady"
-        }
+    private func deltaLabel(_ delta: Int?) -> String? {
+        guard let delta else { return nil }
+        if delta == 0 { return "on avg" }
+        return "\(delta > 0 ? "+" : "")\(delta) vs avg"
     }
 
-    private var sleepDeltaLabel: String? {
-        guard viewModel.todaySleepHours != nil else { return nil }
-        return "vs avg"
+    private func factorCount(for stress: StressResult?) -> Int? {
+        guard let stress else { return nil }
+        guard let breakdown = stress.factorBreakdown else { return 2 }
+        return [
+            breakdown.hrvComponent,
+            breakdown.hrComponent,
+            breakdown.sleepComponent,
+            breakdown.activityComponent,
+            breakdown.recoveryComponent
+        ].compactMap { $0 }.count
     }
 
-    /// RR display string. Returns "--" when there is no stress result OR when
+    /// A heart rate of 0 means the reading had no heart-rate sample.
+    private func heartRateDisplayValue(_ stress: StressResult?) -> String {
+        guard let stress, stress.heartRate > 0 else { return "—" }
+        return "\(Int(stress.heartRate.rounded()))"
+    }
+
+    private var workoutDayLabel: String? {
+        guard viewModel.lastWorkoutMinutes != nil, let end = viewModel.lastWorkoutEndDate else { return nil }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(end) { return "today" }
+        if calendar.isDateInYesterday(end) { return "yesterday" }
+        return nil
+    }
+
+    /// RR display string. Returns "—" when there is no stress result OR when
     /// RR data is unavailable (simulator) so the slot reads as empty, not zero.
     private func respiratoryDisplayValue(_ stress: StressResult?) -> String {
-        guard stress != nil, let rr = viewModel.respiratoryRate else { return "--" }
+        guard stress != nil, let rr = viewModel.respiratoryRate else { return "—" }
         return String(format: "%.0f", rr.rounded())
     }
 

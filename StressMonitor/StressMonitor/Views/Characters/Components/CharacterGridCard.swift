@@ -141,7 +141,7 @@ struct CharacterGridCard: View {
             let current = unlock?.streakDays ?? 0
             Text("Locked · \(max(creature.streakRequired - current, 0))d to go")
         } else {
-            Text("Locked · $4.99/mo")
+            Text("Locked · Plus")
         }
     }
 

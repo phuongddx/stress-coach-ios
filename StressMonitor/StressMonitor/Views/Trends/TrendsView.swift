@@ -32,7 +32,7 @@ struct TrendsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                // Chip row — Week / Month / 3 Months / Year
+                // Chip row — Week / Month / 3 Months
                 chipRow
                 if viewModel.weeklyMeasurements.isEmpty && !viewModel.isLoading {
                     NoDataCard(dataType: .trends) {
@@ -44,7 +44,9 @@ struct TrendsView: View {
                     distributionCard
                     calendarCard
                     hrvCard
-                    editorialInsight
+                    if let insight = viewModel.weeklyInsight {
+                        editorialInsight(insight)
+                    }
                 }
             }
             .padding(.horizontal, 16)
@@ -104,42 +106,41 @@ struct TrendsView: View {
 
     private var editorialSummary: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Vs last week")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.8)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
-
             if let delta = viewModel.editorialDelta {
-                // Build: "You're [18% calmer]. Hardest day..."
-                let summary = viewModel.editorialSummary
+                Text("Vs the prior 7 days")
+                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .tracking(0.8)
+                    .textCase(.uppercase)
+                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text("You're ")
                         .font(.system(size: 17, weight: .medium))
                         .foregroundStyle(Color.Wellness.adaptivePrimaryText)
                     Text(delta)
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(Color(hex: "#34C759"))
+                        .foregroundStyle(deltaColor)
                     Text(".")
                         .font(.system(size: 17, weight: .medium))
                         .foregroundStyle(Color.Wellness.adaptivePrimaryText)
                 }
-                // Remaining text after the period
-                if let remainder = summary.components(separatedBy: ". ").dropFirst().joined(separator: ". ") as String?, !remainder.isEmpty {
-                    Text(remainder + ".")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                        .lineSpacing(4)
-                }
-            } else {
-                Text(viewModel.editorialSummary)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                    .lineSpacing(4)
             }
+
+            Text(viewModel.editorialSummary)
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .lineSpacing(4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+    }
+
+    private var deltaColor: Color {
+        switch viewModel.stressCalmerPercent ?? 0 {
+        case 1...:  return Color(hex: "#34C759")
+        case 0:     return Color.Wellness.adaptiveSecondaryText
+        default:    return Color(hex: "#FF9500")
+        }
     }
 
     // MARK: - 2. Daily Stress Bars (7d)
@@ -160,7 +161,7 @@ struct TrendsView: View {
                     .font(.system(size: 14, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.Wellness.adaptivePrimaryText)
                 Spacer()
-                Text("7 days")
+                Text(viewModel.dailyWindowLabel)
                     .font(.system(size: 11, weight: .medium, design: .monospaced))
                     .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
             }
@@ -187,13 +188,14 @@ struct TrendsView: View {
         HRVTrendChart(
             dataPoints: viewModel.hrvData,
             referenceValue: viewModel.hrvAvg,
-            deltaText: viewModel.hrvDeltaText
+            deltaText: viewModel.hrvDeltaText,
+            periodLabel: viewModel.selectedTimeRange.periodLabel
         )
     }
 
     // MARK: - 6. Editorial Insight
 
-    private var editorialInsight: some View {
+    private func editorialInsight(_ insight: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Pattern detected")
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
@@ -201,12 +203,7 @@ struct TrendsView: View {
                 .textCase(.uppercase)
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
 
-            Text("Tuesday stand-ups run hot")
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                .padding(.bottom, 2)
-
-            Text(viewModel.weeklyInsight ?? "Stress peaks mid-week — walking meetings could help balance your recovery.")
+            Text(insight)
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
                 .lineSpacing(4)
@@ -228,7 +225,6 @@ enum TrendsChip: String, CaseIterable {
     case week = "Week"
     case month = "Month"
     case threeMonths = "3 Months"
-    case year = "Year"
 
     var title: String { rawValue }
 
@@ -237,7 +233,6 @@ enum TrendsChip: String, CaseIterable {
         case .week:         return .week
         case .month:        return .month
         case .threeMonths:  return .threeMonths
-        case .year:         return .threeMonths // closest available
         }
     }
 }

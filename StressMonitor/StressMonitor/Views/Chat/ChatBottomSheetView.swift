@@ -220,17 +220,13 @@ struct ChatBottomSheetView: View {
         )
     }
 
-    /// Subtitle reflecting current stress state.
+    /// Subtitle reflecting the current stress reading. Makes no claim about the
+    /// user's state, or the time of day, when there is no reading to base it on.
     private var companionSubtitle: String {
-        let level = Int(viewModel.companionMood == .serene ? 30 : 50)
-        switch viewModel.companionMood {
-        case .relaxed, .serene: return "Water Otter · reading your morning"
-        case .focused:          return "Water Otter · noticing your focus"
-        case .worried:          return "Water Otter · sensing your stress"
-        case .tired:            return "Water Otter · you seem tired"
-        case .determined:       return "Water Otter · feeling your intensity"
-        default:                return "Water Otter · stress level ~\(level)"
+        guard let result = viewModel.stressResult else {
+            return "Water Otter · here to listen"
         }
+        return "Water Otter · stress \(Int(result.level.rounded())) · \(result.category.displayName)"
     }
 
     // MARK: - Message List
@@ -378,34 +374,18 @@ struct ChatBottomSheetView: View {
     private var chatComposer: some View {
         HStack(spacing: 8) {
             // Input shell
-            HStack(spacing: 4) {
-                TextField("Message Ripple…", text: $inputText, axis: .vertical)
-                    .font(.system(size: 15))
-                    .lineLimit(1...4)
-                    .padding(.leading, 10)
-                    .padding(.trailing, 4)
-                    .padding(.vertical, 8)
-                    .onSubmit { sendMessage() }
-
-                // Mic button
-                Button {
-                    // Voice input not yet implemented
-                } label: {
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                        .frame(width: 32, height: 32)
-                        .background(Color.Wellness.adaptiveSecondaryText.opacity(0.08))
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Voice input")
-            }
-            .background(Color.Wellness.adaptiveCardBackground)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
-            )
+            TextField("Message Ripple…", text: $inputText, axis: .vertical)
+                .font(.system(size: 15))
+                .lineLimit(1...4)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .onSubmit { sendMessage() }
+                .background(Color.Wellness.adaptiveCardBackground)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
+                )
 
             // Send button
             Button {

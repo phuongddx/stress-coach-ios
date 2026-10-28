@@ -149,8 +149,8 @@ struct BiologicalAgeViewModelTests {
         #expect(viewModel.errorMessage == nil)
     }
 
-    @Test("load uses HealthKit date of birth with an explicit fallback of 35")
-    func testLoad_UsesHealthKitDateOfBirthWithExplicitFallback() async throws {
+    @Test("load uses HealthKit date of birth and shows no estimate without one")
+    func testLoad_UsesHealthKitDateOfBirthAndNoEstimateWithoutIt() async throws {
         let fixture = try makeFixture(sevenDaySpecs())
 
         let healthKitWithDOB = FakeHealthKitService()
@@ -169,8 +169,8 @@ struct BiologicalAgeViewModelTests {
 
         #expect(viewModelWithDOB.chronologicalAge == 30)
         #expect(viewModelWithDOB.result?.chronologicalAge == 30)
-        #expect(viewModelWithoutDOB.chronologicalAge == 35)
-        #expect(viewModelWithoutDOB.result?.chronologicalAge == 35)
+        #expect(viewModelWithoutDOB.chronologicalAge == nil)
+        #expect(viewModelWithoutDOB.result == nil)
     }
 
     @Test("daily estimates are ordered old to new and omit days without a result")
@@ -180,9 +180,11 @@ struct BiologicalAgeViewModelTests {
             MeasurementSpec(daysAgo: 3, hoursFromDayStart: 22, hrv: 0, restingHeartRate: 0)
         )
         let fixture = try makeFixture(specs)
+        let healthKit = FakeHealthKitService()
+        healthKit.dateOfBirthComponents = makeDateOfBirthComponents(yearsAgo: 35)
         let viewModel = makeViewModel(
             repository: FakeStressRepository(measurements: fixture.measurements),
-            healthKit: FakeHealthKitService()
+            healthKit: healthKit
         )
 
         await viewModel.load()

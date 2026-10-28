@@ -28,8 +28,7 @@ final class MockCreditService: CreditServiceProtocol {
 }
 
 /// StoreKit-shaped transaction fake so the redeem/finish ordering is
-/// pinnable without a StoreKitTest session (whose suite is disabled for
-/// session-isolation reasons — see StoreKitServiceTests.swift).
+/// pinnable without a StoreKitTest session.
 final class FakePurchaseTransaction: PurchaseTransactionHandle, @unchecked Sendable {
     let productID: String
     let jwsRepresentation: String

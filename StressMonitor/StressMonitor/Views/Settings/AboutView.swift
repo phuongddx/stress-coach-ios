@@ -46,7 +46,7 @@ struct AboutView: View {
             .padding(.vertical, 8)
             .listRowBackground(Color.clear)
         } footer: {
-            Text("Designed for iOS 17 and watchOS 10. All health signals stay on device unless you enable iCloud sync.")
+            Text("Designed for iOS 18.6 and watchOS 11.6. Stress is calculated on your device. Health summaries leave it only if you turn on Health Data Sync, and AI coaching sends derived stress scores, not raw Health readings.")
         }
     }
 

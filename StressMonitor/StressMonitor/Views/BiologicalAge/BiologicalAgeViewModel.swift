@@ -12,15 +12,17 @@ struct DailyBioAgeEstimate: Identifiable, Sendable {
 /// Presentation state for the Biological Age screen
 /// (`design/screens/18-bio-age.html`). Aggregates the last 7 days of
 /// measurements through the existing `BioAgeCalculator`; renders nothing the
-/// calculator did not actually produce.
+/// calculator did not actually produce. Without a Health-app date of birth
+/// there is no chronological age to compare against, so no estimate is made.
 @MainActor
 @Observable
 final class BiologicalAgeViewModel {
     private(set) var isLoading = false
     private(set) var result: BioAgeResult?
     private(set) var hasSufficientData = false
-    private(set) var chronologicalAge = 35
+    private(set) var chronologicalAge: Int?
     private(set) var hrvAverage: Double?
+    /// Average of the stored heart-rate samples (not a resting-HR measurement).
     private(set) var restingHRAverage: Double?
     private(set) var dailyEstimates: [DailyBioAgeEstimate] = []
     var errorMessage: String?
@@ -54,7 +56,7 @@ final class BiologicalAgeViewModel {
         isLoading = true
         defer { isLoading = false }
 
-        chronologicalAge = resolveChronologicalAge()
+        chronologicalAge = healthKit.chronologicalAge()
 
         let now = Date()
         let windowStart = Calendar.current.date(
@@ -72,7 +74,7 @@ final class BiologicalAgeViewModel {
         }
 
         hasSufficientData = calculator.hasEnoughData(measurements: measurements)
-        guard hasSufficientData else {
+        guard hasSufficientData, let chronologicalAge else {
             result = nil
             hrvAverage = nil
             restingHRAverage = nil
@@ -91,21 +93,13 @@ final class BiologicalAgeViewModel {
             previousResult: nil
         )
 
-        dailyEstimates = makeDailyEstimates(from: measurements)
+        dailyEstimates = makeDailyEstimates(from: measurements, chronologicalAge: chronologicalAge)
     }
 
-    /// Chronological age from HealthKit DOB, falling back to the documented
-    /// default used by `StressViewModel.calculateBioAge`.
-    private func resolveChronologicalAge() -> Int {
-        guard let dobComponents = healthKit.dateOfBirthComponents,
-              let dob = Calendar.current.date(from: dobComponents) else {
-            return 35
-        }
-        let components = Calendar.current.dateComponents([.year], from: dob, to: Date())
-        return components.year ?? 35
-    }
-
-    private func makeDailyEstimates(from measurements: [StressMeasurement]) -> [DailyBioAgeEstimate] {
+    private func makeDailyEstimates(
+        from measurements: [StressMeasurement],
+        chronologicalAge: Int
+    ) -> [DailyBioAgeEstimate] {
         Dictionary(grouping: measurements) { measurement in
             Calendar.current.startOfDay(for: measurement.timestamp)
         }

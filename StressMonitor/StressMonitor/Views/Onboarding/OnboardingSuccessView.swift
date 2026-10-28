@@ -2,7 +2,8 @@ import SwiftData
 import SwiftUI
 
 // MARK: - Dashboard Preview Screen (Screen 2)
-// Immediate value: ring progress + metrics + buddy card + tip + "Go to Dashboard" CTA.
+// Ready state: companion ring + buddy card + tip + "Start Tracking" CTA. No reading is
+// shown here — the first real one appears on the dashboard once Apple Health has data.
 struct OnboardingSuccessView: View {
     @State private var viewModel: OnboardingSuccessViewModel
     @State private var ringProgress: CGFloat = 0
@@ -48,12 +49,12 @@ struct OnboardingSuccessView: View {
                         .padding(.bottom, 24)
 
                     // Title
-                    Text("Your first reading is ready")
+                    Text("You're all set")
                         .font(.system(size: 22, weight: .heavy, design: .rounded))
                         .foregroundStyle(Color(hex: "#E8E8F0"))
                         .multilineTextAlignment(.center)
 
-                    Text("Ripple already sees your calm patterns. Here's your snapshot:")
+                    Text("Ripple will read your stress as soon as Apple Health has data.")
                         .font(.system(size: 14, weight: .regular))
                         .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
                         .multilineTextAlignment(.center)
@@ -65,10 +66,6 @@ struct OnboardingSuccessView: View {
                         freeTrialBanner
                             .padding(.bottom, 16)
                     }
-
-                    // Metric boxes row
-                    metricsRow
-                        .padding(.bottom, 16)
 
                     // Buddy card
                     buddyCard
@@ -112,7 +109,7 @@ struct OnboardingSuccessView: View {
             // Animate ring progress after a brief delay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 withAnimation(.easeInOut(duration: 1.5)) {
-                    ringProgress = 0.72 // ~28/100 stress = 72% calm
+                    ringProgress = 1
                 }
             }
         }
@@ -193,39 +190,10 @@ struct OnboardingSuccessView: View {
             // Creature — celebrating mood for the success moment
             StressBuddyIllustration(mood: .celebrating, size: 96)
                 .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.3), radius: 16)
-
-            // Stress label badge
-            VStack {
-                Spacer()
-                Text("Stress: 28 — Relaxed")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(HomeCharacterDesignTokens.darkCanvas.opacity(0.8))
-                            .overlay(
-                                Capsule()
-                                    .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.15), lineWidth: 1)
-                            )
-                    )
-                    .offset(y: 10)
-            }
         }
         .frame(width: 220, height: 220)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Stress measurement ring showing 28 out of 100 — Relaxed")
-    }
-
-    // MARK: - Metrics Row
-
-    private var metricsRow: some View {
-        HStack(spacing: 10) {
-            MetricBox(value: "28", unit: "/ 100", label: "Stress Score", valueColor: HomeCharacterDesignTokens.Ripple.primary)
-            MetricBox(value: "62", unit: "ms", label: "HRV", valueColor: HomeCharacterDesignTokens.Blossom.primary)
-            MetricBox(value: "68", unit: "bpm", label: "Heart Rate", valueColor: HomeCharacterDesignTokens.Lumi.primary)
-        }
+        .accessibilityLabel("Ripple, your stress companion")
     }
 
     // MARK: - Buddy Card
@@ -257,7 +225,7 @@ struct OnboardingSuccessView: View {
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Color(hex: "#E8E8F0"))
 
-                Text("Gentle, playful, shy · Calm waves today")
+                Text("Gentle, playful, shy")
                     .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
 
@@ -289,7 +257,7 @@ struct OnboardingSuccessView: View {
                 .foregroundStyle(HomeCharacterDesignTokens.Blossom.primary)
                 .kerning(0.5)
 
-            Text("Your stress is low! Try a 3-minute breathing session to keep Ripple's waves calm all day.")
+            Text("When stress starts to build, a 3-minute breathing session helps keep Ripple's waves calm.")
                 .font(.system(size: 13, weight: .regular))
                 .foregroundStyle(Color(hex: "#E8E8F0"))
                 .lineSpacing(2)
@@ -302,44 +270,6 @@ struct OnboardingSuccessView: View {
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
                         .stroke(HomeCharacterDesignTokens.Blossom.primary.opacity(0.1), lineWidth: 1)
-                )
-        )
-    }
-}
-
-// MARK: - Metric Box Component
-
-private struct MetricBox: View {
-    let value: String
-    let unit: String
-    let label: String
-    let valueColor: Color
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                Text(value)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(valueColor)
-                Text(unit)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-            }
-
-            Text(label)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-                .kerning(0.5)
-                .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.darkCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
                 )
         )
     }

@@ -153,14 +153,9 @@ struct CharacterDetailView: View {
     private func statRow(unlock: CharacterUnlock) -> some View {
         HStack(spacing: 8) {
             statPill(
-                icon: "waveform.path.ecg",
-                value: "+\(Int(unlock.resilienceScore))ms",
-                label: "avg HRV gain"
-            )
-            statPill(
                 icon: "clock.fill",
                 value: "\(unlock.streakDays) days",
-                label: "streak with \(creature.displayName)"
+                label: "reading streak"
             )
         }
     }
@@ -252,19 +247,9 @@ struct CharacterDetailView: View {
                 Text("Premium Character")
                     .font(.system(size: 17, weight: .semibold))
 
-                Text("Unlock with StressMonitor Plus — $4.99/mo")
+                Text("Unlock with StressMonitor Plus")
                     .font(.system(size: 14))
                     .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-
-                Button("Get StressMonitor Plus") {
-                    // Handled by parent navigation
-                }
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(.white)
-                .padding(.horizontal, 24)
-                    .padding(.vertical, 14)
-                .background(creature.element.primaryColor)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             } else if creature.unlockType == .streakGated {
                 Image(systemName: AppIconSystem.Metric.streak.sfSymbol)
                     .font(.system(size: 36))
@@ -303,15 +288,15 @@ struct CharacterDetailView: View {
     private var strengthText: String {
         switch creature.element {
         case .water:
-            return "Best for night-time wind-downs and post-conflict recovery. Breathing animations are 4-7-8 biased — slower exhales help activate the parasympathetic vagal response."
+            return "Ripple is a calm presence for night-time wind-downs and the moments after a rough conflict."
         case .earth:
-            return "Best for building consistent habits and grounding after overwhelm. Blossom's prompts focus on nature connection and body-awareness check-ins."
+            return "Blossom is a steady companion for building daily habits and grounding yourself after feeling overwhelmed."
         case .fire:
-            return "Best for morning motivation and overcoming procrastination. Ember's energy peaks with your activity, nudging you toward movement when stress runs low."
+            return "Ember brings morning motivation and a bit of spark when procrastination creeps in."
         case .air:
-            return "Best for anxiety spikes and racing thoughts. Zephyr's breathing patterns emphasize extended exhales to quickly down-regulate your nervous system."
+            return "Zephyr is a light companion for anxious spikes and racing thoughts."
         case .moon:
-            return "Best for sleep optimization and recovery tracking. Lumi glows brighter with consistent sleep, helping you build a sustainable rest rhythm."
+            return "Lumi is a quiet companion for winding down and keeping a restful rhythm."
         }
     }
 }

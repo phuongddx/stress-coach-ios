@@ -5,7 +5,6 @@ import SwiftUI
 /// - Tired-happy Ripple (mood = .tired) with rosy cheeks and sweat drop
 /// - Headline: "Nice walk!" + companion message
 /// - 3-stat grid: Steps, Minutes, kcal
-/// - Stress impact card: Neutral → Calm Ripple with "↓ −15% Stress Level"
 /// - Buttons: Done + View Full Trends
 struct MiniWalkCompleteView: View {
     let viewModel: MiniWalkViewModel
@@ -42,13 +41,9 @@ struct MiniWalkCompleteView: View {
                     HStack(spacing: 12) {
                         CompletionStat(value: viewModel.stepDisplay, label: "Steps", icon: "figure.walk")
                         CompletionStat(value: "\(viewModel.elapsedMinutes)", label: "Minutes", icon: "clock")
-                        CompletionStat(value: viewModel.calorieDisplay, label: "kcal", icon: "flame.fill")
+                        CompletionStat(value: viewModel.calorieDisplay, label: "kcal (est.)", icon: "flame.fill")
                     }
                     .padding(.horizontal, 16)
-
-                    // Stress impact card
-                    stressImpactCard
-                        .padding(.horizontal, 16)
 
                     Spacer(minLength: 16)
 
@@ -97,41 +92,6 @@ struct MiniWalkCompleteView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Stress Impact Card
-
-    private var stressImpactCard: some View {
-        HStack(spacing: 16) {
-            // Calm Ripple
-            StressBuddyIllustration(mood: .relaxed, size: 50)
-                .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("↓ −15% Stress Level")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-
-                Text("That was refreshing! Your stress dropped 15%.")
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color(hex: "#9CA3AF"))
-                    .lineLimit(2)
-            }
-
-            Spacer()
-        }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.darkCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(
-                            HomeCharacterDesignTokens.Ripple.primary.opacity(0.15),
-                            lineWidth: 1
-                        )
-                )
-        )
     }
 }
 

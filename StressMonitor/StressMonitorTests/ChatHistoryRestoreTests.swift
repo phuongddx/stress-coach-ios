@@ -335,9 +335,8 @@ struct ChatHistoryRestoreTests {
 
     @Test("chat open seeds preferences before the chips query so it carries the server pair")
     func chatOpenSeedsPreferencesBeforeChipsFetch() async throws {
-        // ChatHistoryRestoreTests leaves responseByPath set after each test
-        // (WINDOWS.md #12) — clear the /preferences stub so later suites'
-        // single-response stubbing isn't overridden.
+        // Clear the /preferences stub so later suites' single-response
+        // stubbing isn't overridden by this suite's per-path responses.
         defer { RequestCaptureURLProtocol.responseByPath = nil }
         let preferencesFixture = """
         {"user_id":"00000000-0000-0000-0000-000000000001","language":"vi","coaching_style":"direct","display_name":null,"theme":"system","notification_enabled":true,"stress_alert_threshold":75,"custom_settings":{}}
@@ -350,7 +349,8 @@ struct ChatHistoryRestoreTests {
             "/quick-actions": (200, Data(quickActionsFixture.utf8)),
         ])
         let preferences = PreferencesService(apiClient: client)
-        let viewModel = ChatViewModel(stressResult: nil, baseline: nil, llmService: FakeLLMService(tokens: []))
+        let stress = StressResult(level: 70, category: .moderate, confidence: 0.9, hrv: 40, heartRate: 70)
+        let viewModel = ChatViewModel(stressResult: stress, baseline: nil, llmService: FakeLLMService(tokens: []))
         viewModel.apiClient = client
         viewModel.preferencesService = preferences
 
@@ -369,7 +369,7 @@ struct ChatHistoryRestoreTests {
         let chipsRequest = try #require(RequestCaptureURLProtocol.capturedRequests.last)
         #expect(
             chipsRequest.url?.absoluteString
-                == "https://api.test/quick-actions?stress_level=50&language=vi&coaching_style=direct"
+                == "https://api.test/quick-actions?stress_level=70&language=vi&coaching_style=direct"
         )
     }
 
@@ -378,7 +378,8 @@ struct ChatHistoryRestoreTests {
         let client = makeStubbedClient(responseByPath: [
             "/quick-actions": (500, Data(#"{"error":"boom"}"#.utf8)),
         ])
-        let viewModel = ChatViewModel(stressResult: nil, baseline: nil, llmService: FakeLLMService(tokens: []))
+        let stress = StressResult(level: 70, category: .moderate, confidence: 0.9, hrv: 40, heartRate: 70)
+        let viewModel = ChatViewModel(stressResult: stress, baseline: nil, llmService: FakeLLMService(tokens: []))
         viewModel.apiClient = client
         let fallbackTitles = viewModel.quickReplies.map(\.title)
 

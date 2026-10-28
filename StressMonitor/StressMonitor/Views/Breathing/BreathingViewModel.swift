@@ -4,8 +4,17 @@ import SwiftData
 @Observable
 @MainActor
 class BreathingSessionViewModel {
-    var sessionDuration: TimeInterval = 120
-    var remainingTime: TimeInterval = 120
+    nonisolated static let defaultSessionDuration: TimeInterval = 120
+    /// One box cycle: four 4-second phases.
+    nonisolated static let cycleDuration: TimeInterval = 16
+
+    /// Whole cycles that fit in a session of the given length.
+    nonisolated static func cycleCount(forDuration duration: TimeInterval) -> Int {
+        max(1, Int(duration / cycleDuration))
+    }
+
+    var sessionDuration: TimeInterval = BreathingSessionViewModel.defaultSessionDuration
+    var remainingTime: TimeInterval = BreathingSessionViewModel.defaultSessionDuration
     var isActive = false
     var sessionResult: BreathingSessionResult?
 
@@ -13,10 +22,10 @@ class BreathingSessionViewModel {
     var boxPhase: BoxBreathingPhase = .inhale
     /// Seconds remaining in the current 4-second box phase.
     var secondsRemaining: Int = 4
-    /// Number of completed cycles (each cycle = 4 phases × 4s = 16s).
+    /// Number of completed cycles (each cycle = 4 phases × 4s = `cycleDuration`).
     var cyclesCompleted: Int = 0
     /// Total cycles planned for the session.
-    var totalCycles: Int { max(1, Int(sessionDuration / 16)) }
+    var totalCycles: Int { Self.cycleCount(forDuration: sessionDuration) }
 
     /// Whether the animated circle guide runs (D-11). Defaults from the
     /// app-wide motion decision — Reduce Motion on → animated guide off —
@@ -25,9 +34,7 @@ class BreathingSessionViewModel {
     private var userAnimationChoice: Bool?
 
     // Session config
-    var audioGuide: String = "Soft tones"
     var hapticFeedback: Bool = true
-    var backgroundSound: String = "Rain"
 
     private let healthKit: HealthKitServiceProtocol
     private var timer: Timer?
@@ -97,22 +104,12 @@ class BreathingSessionViewModel {
                 postSessionHRV = hrv.value
             }
 
-            if let pre = preSessionHRV, let post = postSessionHRV {
-                sessionResult = BreathingSessionResult(
-                    preSessionHRV: pre,
-                    postSessionHRV: post,
-                    duration: sessionDuration - remainingTime,
-                    cyclesCompleted: cyclesCompleted
-                )
-            } else {
-                // Fallback with placeholder data so the summary always renders
-                sessionResult = BreathingSessionResult(
-                    preSessionHRV: preSessionHRV ?? 52,
-                    postSessionHRV: postSessionHRV ?? 66,
-                    duration: sessionDuration - remainingTime,
-                    cyclesCompleted: cyclesCompleted
-                )
-            }
+            sessionResult = BreathingSessionResult(
+                preSessionHRV: preSessionHRV,
+                postSessionHRV: postSessionHRV,
+                duration: sessionDuration - remainingTime,
+                cyclesCompleted: cyclesCompleted
+            )
         }
     }
 
@@ -173,6 +170,7 @@ class BreathingSessionViewModel {
 
     /// Skips the current cycle by fast-forwarding remaining time to the next cycle boundary.
     func skipCycle() {
+        guard isActive else { return }
         let phaseIndex: Int
         switch boxPhase {
         case .inhale:  phaseIndex = 0
@@ -201,30 +199,21 @@ class BreathingSessionViewModel {
 }
 
 struct BreathingSessionResult: Hashable, Codable {
-    let preSessionHRV: Double
-    let postSessionHRV: Double
+    /// `nil` when HealthKit had no HRV sample for that side of the session.
+    let preSessionHRV: Double?
+    let postSessionHRV: Double?
     let duration: TimeInterval
     let cyclesCompleted: Int
 
-    var improvement: Double {
-        postSessionHRV - preSessionHRV
+    var improvement: Double? {
+        guard let preSessionHRV, let postSessionHRV else { return nil }
+        return postSessionHRV - preSessionHRV
     }
 
-    var percentageImprovement: Double {
-        preSessionHRV > 0 ? (improvement / preSessionHRV) * 100 : 0
+    var percentageImprovement: Double? {
+        guard let improvement, let preSessionHRV, preSessionHRV > 0 else { return nil }
+        return (improvement / preSessionHRV) * 100
     }
-
-    var stressChange: StressChangeCategory {
-        if improvement > 10 { return .improved }
-        if improvement < -10 { return .declined }
-        return .stable
-    }
-}
-
-enum StressChangeCategory {
-    case improved
-    case stable
-    case declined
 }
 
 extension Notification.Name {

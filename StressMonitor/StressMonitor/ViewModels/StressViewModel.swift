@@ -21,10 +21,10 @@ final class StressViewModel {
 
     /// Last 7 HRV readings for mini chart
     var hrvHistory: [Double] = []
-    /// Heart rate trend direction
-    var heartRateTrend: TrendDirection = .stable
     /// Today's measurements for timeline
     var todayMeasurements: [StressMeasurement] = []
+    /// Consecutive days, ending today, with at least one measurement.
+    private(set) var streakDays = 0
     /// Current week average stress
     var weeklyCurrentAvg: Double = 0
     /// Previous week average stress
@@ -36,15 +36,17 @@ final class StressViewModel {
     // MARK: - Dashboard Vitals State
 
     /// Latest respiratory rate in breaths/min. Nil when unavailable (simulator, or
-    /// no Apple Watch data) — the vitals row renders `--` in that case.
+    /// no Apple Watch data) — the vitals row renders `—` in that case.
     var respiratoryRate: Double?
     /// Latest self-reported mood from the Home check-in.
     var mood: MoodEntry?
 
     // MARK: - Behavioral Metrics (Home health-data row)
 
-    /// Last workout duration in minutes — drives the Exercise tile.
-    var todayExerciseMinutes: Int?
+    /// Duration of the most recent workout (today or yesterday) in minutes — drives the Exercise tile.
+    var lastWorkoutMinutes: Int?
+    /// When the most recent workout ended; lets the tile say which day it was.
+    var lastWorkoutEndDate: Date?
     /// Total sleep in hours from last night — drives the Sleep tile.
     var todaySleepHours: Double?
     /// Time outdoors in minutes — drives the Daylight tile (best-effort).
@@ -54,8 +56,10 @@ final class StressViewModel {
 
     /// Estimated biological age result — nil until enough data accumulates
     var bioAgeResult: BioAgeResult?
-    /// User's chronological age — defaults to 35 when date of birth unavailable
-    var userAge: Int = 35
+    /// User's chronological age from the HealthKit date of birth. Nil when the
+    /// user has not set one — no bio-age estimate is made without it.
+    var userAge: Int?
+    var isDateOfBirthMissing: Bool { userAge == nil }
     /// Whether there's enough data for a bio age estimate
     var hasSufficientBioAgeData: Bool = false
 
@@ -81,12 +85,6 @@ final class StressViewModel {
     /// loadCurrentStress — repeated UI-driven loads of the same HealthKit
     /// sample persist exactly one measurement (WIRE-01 dedupe guard).
     private var lastPersistedReadingDate: Date?
-
-    // MARK: - Trend Direction
-
-    enum TrendDirection {
-        case up, down, stable
-    }
 
     private let healthKit: HealthKitServiceProtocol
     private let algorithm: StressAlgorithmServiceProtocol
@@ -157,7 +155,7 @@ final class StressViewModel {
             let context = StressContext(
                 baseline: currentBaseline,
                 hrv: hrvValue,
-                heartRate: hrData.first?.value ?? 70,
+                heartRate: hrData.first?.value,
                 sleepData: sleepData,
                 activityData: activityData,
                 recoveryData: recoveryData,
@@ -167,9 +165,10 @@ final class StressViewModel {
             let result = try await algorithm.calculateMultiFactorStress(context: context)
             currentStress = result
             respiratoryRate = rrValue
-            todayExerciseMinutes = activityData?.lastWorkoutDurationMinutes.map { Int($0) }
+            lastWorkoutMinutes = activityData?.lastWorkoutDurationMinutes.map { Int($0) }
+            lastWorkoutEndDate = activityData?.lastWorkoutEndTime
             todaySleepHours = sleepData?.totalSleepHours
-            todayDaylightMinutes = nil
+            todayDaylightMinutes = await fetchTodayDaylightMinutes()
             isPermissionRequired = false
             baseline = currentBaseline
             lastRefresh = Date()
@@ -337,7 +336,7 @@ final class StressViewModel {
         let context = StressContext(
             baseline: currentBaseline,
             hrv: hrvValue,
-            heartRate: hrData.first?.value ?? 70,
+            heartRate: hrData.first?.value,
             sleepData: sleepData,
             activityData: activityData,
             recoveryData: recoveryData,
@@ -381,6 +380,7 @@ final class StressViewModel {
 
         // Derived data depends on both completing
         loadTodayMeasurements()
+        await loadStreak()
         loadWeeklyComparison()
         generateInsight()
         calculateBioAge()
@@ -399,6 +399,15 @@ final class StressViewModel {
         let startOfDay = calendar.startOfDay(for: Date())
         todayMeasurements = historicalData.filter { $0.timestamp >= startOfDay }
         hrvHistory = Array(todayMeasurements.map { $0.hrv }.suffix(7))
+    }
+
+    /// Streak looks back a fixed window by date, independent of how many
+    /// measurements the history fetch happened to return.
+    func loadStreak() async {
+        let now = Date()
+        guard let start = Calendar.current.date(byAdding: .day, value: -MeasurementStreak.lookbackDays, to: now),
+              let measurements = try? await repository.fetchMeasurements(from: start, to: now) else { return }
+        streakDays = MeasurementStreak.days(from: measurements.map(\.timestamp))
     }
 
     /// Calculate current vs previous week averages
@@ -420,25 +429,52 @@ final class StressViewModel {
         weeklyPreviousAvg = prevWeek.isEmpty ? 0 : prevWeek.map(\.stressLevel).reduce(0, +) / Double(prevWeek.count)
     }
 
-    /// Last 7 days of stress as chart points. Each day's bar encodes the peak
-    /// stress recorded that day; the bar's tier color comes from that peak.
-    /// Days without data collapse to a 0 / relaxed point so the chart still
-    /// renders a full week.
+    /// Last 7 days of stress as chart points, oldest first. Each day's bar
+    /// encodes the peak stress recorded that day; days without any measurement
+    /// carry no value so the chart leaves them empty.
     var weeklyStressPoints: [StressDataPoint] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        guard let sixDaysAgo = calendar.date(byAdding: .day, value: -6, to: today) else { return [] }
 
-        return (0...6).map { offset in
-            guard let day = calendar.date(byAdding: .day, value: offset, to: sixDaysAgo) else {
-                return StressDataPoint(day: "", value: 0, category: .relaxed)
-            }
-            let dayMeasurements = historicalData.filter { calendar.isDate($0.timestamp, inSameDayAs: day) }
-            let peak = dayMeasurements.map { $0.stressLevel }.max() ?? 0
-            let category = StressResult.category(for: peak)
-            let label = offset == 6 ? "TODAY" : "D"
-            return StressDataPoint(day: label, value: Int(peak.rounded()), category: category)
+        return (-6...0).compactMap { offset in
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { return nil }
+            let peak = historicalData
+                .filter { calendar.isDate($0.timestamp, inSameDayAs: day) }
+                .map(\.stressLevel)
+                .max()
+            return StressDataPoint(
+                date: day,
+                value: peak.map { Int($0.rounded()) },
+                category: peak.map { StressResult.category(for: $0) }
+            )
         }
+    }
+
+    // MARK: - Vitals vs Weekly Average
+
+    /// Latest HRV minus the mean of the past week's earlier readings, in ms.
+    /// Nil until at least three earlier readings exist.
+    var hrvDeltaVsWeeklyAverage: Int? {
+        guard let current = currentStress?.hrv, current > 0 else { return nil }
+        return deltaVsWeeklyAverage(current: current, metric: \.hrv)
+    }
+
+    /// Latest heart rate minus the mean of the past week's earlier readings, in bpm.
+    /// Nil when the current reading has no heart rate or fewer than three earlier readings exist.
+    var heartRateDeltaVsWeeklyAverage: Int? {
+        guard let current = currentStress?.heartRate, current > 0 else { return nil }
+        return deltaVsWeeklyAverage(current: current, metric: \.restingHeartRate)
+    }
+
+    private func deltaVsWeeklyAverage(current: Double, metric: KeyPath<StressMeasurement, Double>) -> Int? {
+        guard let cutoff = Calendar.current.date(byAdding: .day, value: -7, to: Date()) else { return nil }
+        let earlier = historicalData
+            .filter { $0.timestamp >= cutoff && $0.timestamp != currentStress?.timestamp }
+            .map { $0[keyPath: metric] }
+            .filter { $0 > 0 }
+        guard earlier.count >= 3 else { return nil }
+        let average = earlier.reduce(0, +) / Double(earlier.count)
+        return Int((current - average).rounded())
     }
 
     /// Generate AI insight from current stress and history
@@ -447,7 +483,8 @@ final class StressViewModel {
             aiInsight = nil
             return
         }
-        aiInsight = InsightGenerator.generate(from: stress, history: historicalData)
+        let personalBaselineHRV = bioAgeCalculator.hasEnoughData(measurements: historicalData) ? baseline?.baselineHRV : nil
+        aiInsight = InsightGenerator.generate(from: stress, history: historicalData, baselineHRV: personalBaselineHRV)
     }
 
     // MARK: - Bio Age Calculation
@@ -455,26 +492,26 @@ final class StressViewModel {
     /// Calculate biological age from current health data and measurement history.
     /// Requires 7+ days of data for a reliable estimate.
     func calculateBioAge() {
-        // Determine chronological age from HealthKit date of birth or fallback
         let calendar = Calendar.current
         if let dobComponent = healthKit.dateOfBirthComponents,
            let dob = calendar.date(from: dobComponent) {
-            let ageComponents = calendar.dateComponents([.year], from: dob, to: Date())
-            userAge = ageComponents.year ?? 35
+            userAge = calendar.dateComponents([.year], from: dob, to: Date()).year
+        } else {
+            userAge = nil
         }
 
         // Check data sufficiency
         hasSufficientBioAgeData = bioAgeCalculator.hasEnoughData(measurements: historicalData)
 
-        guard hasSufficientBioAgeData else {
+        guard let userAge, hasSufficientBioAgeData else {
             bioAgeResult = nil
             return
         }
 
-        // Use 7-day average HRV and RHR for stability
-        let recent = historicalData.suffix(7)
-        let avgHRV = recent.map(\.hrv).reduce(0, +) / Double(recent.count)
-        let avgRHR = recent.map(\.restingHeartRate).reduce(0, +) / Double(recent.count)
+        // Use 7 most recent readings' average HRV and RHR for stability
+        let recent = historicalData.sorted { $0.timestamp > $1.timestamp }.prefix(7)
+        let avgHRV = average(of: recent.map(\.hrv).filter { $0 > 0 })
+        let avgRHR = average(of: recent.map(\.restingHeartRate).filter { $0 > 0 })
 
         // Sleep efficiency from latest context if available
         let sleepEfficiency: Double? = nil
@@ -486,6 +523,10 @@ final class StressViewModel {
             sleepEfficiency: sleepEfficiency,
             previousResult: bioAgeResult
         )
+    }
+
+    private func average(of values: [Double]) -> Double? {
+        values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
     }
 
     // MARK: - Auto-Refresh with HKObserverQuery
@@ -548,6 +589,7 @@ final class StressViewModel {
                 guard !Task.isCancelled, let self else { return }
                 await self.loadCurrentStress()
                 self.loadTodayMeasurements()
+                await self.loadStreak()
                 self.generateInsight()
             }
         }
@@ -579,6 +621,7 @@ final class StressViewModel {
         Task {
             await loadCurrentStress()
             loadTodayMeasurements()
+            await loadStreak()
             generateInsight()
 
             // Haptic feedback on category change
@@ -594,4 +637,15 @@ final class StressViewModel {
 
 enum StressError: Error {
     case noData
+}
+
+// MARK: - Daylight
+
+extension StressViewModel {
+    /// `nil` when HealthKit has no daylight samples today or the source can't read them.
+    fileprivate func fetchTodayDaylightMinutes() async -> Int? {
+        guard let source = healthKit as? HabitHealthDataProviding,
+              let minutes = try? await source.fetchTodayDaylightMinutes() else { return nil }
+        return Int(minutes.rounded())
+    }
 }

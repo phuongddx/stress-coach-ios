@@ -470,10 +470,10 @@ class DataExportViewModel {
         let formatter = ISO8601DateFormatter()
         var fields = [formatter.string(from: record.timestamp)]
         if includeHRV { fields.append(String(format: "%.1f", record.hrv)) }
-        if includeHeartRate { fields.append(String(format: "%.0f", record.restingHeartRate)) }
+        if includeHeartRate { fields.append(record.restingHeartRate > 0 ? String(format: "%.0f", record.restingHeartRate) : "") }
         if includeStressLevels {
             fields.append(String(format: "%.0f", record.stressLevel))
-            fields.append(String(format: "%.2f", record.confidences?.first ?? 0.0))
+            fields.append(record.confidences?.first.map { String(format: "%.2f", $0) } ?? "")
         }
         return fields.joined(separator: ",")
     }
@@ -486,10 +486,10 @@ class DataExportViewModel {
     private func jsonFields(for record: StressMeasurement) -> [String: Any] {
         var fields: [String: Any] = ["timestamp": ISO8601DateFormatter().string(from: record.timestamp)]
         if includeHRV { fields["hrv"] = record.hrv }
-        if includeHeartRate { fields["heartRate"] = record.restingHeartRate }
+        if includeHeartRate { fields["heartRate"] = record.restingHeartRate > 0 ? record.restingHeartRate as Any : NSNull() }
         if includeStressLevels {
             fields["stressLevel"] = record.stressLevel
-            fields["confidence"] = record.confidences?.first ?? 0.0
+            fields["confidence"] = record.confidences?.first.map { $0 as Any } ?? NSNull()
         }
         return fields
     }

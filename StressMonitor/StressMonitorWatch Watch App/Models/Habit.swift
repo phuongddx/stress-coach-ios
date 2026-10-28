@@ -68,13 +68,23 @@ struct WatchHabit: Identifiable, Sendable, Codable {
     var source: HabitSource
     var date: Date
 
+    /// True once HealthKit has supplied today's value for an AUTO habit. Not
+    /// persisted: an AUTO row without it has no measurement, so it renders "—"
+    /// instead of the seeded 0.
+    var isAutoValueAvailable: Bool = false
+
+    private enum CodingKeys: String, CodingKey {
+        case id, type, currentValue, goalValue, source, date
+    }
+
     init(
         id: UUID = UUID(),
         type: HabitType,
         currentValue: Double = 0,
         goalValue: Double? = nil,
         source: HabitSource? = nil,
-        date: Date = Date()
+        date: Date = Date(),
+        isAutoValueAvailable: Bool = false
     ) {
         self.id = id
         self.type = type
@@ -82,5 +92,12 @@ struct WatchHabit: Identifiable, Sendable, Codable {
         self.goalValue = goalValue ?? type.goal
         self.source = source ?? type.source
         self.date = date
+        self.isAutoValueAvailable = isAutoValueAvailable
+    }
+
+    /// True when the row has a real value to show. Manual rows always do (0
+    /// cups is a user fact); AUTO rows only after HealthKit reported.
+    var hasDisplayValue: Bool {
+        source == .manual || isAutoValueAvailable
     }
 }
