@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 # Development
 
 Coding conventions, project structure, and development workflows for StressMonitor contributors.

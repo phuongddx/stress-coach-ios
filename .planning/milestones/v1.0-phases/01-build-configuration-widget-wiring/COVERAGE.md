@@ -1,1 +1,0 @@
-No external API integration: the two detector hits are Apple's own Required-Reason API declaration syntax (`NSPrivacyAccessedAPIType`) and an existing App Store Connect API key env var name already used by this project's Fastlane CI — neither is a new third-party API/SDK/service integration introduced by this phase.

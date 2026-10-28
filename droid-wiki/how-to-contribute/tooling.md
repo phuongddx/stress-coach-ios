@@ -55,4 +55,3 @@ A launch-argument flag (`-demo-mode`), DEBUG-only. Configured in the scheme's Ru
 - `docs/` contains narrative architecture and design documents in markdown.
 - `docs-site/` contains a static site build (separate from the app).
 - `design/` contains HTML mockups and the icon/character asset mapping.
-- GitNexus indexes the repo for code intelligence (see the instructions in `CLAUDE.md`).

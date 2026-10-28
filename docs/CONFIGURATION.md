@@ -1,4 +1,3 @@
-<!-- generated-by: gsd-doc-writer -->
 # Configuration
 
 This document covers build configuration, signing, capabilities, environment variables, and CI/CD setup for StressMonitor.
