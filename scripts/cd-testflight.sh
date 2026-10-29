@@ -10,6 +10,7 @@
 #
 # Env: ASC_APP_ID (required) · CD_WORKFLOW=Beta · CD_BRANCH=main · ASC_BIN=asc
 #      RUN_TIMEOUT=60m · PROCESS_ATTEMPTS=40 · PROCESS_SLEEP=30 (~20 min) · RUN_URL
+#      STATUS_ATTEMPTS=5 · STATUS_RETRY_SLEEP=30
 set -uo pipefail
 
 : "${ASC_APP_ID:?ASC_APP_ID is required}"
@@ -19,6 +20,8 @@ BRANCH="${CD_BRANCH:-main}"
 RUN_TIMEOUT="${RUN_TIMEOUT:-60m}"
 PROCESS_ATTEMPTS="${PROCESS_ATTEMPTS:-40}"
 PROCESS_SLEEP="${PROCESS_SLEEP:-30}"
+STATUS_ATTEMPTS="${STATUS_ATTEMPTS:-5}"
+STATUS_RETRY_SLEEP="${STATUS_RETRY_SLEEP:-30}"
 RUN_URL="${RUN_URL:-}"
 
 emit() {
@@ -35,6 +38,19 @@ trap 'rm -f "$err_file"' EXIT
 run_json="$("$ASC_BIN" xcode-cloud run --app "$ASC_APP_ID" --workflow "$WORKFLOW" \
     --branch "$BRANCH" --wait --poll-interval 30s --timeout "$RUN_TIMEOUT" \
     --output json 2>"$err_file")" || true
+
+# One slow API response aborts `--wait` even though the run keeps going in
+# Xcode Cloud. The error names the run, so wait on that run again instead of
+# reporting a failure (a fresh trigger would build and upload a second time).
+run_id="$(grep -oE 'ciBuildRuns/[0-9a-fA-F-]{36}' "$err_file" | head -n1 | cut -d/ -f2)"
+for ((i = 1; i <= STATUS_ATTEMPTS; i++)); do
+    [ -z "$(field "$run_json" .completionStatus)" ] && [ -n "$run_id" ] || break
+    echo "Waiting on Xcode Cloud run $run_id again ($i/$STATUS_ATTEMPTS) after:" >&2
+    cat "$err_file" >&2
+    sleep "$STATUS_RETRY_SLEEP"
+    run_json="$("$ASC_BIN" xcode-cloud status --run-id "$run_id" --wait --poll-interval 30s \
+        --timeout "$RUN_TIMEOUT" --output json 2>"$err_file")" || true
+done
 
 status="$(field "$run_json" .completionStatus)"
 status="${status:-ERROR}"
