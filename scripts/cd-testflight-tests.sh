@@ -11,6 +11,9 @@
 #   9. builds list returns empty output → exit 1, processing=UNKNOWN, ⚠️ text
 #  10. builds list returns {"data":[]} → exit 1, processing=UNKNOWN
 #  11. SUCCEEDED with no buildNumber → skip polling, exit 1, processing=UNKNOWN
+#  12. status poll times out after the run started → resume by run ID, exit 0
+#  13. resumed status polls keep failing → exit 1 after STATUS_ATTEMPTS, ERROR
+#  14. trigger itself fails (no run ID in stderr) → exit 1, never resumes
 # shellcheck disable=SC2319  # `[ ... ]; expect_pass $?` is the intended pattern
 set -uo pipefail
 
@@ -32,7 +35,13 @@ cat > "$FAKE" <<'EOF'
 #!/bin/bash
 echo "$*" >> "$FAKE_LOG"
 case "$1 $2" in
-  "xcode-cloud run") printf '%s' "${FAKE_RUN_JSON:-}"; exit "${FAKE_RUN_EXIT:-0}" ;;
+  "xcode-cloud run")
+    printf '%s' "${FAKE_RUN_STDERR:-}" >&2
+    printf '%s' "${FAKE_RUN_JSON:-}"; exit "${FAKE_RUN_EXIT:-0}" ;;
+  "xcode-cloud status")
+    n=$(( $(cat "$FAKE_LOG.status" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$FAKE_LOG.status"
+    if [ "$n" -le "${FAKE_STATUS_FAILS:-0}" ]; then echo "Error: status timeout" >&2; exit 1; fi
+    printf '%s' "${FAKE_STATUS_JSON:-}" ;;
   "builds list") printf '%s' "${FAKE_BUILD_JSON:-}" ;;
 esac
 EOF
@@ -44,10 +53,10 @@ build_json() { printf '{"data":[{"attributes":{"version":"48","processingState":
 
 # run_case RUN_JSON RUN_EXIT BUILD_JSON [APP_ID] → sets $rc
 run_case() {
-    : > "$FAKE_LOG"; : > "$OUT"
+    : > "$FAKE_LOG"; : > "$OUT"; rm -f "$FAKE_LOG.status"
     env FAKE_LOG="$FAKE_LOG" FAKE_RUN_JSON="$1" FAKE_RUN_EXIT="$2" FAKE_BUILD_JSON="$3" \
         ASC_BIN="$FAKE" ASC_APP_ID="${4-123}" GITHUB_OUTPUT="$OUT" \
-        PROCESS_ATTEMPTS=2 PROCESS_SLEEP=0 RUN_URL="$URL" \
+        PROCESS_ATTEMPTS=2 PROCESS_SLEEP=0 STATUS_ATTEMPTS=2 STATUS_RETRY_SLEEP=0 RUN_URL="$URL" \
         bash "$SCRIPT" > "$TMP/stdout" 2>&1
     rc=$?
 }
@@ -107,6 +116,24 @@ expect_pass $? "test_succeeded_without_build_number_skips_polling (rc=$rc)"
 run_case "$RUN_OK" 0 "$(build_json VALID)" ""
 [ "$rc" -ne 0 ] && [ ! -s "$FAKE_LOG" ] && grep -qF "ASC_APP_ID is required" "$TMP/stdout"
 expect_pass $? "test_requires_app_id (rc=$rc)"
+
+RUN_ID="8dc8e3da-2118-477e-ab2b-e73e37dd3d13"
+POLL_TIMEOUT="Error: xcode-cloud: failed to check status: request failed: Get \"https://api.appstoreconnect.apple.com/v1/ciBuildRuns/$RUN_ID\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+
+FAKE_RUN_STDERR="$POLL_TIMEOUT" FAKE_STATUS_JSON="$RUN_OK" run_case "" 1 "$(build_json VALID)"
+[ "$rc" -eq 0 ] && [ "$(out status)" = "SUCCEEDED" ] && [ "$(out processing)" = "VALID" ] \
+  && grep -qF "xcode-cloud status --run-id $RUN_ID --wait" "$FAKE_LOG" \
+  && [ "$(grep -c 'xcode-cloud run' "$FAKE_LOG")" -eq 1 ]
+expect_pass $? "test_poll_timeout_resumes_same_run (rc=$rc)"
+
+FAKE_RUN_STDERR="$POLL_TIMEOUT" FAKE_STATUS_FAILS=5 FAKE_STATUS_JSON="$RUN_OK" run_case "" 1 "$(build_json VALID)"
+[ "$rc" -ne 0 ] && [ "$(out status)" = "ERROR" ] \
+  && [ "$(grep -c 'xcode-cloud status' "$FAKE_LOG")" -eq 2 ] && ! grep -q "builds list" "$FAKE_LOG"
+expect_pass $? "test_resume_gives_up_after_attempts (rc=$rc)"
+
+FAKE_RUN_STDERR='Error: xcode-cloud: failed to start build: 403 FORBIDDEN' FAKE_STATUS_JSON="$RUN_OK" run_case "" 1 ""
+[ "$rc" -ne 0 ] && [ "$(out status)" = "ERROR" ] && ! grep -q "xcode-cloud status" "$FAKE_LOG"
+expect_pass $? "test_trigger_failure_does_not_resume (rc=$rc)"
 
 echo "cd-testflight tests: $failures failure(s)"
 exit "$failures"
