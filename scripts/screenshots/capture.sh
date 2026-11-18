@@ -66,30 +66,45 @@ shot() {
   echo "captured $OUT_DIR/$1.png"
 }
 
+# allow_health: accept the system's Health Access sheet. It belongs to another
+# process, so it is not in the app's accessibility tree: tap "Turn On All", then
+# "Allow", where an iPhone 16 (393x852 pt) draws them. The app asks twice on a
+# fresh simulator: at launch, and for the habit types when Action first opens.
+allow_health() {
+  sleep 5
+  axe tap -x 81 -y 476 --udid "$UDID" >/dev/null
+  sleep 1
+  axe tap -x 196 -y 727 --udid "$UDID" >/dev/null
+  sleep 2
+}
+
+launch() {
+  xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
+  xcrun simctl launch "$UDID" "$BUNDLE_ID" -demo-mode -hasCompletedOnboarding YES
+  wait_for "Trends" 90        # the tab bar is up
+}
+
 xcrun simctl status_bar "$UDID" override \
   --time "9:41" --batteryState charged --batteryLevel 100 --cellularBars 4 --wifiBars 3
 xcrun simctl ui "$UDID" appearance light
 xcrun simctl install "$UDID" "$APP"
-xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
-xcrun simctl launch "$UDID" "$BUNDLE_ID" -demo-mode -hasCompletedOnboarding YES
 
-wait_for "Trends" 90          # the tab bar is up
-
-# The system's Health Access sheet covers the app on a fresh simulator. It
-# belongs to another process, so it is not in the app's accessibility tree:
-# tap "Turn On All", then "Allow", where an iPhone 16 (393x852 pt) draws them.
-sleep 5
-axe tap -x 81 -y 476 --udid "$UDID" >/dev/null
-sleep 1
-axe tap -x 196 -y 727 --udid "$UDID" >/dev/null
-sleep 2
+launch
+allow_health
 SETTLE=8 shot "1-home"        # demo data loads and the gauge animates in
 
 tap "Trends" --lowest
 shot "2-trends"
 
 tap "Action" --lowest
+allow_health
 shot "explore-action"
 
+tap "Box Breathing"
+shot "4-breathing"
+
+launch
 tap "Settings" --lowest
 shot "explore-settings"
+tap "StressMonitor Plus" || true
+shot "5-premium"
