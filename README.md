@@ -44,11 +44,13 @@ Additional product capabilities include morning readiness, biological-age insigh
 
 | Breathing | Premium |
 |---|---|
-| ![Guided box-breathing session](docs/screenshots/4-breathing.png) | ![Premium plans and credit packs](docs/screenshots/5-premium.png) |
+| ![Box Breathing — pattern and duration before a session](docs/screenshots/4-breathing.png) | ![Premium plans and credit packs](docs/screenshots/5-premium.png) |
 
 | Watch — live score | Watch — breathe | Watch — history |
 |---|---|---|
 | ![Watch menu with live stress score](docs/screenshots/1-watch-menu.png) | ![Watch 4·7·8 breathing](docs/screenshots/2-watch-breathe.png) | ![Watch weekly trend](docs/screenshots/3-watch-history.png) |
+
+The Home, Trends, AI Coach and Breathing screenshots are rebuilt from a simulator in demo mode by the [Screenshots workflow](.github/workflows/screenshots.yml) (Actions → Screenshots → Run workflow), driven by [AXe](https://github.com/cameroncooke/AXe). Premium and the Apple Watch screens are captured by hand.
 
 ## How stress scoring works
 

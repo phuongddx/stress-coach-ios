@@ -14,8 +14,6 @@ on:
         description: "Open a pull request with the new screenshots"
         type: boolean
         default: true
-  push:
-    branches: [ci/axe-screenshots]
 
 concurrency:
   group: screenshots-${{ github.ref }}
