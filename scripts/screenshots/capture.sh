@@ -8,7 +8,7 @@
 # screen is opened through its accessibility label and captured.
 #
 #   OUT_DIR   where the PNGs go             (default docs/screenshots)
-#   WIDTH     width of the saved PNGs in px (default 290, as the README uses)
+#   WIDTH     width of the saved PNGs in px (default: the simulator's own pixels)
 #   DEBUG_DIR full-size captures and UI dumps for every step (default build/screenshots)
 set -euo pipefail
 
@@ -16,7 +16,7 @@ UDID="${1:?usage: capture.sh <udid> <app path>}"
 APP="${2:?usage: capture.sh <udid> <app path>}"
 BUNDLE_ID="stress.ai.com"
 OUT_DIR="${OUT_DIR:-docs/screenshots}"
-WIDTH="${WIDTH:-290}"
+WIDTH="${WIDTH:-}"
 DEBUG_DIR="${DEBUG_DIR:-build/screenshots}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
@@ -57,11 +57,12 @@ dump() {
   axe screenshot --udid "$UDID" --output "$DEBUG_DIR/$1.png" >/dev/null 2>&1 || true
 }
 
-# shot <name>: capture the settled screen into OUT_DIR at WIDTH.
+# shot <name>: capture the settled screen into OUT_DIR.
 shot() {
   sleep "${SETTLE:-3}"
   dump "$1"
-  sips --resampleWidth "$WIDTH" "$DEBUG_DIR/$1.png" --out "$OUT_DIR/$1.png" >/dev/null
+  cp "$DEBUG_DIR/$1.png" "$OUT_DIR/$1.png"
+  [ -z "$WIDTH" ] || sips --resampleWidth "$WIDTH" "$OUT_DIR/$1.png" >/dev/null
   echo "captured $OUT_DIR/$1.png"
 }
 
@@ -73,6 +74,15 @@ xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
 xcrun simctl launch "$UDID" "$BUNDLE_ID" -demo-mode -hasCompletedOnboarding YES
 
 wait_for "Trends" 90          # the tab bar is up
+
+# The system's Health Access sheet covers the app on a fresh simulator. It
+# belongs to another process, so it is not in the app's accessibility tree:
+# tap "Turn On All", then "Allow", where an iPhone 16 (393x852 pt) draws them.
+sleep 5
+axe tap -x 81 -y 476 --udid "$UDID" >/dev/null
+sleep 1
+axe tap -x 196 -y 727 --udid "$UDID" >/dev/null
+sleep 2
 SETTLE=8 shot "1-home"        # demo data loads and the gauge animates in
 
 tap "Trends" --lowest
