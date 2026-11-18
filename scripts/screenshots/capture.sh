@@ -98,13 +98,13 @@ shot "2-trends"
 
 tap "Action" --lowest
 allow_health
-shot "explore-action"
+tap "Talk to Ripple"
+SETTLE=6 shot "3-chat"
 
+launch                        # drops the chat sheet
+tap "Action" --lowest
 tap "Box Breathing"
 shot "4-breathing"
 
-launch
-tap "Settings" --lowest
-shot "explore-settings"
-tap "StressMonitor Plus" || true
-shot "5-premium"
+# 5-premium.png is not rebuilt: purchases are switched off in this build, so
+# Settings has no "StressMonitor Plus" row to open the paywall from.
