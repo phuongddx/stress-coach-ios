@@ -74,6 +74,14 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           echo "UDID=$UDID" >> "$GITHUB_ENV"
 
+      # The scheme also builds the embedded Watch app (same guard as build.yml).
+      - name: Ensure watchOS Simulator runtime
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            echo "watchOS Simulator runtime missing — downloading..."
+            xcodebuild -downloadPlatform watchOS
+          fi
+
       - name: Build for the simulator
         run: |
           set -o pipefail
