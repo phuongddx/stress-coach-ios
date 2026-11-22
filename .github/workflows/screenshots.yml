@@ -1,0 +1,133 @@
+name: Screenshots
+
+# Rebuilds docs/screenshots from a simulator build in demo mode, driven by AXe
+# (https://github.com/cameroncooke/AXe). Run it by hand after a UI change; it
+# opens a pull request when a screenshot changed.
+
+on:
+  workflow_dispatch:
+    inputs:
+      device:
+        description: "Simulator device name"
+        default: "iPhone 16"
+      open_pr:
+        description: "Open a pull request with the new screenshots"
+        type: boolean
+        default: true
+
+concurrency:
+  group: screenshots-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  XCODE_VERSION: "26.3"
+  SCHEME: "StressMonitor"
+  DEVICE: ${{ inputs.device || 'iPhone 16' }}
+  LANG: "en_US.UTF-8"
+
+jobs:
+  capture:
+    name: Capture screenshots
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Install AXe
+        run: |
+          brew install cameroncooke/axe/axe
+          axe --version
+
+      - name: Cache SPM Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/SourcePackages/checkouts
+            build/SourcePackages/repositories
+          key: spm-screenshots-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-screenshots-${{ runner.os }}-
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r --arg name "$DEVICE" '
+            [.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS-"))
+             | {runtime: (.key | capture("iOS-(?<v>[0-9-]+)$").v | split("-") | map(tonumber)),
+                device: (.value[] | select(.name == $name))}]
+            | sort_by(.runtime) | last | .device.udid // empty')
+          if [ -z "$UDID" ]; then
+            echo "error: no available simulator named \"$DEVICE\"" >&2
+            xcrun simctl list devices available
+            exit 1
+          fi
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      # The scheme also builds the embedded Watch app (same guard as build.yml).
+      - name: Ensure watchOS Simulator runtime
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            echo "watchOS Simulator runtime missing — downloading..."
+            xcodebuild -downloadPlatform watchOS
+          fi
+
+      - name: Build for the simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project StressMonitor/StressMonitor.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Capture
+        run: scripts/screenshots/capture.sh "$UDID" build/Build/Products/Debug-iphonesimulator/StressMonitor.app
+
+      - name: Upload captures and UI dumps
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: |
+            docs/screenshots
+            build/screenshots
+          retention-days: 14
+
+      - name: Open a pull request
+        if: github.event_name == 'workflow_dispatch' && inputs.open_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- docs/screenshots; then
+            echo "No screenshot changed." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          BRANCH="screenshots/refresh"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add docs/screenshots
+          git commit -m "docs: refresh screenshots from ${GITHUB_SHA::7}"
+          git push --force origin "$BRANCH"
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')" ]; then
+            gh pr create --head "$BRANCH" --base "$GITHUB_REF_NAME" \
+              --title "docs: refresh screenshots" \
+              --body "Captured by the Screenshots workflow from ${GITHUB_SHA} on ${DEVICE}, in demo mode." \
+              || echo "The branch $BRANCH is pushed; open the pull request by hand (Actions may not create pull requests in this repository)." | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
