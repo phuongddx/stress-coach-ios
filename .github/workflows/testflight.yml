@@ -2,9 +2,9 @@ name: TestFlight
 
 # Build and upload a TestFlight build from GitHub Actions.
 #
-# Exists because Xcode Cloud's Beta workflow is disabled (its pinned Xcode/macOS
-# image pairing went invalid and every run was rejected at dispatch). Manual
-# dispatch only, so the two never race if Xcode Cloud is re-enabled.
+# Emergency fallback for when Xcode Cloud's Beta workflow cannot ship a build.
+# Beta is enabled and is started after each green Build on main by
+# cd-testflight.yml. Manual dispatch only, so the two never race.
 #
 # Signing uses the existing App Store distribution identity rather than Match:
 # the private key for certificate XPT2DHR688 — the one backing the ACTIVE
