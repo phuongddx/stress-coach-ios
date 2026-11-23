@@ -1,203 +1,126 @@
 import SwiftUI
 
 // MARK: - Welcome Screen (Screen 0)
-// Emotional hook: meet Ripple, feel the calm. Animated rings + feature pills + CTA.
+// Meet Ripple, learn what the score is, then continue to Apple Health.
+// UI V2 `S.onbWelcome`: token colours in light and dark, no breathing rings.
 struct OnboardingWelcomeView: View {
     @State private var viewModel = OnboardingWelcomeViewModel()
     @State private var appearAnimation = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var onGetStarted: (() -> Void)?
+    var onSelectStep: ((Int) -> Void)?
+
+    private var motionAllowed: Bool {
+        WellnessMotion.isMotionAllowed(reduceMotionEnvironment: reduceMotion)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Spacer()
+            topBar
 
-            // Hero: Ripple otter creature with animated breathing rings
-            welcomeHero
-                .padding(.bottom, 28)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    welcomeHero
+                        .padding(.top, 16)
+                        .padding(.bottom, 8)
 
-            // Headline
-            Text("Meet your Stress Buddy")
-                .font(.system(size: 32, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color(hex: "#E8E8F0"))
-                .multilineTextAlignment(.center)
-                .opacity(appearAnimation ? 1 : 0)
-                .offset(y: appearAnimation ? 0 : 12)
-                .accessibilityAddTraits(.isHeader)
+                    Text("Meet Ripple, your calm companion")
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(Color.V2.ink)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
 
-            // Subtitle
-            Text("A tiny creature that lives on your phone and reflects how your body feels — so you can take better care of yourself.")
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .frame(maxWidth: 310)
-                .padding(.top, 10)
-                .padding(.bottom, 28)
-                .opacity(appearAnimation ? 1 : 0)
-                .offset(y: appearAnimation ? 0 : 12)
+                    Text("A stress score from 0 to 100, worked out on your iPhone from heart rate variability and four other signals in Apple Health.")
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink2)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 8)
+                        .padding(.top, 8)
+                        .padding(.bottom, 20)
 
-            // Feature pills
-            featurePills
-                .padding(.bottom, 28)
-
-            // Primary CTA
-            Button(action: { onGetStarted?() }) {
-                HStack(spacing: 8) {
-                    Text("Get Started")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                    valueProps
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(
-                    LinearGradient(
-                        colors: [HomeCharacterDesignTokens.Ripple.primary, HomeCharacterDesignTokens.Ripple.deep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.28), radius: 12, y: 6)
+                .opacity(appearAnimation ? 1 : 0)
+                .padding(.bottom, 16)
             }
-            .opacity(appearAnimation ? 1 : 0)
-            .offset(y: appearAnimation ? 0 : 12)
 
-            // Secondary CTA
-            Button(action: { viewModel.handleSignIn() }) {
-                Text("I already have an account")
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
+            VStack(spacing: 0) {
+                OnboardingStepDots(current: 0, onSelect: onSelectStep)
+
+                Button("Get started") { onGetStarted?() }
+                    .buttonStyle(.v2(.primary))
+
+                Text("Wellness app, not a medical device.")
+                    .font(.caption)
+                    .foregroundStyle(Color.V2.ink3)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 12)
+                    .padding(.bottom, 16)
             }
-            .padding(.top, 10)
-            .opacity(appearAnimation ? 1 : 0)
-
-            Spacer().frame(height: 48)
         }
-        .padding(.horizontal, 28)
-        .background(HomeCharacterDesignTokens.darkCanvas)
+        .padding(.horizontal, V2Metrics.margin)
+        .background(Color.V2.bg.ignoresSafeArea())
         .onAppear {
-            withAnimation(.easeOut(duration: 0.6)) {
+            if motionAllowed {
+                withAnimation(.easeOut(duration: 0.6)) { appearAnimation = true }
+            } else {
                 appearAnimation = true
             }
         }
     }
 
-    // MARK: - Hero with animated rings
+    // MARK: - Top bar
+
+    private var topBar: some View {
+        HStack {
+            Text("Stress AI Coach")
+                .v2Eyebrow()
+            Spacer()
+            Button("Sign in") { viewModel.handleSignIn() }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
+        }
+        .frame(minHeight: V2Metrics.minTouchTarget)
+    }
+
+    // MARK: - Hero
 
     private var welcomeHero: some View {
-        ZStack {
-            // Outer ring
-            Circle()
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.08), lineWidth: 2)
-                .frame(width: 240, height: 240)
-                .scaleEffect(viewModel.breathPhase ? 1.06 : 1.0)
-                .opacity(viewModel.breathPhase ? 0.7 : 1.0)
-
-            // Middle ring
-            Circle()
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.12), lineWidth: 2)
-                .frame(width: 200, height: 200)
-                .scaleEffect(viewModel.breathPhase2 ? 1.06 : 1.0)
-                .opacity(viewModel.breathPhase2 ? 0.7 : 1.0)
-
-            // Inner ring
-            Circle()
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.18), lineWidth: 2)
-                .frame(width: 160, height: 160)
-                .scaleEffect(viewModel.breathPhase3 ? 1.06 : 1.0)
-                .opacity(viewModel.breathPhase3 ? 0.7 : 1.0)
-
-            // Glow
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            HomeCharacterDesignTokens.Ripple.primary.opacity(0.18),
-                            HomeCharacterDesignTokens.Blossom.primary.opacity(0.08),
-                            .clear
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 90
-                    )
-                )
-                .frame(width: 180, height: 180)
-                .scaleEffect(viewModel.breathPhase2 ? 1.06 : 1.0)
-
-            // Ripple character — happy mood to introduce the buddy
-            StressBuddyIllustration(mood: .happy, size: 120)
-                .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.35), radius: 24)
-                .offset(y: viewModel.floatOffset ? -10 : 0)
-        }
-        .frame(width: 240, height: 240)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Ripple the Water Otter creature with animated breathing rings")
+        StressBuddyIllustration(mood: .happy, size: 124)
+            // Gentle float from the view model's loop; still under Reduce Motion.
+            .offset(y: motionAllowed && viewModel.floatOffset ? -6 : 0)
+            .frame(width: 168, height: 168)
+            .background(Circle().fill(Color.V2.accentSoft))
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Ripple the Water Otter")
     }
 
     // MARK: - Value props
 
-    private var featurePills: some View {
-        VStack(spacing: 10) {
-            ValuePropRow(
-                icon: "waveform.path.ecg",
-                title: "Real-time stress score",
-                subtitle: "HRV and heart rate, translated into a number you understand."
-            )
-            ValuePropRow(
-                icon: "leaf.fill",
-                title: "Calm in minutes",
-                subtitle: "Guided breathing and mini-walks whenever tension rises."
-            )
-            ValuePropRow(
-                icon: "chart.xyaxis.line",
-                title: "See your patterns",
-                subtitle: "Trends and bio-age insights from data already on your phone."
-            )
-        }
-        .opacity(appearAnimation ? 1 : 0)
-        .offset(y: appearAnimation ? 0 : 12)
-    }
-}
-
-// MARK: - Value Prop Row
-
-private struct ValuePropRow: View {
-    let icon: String
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-                .frame(width: 40, height: 40)
-                .background(HomeCharacterDesignTokens.Ripple.primary.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#E8E8F0"))
-                Text(subtitle)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-                    .multilineTextAlignment(.leading)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.darkCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
+    private var valueProps: some View {
+        V2Card {
+            VStack(alignment: .leading, spacing: 14) {
+                OnboardingInfoRow(
+                    systemImage: "waveform.path.ecg",
+                    title: "A score you can trust",
+                    subtitle: "HRV, heart rate, sleep, activity and recovery, with a confidence level."
                 )
-        )
+                OnboardingInfoRow(
+                    systemImage: "wind",
+                    title: "Calm in minutes",
+                    subtitle: "Box breathing and mini walks when tension builds."
+                )
+                OnboardingInfoRow(
+                    systemImage: "chart.xyaxis.line",
+                    title: "See your patterns",
+                    subtitle: "Weekly trends and what moves your score."
+                )
+            }
+        }
     }
 }
 
