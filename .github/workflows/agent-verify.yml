@@ -130,7 +130,7 @@ jobs:
         if: always()
         run: |
           [ -d TestResults.xcresult ] || exit 0
-          xcrun xcresulttool get test-results summary --path TestResults.xcresult --compact > summary.json
+          xcrun xcresulttool get test-results summary --path TestResults.xcresult > summary.json
           {
             echo "### Agent Verify"
             jq -r '"\(.result): \(.passedTests) passed, \(.failedTests) failed, \(.skippedTests) skipped of \(.totalTestCount)"' summary.json
