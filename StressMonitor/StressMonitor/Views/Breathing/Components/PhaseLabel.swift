@@ -1,38 +1,38 @@
 import SwiftUI
 
-/// Large SF Pro Rounded phase word (e.g. "INHALE") with a countdown number below.
-///
-/// Matches the `.breath-instruction` block from `08-breathing-active.html`:
-/// white text sitting inside the solid core circle of the breathing arena.
+/// Phase word ("Breathe in") with the seconds countdown below, sitting on the
+/// accent core of the breathing arena (UI V2 `S.session`).
 struct PhaseLabel: View {
     let phase: BoxBreathingPhase
     let secondsRemaining: Int
-    var tint: Color = .white
+    var tint: Color = Color.V2.onAccent
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 2) {
             Text(phase.displayWord)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .tracking(0.04 * 24)
+                .font(.headline)
                 .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
             Text("\(secondsRemaining)")
-                .font(.system(size: 48, weight: .bold, design: .rounded).monospacedDigit())
+                .font(.v2Number(.largeTitle, weight: .bold))
                 .foregroundStyle(tint)
                 .contentTransition(.numericText())
         }
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(phase.displayWord), \(secondsRemaining) seconds remaining")
     }
 }
 
 extension BoxBreathingPhase {
-    /// Uppercase display word for the breathing arena center.
+    /// Display word for the breathing arena centre.
     var displayWord: String {
         switch self {
-        case .inhale:  return "INHALE"
-        case .holdIn:  return "HOLD"
-        case .exhale:  return "EXHALE"
-        case .holdOut: return "HOLD"
+        case .inhale:  return "Breathe in"
+        case .holdIn:  return "Hold"
+        case .exhale:  return "Breathe out"
+        case .holdOut: return "Hold"
         }
     }
 }
@@ -45,5 +45,5 @@ extension BoxBreathingPhase {
         PhaseLabel(phase: .holdOut, secondsRemaining: 1)
     }
     .padding(40)
-    .background(Color(hex: "#0288D1"))
+    .background(Color.V2.accent)
 }
