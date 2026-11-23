@@ -13,9 +13,13 @@ enum CreditBalanceFormatter {
     /// "0 credits" — a zero would read as server-authoritative depletion.
     static let unavailableText = "—"
 
-    /// Below this remaining count the backend shrinks the response token
-    /// budget (1024 → 768 → 512), so responses get visibly shorter.
-    static let shortResponseThreshold = 20
+    /// Below this remaining count the chat warns that free messages are
+    /// running out (SPEC Q4: 5 of the 20 monthly free messages).
+    static let shortResponseThreshold = 5
+
+    /// Shown when chat is refused because the monthly free messages are used
+    /// up. 1.1 sells only Plus, so the copy never offers credit top-ups.
+    static let outOfFreeMessagesText = "You've used your 20 free messages this month. Plus gives you unlimited chat."
 
     static func balanceText(_ balance: CreditBalance?) -> String {
         guard let balance else { return unavailableText }

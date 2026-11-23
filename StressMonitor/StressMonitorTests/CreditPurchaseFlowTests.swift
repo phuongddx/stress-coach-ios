@@ -100,7 +100,7 @@ final class SubscriptionVerifySpy {
 struct CreditPurchaseFlowTests {
 
     private static let smallPackID = "com.stressmonitor.app.credits.small"
-    private static let monthlySubID = "com.stressmonitor.app.premium.monthly"
+    private static let monthlySubID = "com.stressmonitor.app.plus.monthly"
 
     private func makeCatalog() -> StoreKitProductCatalog {
         StoreKitProductCatalog(

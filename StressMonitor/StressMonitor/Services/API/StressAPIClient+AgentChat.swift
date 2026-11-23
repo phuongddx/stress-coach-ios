@@ -16,7 +16,7 @@ enum AgentChatAPIError: Error, LocalizedError, Equatable, Sendable {
         case .unauthorized: return "Please sign in to chat with your coach."
         case .insufficientCredits:
             return PurchaseAvailability.isEnabled
-                ? "You're out of credits. Top up to keep chatting."
+                ? CreditBalanceFormatter.outOfFreeMessagesText
                 : "You've reached the coaching limit for now. Please try again later."
         case .stream(let message): return message
         case .server(let code): return "Coach chat failed (server error \(code))."

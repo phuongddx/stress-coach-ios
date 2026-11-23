@@ -33,7 +33,7 @@ enum LLMServiceError: Error, LocalizedError {
             // No purchase path exists while purchases are postponed, so the
             // message must not send the user shopping.
             return PurchaseAvailability.isEnabled
-                ? "Out of credits. Subscribe or buy more to keep chatting."
+                ? CreditBalanceFormatter.outOfFreeMessagesText
                 : "You've reached the coaching limit for now. Please try again later."
         case .decodingFailure:
             return "Something went wrong processing that response."
