@@ -24,7 +24,7 @@ struct TrendsWeekComparisonTests {
     init() throws {
         container = try ModelContainer(
             for: StressMeasurement.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 

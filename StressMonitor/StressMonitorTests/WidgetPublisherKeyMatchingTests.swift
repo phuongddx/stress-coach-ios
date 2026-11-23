@@ -7,6 +7,10 @@ import Testing
 /// separate compile targets (StressMonitor app vs. StressMonitorWidget extension), so
 /// they cannot be compared by type. This regression-proofs the contract via the literal
 /// key strings both sides are known to use instead.
+///
+/// Serialized: every test here writes the same App Group suite, so parallel runs
+/// overwrite each other's values.
+@Suite(.serialized)
 struct WidgetPublisherKeyMatchingTests {
     private static let suiteName = "group.stress.ai.com"
 
@@ -119,7 +123,7 @@ struct WidgetPublisherKeyMatchingTests {
         // mainContext for the whole test, or SwiftData traps.
         let container = try ModelContainer(
             for: StressMeasurement.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
         let repository = StressRepository(modelContext: ModelContext(container))
 
