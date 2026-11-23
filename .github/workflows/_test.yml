@@ -31,23 +31,10 @@ jobs:
       - name: Install xcpretty
         run: gem install xcpretty --no-document
 
-      - name: Cache DerivedData
-        uses: actions/cache@v4
+      - name: Xcode cache
+        uses: ./.github/actions/xcode-cache
         with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: derived-${{ runner.os }}-${{ hashFiles('StressMonitor/StressMonitor.xcodeproj/project.pbxproj') }}
-          restore-keys: |
-            derived-${{ runner.os }}-${{ hashFiles('StressMonitor/StressMonitor.xcodeproj/project.pbxproj') }}-
-
-      - name: Cache SPM Packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/checkouts
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/repositories
-          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            spm-${{ runner.os }}-
+          job-key: lint-build
 
       - name: Run SwiftLint
         run: |
@@ -61,12 +48,14 @@ jobs:
       - name: Build iOS
         run: |
           set -o pipefail
+          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
           xcodebuild build \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "$SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty
@@ -114,6 +103,11 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
           xcodebuild -version
 
+      - name: Xcode cache
+        uses: ./.github/actions/xcode-cache
+        with:
+          job-key: watchos
+
       - name: Install xcpretty
         run: gem install xcpretty --no-document
 
@@ -124,12 +118,14 @@ jobs:
             echo "Installing watchOS Simulator runtime..."
             xcodebuild -downloadPlatform watchOS
           fi
+          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
           xcodebuild build \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "StressMonitorWatch Watch App" \
             -destination 'generic/platform=watchOS Simulator' \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty
@@ -147,6 +143,11 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
           xcodebuild -version
 
+      - name: Xcode cache
+        uses: ./.github/actions/xcode-cache
+        with:
+          job-key: widget
+
       - name: Install xcpretty
         run: gem install xcpretty --no-document
 
@@ -160,12 +161,14 @@ jobs:
       - name: Build Widget Extension
         run: |
           set -o pipefail
+          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
           xcodebuild build \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "StressMonitorWidgetExtension" \
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty
@@ -186,29 +189,17 @@ jobs:
       - name: Install xcbeautify
         run: command -v xcbeautify || brew install xcbeautify
 
-      - name: Cache DerivedData
-        uses: actions/cache@v4
+      - name: Xcode cache
+        uses: ./.github/actions/xcode-cache
         with:
-          path: ~/Library/Developer/Xcode/DerivedData
-          key: derived-${{ runner.os }}-${{ hashFiles('StressMonitor/StressMonitor.xcodeproj/project.pbxproj') }}
-          restore-keys: |
-            derived-${{ runner.os }}-
-
-      - name: Cache SPM Packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/checkouts
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/repositories
-          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            spm-${{ runner.os }}-
+          job-key: test
 
       # No CI-only test gate: the past CI host stall was a SwiftData
       # container-lifetime bug in test fixtures (now kept alive per test).
       - name: Run Tests
         run: |
           set -o pipefail
+          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
           xcodebuild test \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "$SCHEME" \
@@ -216,6 +207,7 @@ jobs:
             -derivedDataPath build \
             -resultBundlePath TestResults.xcresult \
             -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
             -parallel-testing-enabled NO \
             -maximum-concurrent-test-simulator-destinations 1 \
             CODE_SIGN_IDENTITY="" \
