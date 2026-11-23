@@ -176,6 +176,7 @@ struct PlanCard: View {
     }
 }
 
+#if DEBUG
 #Preview {
     VStack(spacing: 16) {
         PlanCard(plan: PlanCard.previewAnnual, isSelected: true, isLoading: false, onSelect: {})
@@ -186,7 +187,6 @@ struct PlanCard: View {
     .background(Color(hex: "F5F2EC"))
 }
 
-#if DEBUG
 private extension PlanCard {
     // Preview-only sample matching the .storekit test configuration.
     static let previewAnnual = SubscriptionPlan(
