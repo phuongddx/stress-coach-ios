@@ -15,6 +15,13 @@
 		39419B30DE0EE4EDBA6A2CB4 /* WidgetPublisherKeyMatchingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6AC42E6137A72A55808876F /* WidgetPublisherKeyMatchingTests.swift */; };
 		4B42B91606B4D42E3CE7A998 /* CharacterEntitlementSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 713235225361EAF1FE04D14B /* CharacterEntitlementSyncTests.swift */; };
 		D1858B03657E705B3A69F771 /* StoreKitProductCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */; };
+		F00A8B56A1D511A3811527F4 /* PaywallPriceMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */; };
+		C4163467438CF5A3F76C8E0F /* OnboardingPaywallGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */; };
+		A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */; };
+		39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */; };
+		4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */; };
+		DA29F198ABEE6D0043473586 /* HardcodedPricingGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */; };
+		C718B688EAA88E421EDDAA4A /* StoreKitConfigFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */; };
 		E21535775B493D041FBC5E94 /* CharacterCollectionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C3984665BFD5D2C50B51BC /* CharacterCollectionViewModelTests.swift */; };
 		E8D9B7231036C614602516E5 /* WidgetDataStateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174DE64763F4E03018E24D7D /* WidgetDataStateTests.swift */; };
 		F14C2C7A012F5F2D048E8230 /* PremiumViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F1E29FB29A0C0373818403F /* PremiumViewModelTests.swift */; };
@@ -123,6 +130,13 @@
 		5F1E29FB29A0C0373818403F /* PremiumViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PremiumViewModelTests.swift; path = StressMonitorTests/PremiumViewModelTests.swift; sourceTree = "<group>"; };
 		713235225361EAF1FE04D14B /* CharacterEntitlementSyncTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CharacterEntitlementSyncTests.swift; path = StressMonitorTests/CharacterEntitlementSyncTests.swift; sourceTree = "<group>"; };
 		A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoreKitProductCatalogTests.swift; path = StressMonitorTests/StoreKitProductCatalogTests.swift; sourceTree = "<group>"; };
+		3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PaywallPriceMathTests.swift; path = StressMonitorTests/PaywallPriceMathTests.swift; sourceTree = "<group>"; };
+		2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingPaywallGateTests.swift; path = StressMonitorTests/OnboardingPaywallGateTests.swift; sourceTree = "<group>"; };
+		0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendsRangeLockTests.swift; path = StressMonitorTests/TrendsRangeLockTests.swift; sourceTree = "<group>"; };
+		6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusLockedModifierTests.swift; path = StressMonitorTests/PlusLockedModifierTests.swift; sourceTree = "<group>"; };
+		EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusAccessTests.swift; path = StressMonitorTests/PlusAccessTests.swift; sourceTree = "<group>"; };
+		F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HardcodedPricingGuardTests.swift; path = StressMonitorTests/HardcodedPricingGuardTests.swift; sourceTree = "<group>"; };
+		EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoreKitConfigFileTests.swift; path = StressMonitorTests/StoreKitConfigFileTests.swift; sourceTree = "<group>"; };
 		B658C60AC9A3134AE0C3EDA5 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		B6AC42E6137A72A55808876F /* WidgetPublisherKeyMatchingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WidgetPublisherKeyMatchingTests.swift; path = StressMonitorTests/WidgetPublisherKeyMatchingTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A001 /* ModelContainerRecoveryTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ModelContainerRecoveryTests.swift; path = StressMonitorTests/ModelContainerRecoveryTests.swift; sourceTree = "<group>"; };
@@ -316,6 +330,13 @@
 				713235225361EAF1FE04D14B /* CharacterEntitlementSyncTests.swift */,
 				5F1E29FB29A0C0373818403F /* PremiumViewModelTests.swift */,
 				A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */,
+				3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */,
+				2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */,
+				0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */,
+				6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */,
+				EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */,
+				F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */,
+				EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */,
 				FF19921F5E82175704921949 /* StressContextPayloadTests.swift */,
 				F1A1B2C3D4E500000000A003 /* StressAPIConfigTests.swift */,
 				F1A1B2C3D4E500000000A004 /* StressAPIClientTests.swift */,
@@ -553,6 +574,13 @@
 				4B42B91606B4D42E3CE7A998 /* CharacterEntitlementSyncTests.swift in Sources */,
 				F14C2C7A012F5F2D048E8230 /* PremiumViewModelTests.swift in Sources */,
 				D1858B03657E705B3A69F771 /* StoreKitProductCatalogTests.swift in Sources */,
+				F00A8B56A1D511A3811527F4 /* PaywallPriceMathTests.swift in Sources */,
+				C4163467438CF5A3F76C8E0F /* OnboardingPaywallGateTests.swift in Sources */,
+				A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */,
+				39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */,
+				4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */,
+				DA29F198ABEE6D0043473586 /* HardcodedPricingGuardTests.swift in Sources */,
+				C718B688EAA88E421EDDAA4A /* StoreKitConfigFileTests.swift in Sources */,
 				19FF7CDE8F20585FB3F027EC /* StressContextPayloadTests.swift in Sources */,
 				39419B30DE0EE4EDBA6A2CB4 /* WidgetPublisherKeyMatchingTests.swift in Sources */,
 				E8D9B7231036C614602516E5 /* WidgetDataStateTests.swift in Sources */,

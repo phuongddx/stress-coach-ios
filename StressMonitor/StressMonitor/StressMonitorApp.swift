@@ -32,6 +32,7 @@ struct StressMonitorApp: App {
     // every scene, tab, sheet, and the root full-screen paywall cover.
     @State private var appRouter = AppRouter()
     @State private var paywall = PaywallController()
+    @State private var plusAccess = PlusAccess.shared
     // Owned once for the app's process lifetime so the Transaction.updates
     // listener started in its init runs the whole time, not just while the
     // paywall happens to be on screen. See StoreKitServiceEnvironment.swift.
@@ -210,6 +211,12 @@ struct StressMonitorApp: App {
         os_signpost(.begin, log: OSLog(subsystem: "com.stressmonitor.app", category: "Launch"), name: "AppInit")
         #endif
         // FontBlaster.blast() removed — fonts now load async in DashboardView
+        // Decided before the first view appears, so MainTabView already knows
+        // whether this is a 1.0.1 user when it considers the onboarding
+        // paywall. Same key `OnboardingContainerView` stores with @AppStorage.
+        PlusAccess.shared.startLegacyGraceIfNeeded(
+            hasCompletedOnboarding: UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        )
     }
 
     var body: some Scene {
@@ -221,6 +228,7 @@ struct StressMonitorApp: App {
             OnboardingContainerView()
                 .environment(appRouter)
                 .environment(paywall)
+                .environment(plusAccess)
                 .environment(creditService)
                 .environment(preferencesService)
                 .environment(\.storeKitService, storeKitService)
@@ -248,6 +256,17 @@ struct StressMonitorApp: App {
                 // self-correct and no product to query.
                 if PurchaseAvailability.isEnabled {
                     await storeKitService.refreshEntitlements()
+                    // Loading the plans refreshes `PlusAccess.catalogReady`,
+                    // which decides whether charts may lock at all.
+                    let plans = await storeKitService.availablePlans
+                    let annualTrialPlan = plans.first { $0.period == .annual && $0.hasIntroductoryOffer }
+                    let trialEligible = annualTrialPlan != nil
+                        ? await storeKitService.isEligibleForIntroOffer(for: .annual)
+                        : false
+                    plusAccess.updateTrial(
+                        available: trialEligible,
+                        periodUnit: annualTrialPlan?.introOfferPeriodUnit
+                    )
                 }
                 // Also refreshes the credit balance on every foreground; a
                 // 401 here doubles as the AUTH-02 stale-session probe.

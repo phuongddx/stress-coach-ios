@@ -61,12 +61,6 @@ struct OnboardingSuccessView: View {
                         .padding(.top, 6)
                         .padding(.bottom, 16)
 
-                    // Free trial banner
-                    if PurchaseAvailability.isEnabled {
-                        freeTrialBanner
-                            .padding(.bottom, 16)
-                    }
-
                     // Buddy card
                     buddyCard
                         .padding(.bottom, 16)
@@ -113,39 +107,6 @@ struct OnboardingSuccessView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Free Trial Banner
-
-    private var freeTrialBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "sparkles")
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(HomeCharacterDesignTokens.Blossom.primary)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("7-day free trial included")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color(hex: "#E8E8F0"))
-                Text("No charge until your trial ends. Cancel anytime.")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.Blossom.primary.opacity(0.08))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(HomeCharacterDesignTokens.Blossom.primary.opacity(0.2), lineWidth: 1)
-                )
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("7-day free trial included. No charge until your trial ends. Cancel anytime.")
     }
 
     // MARK: - Measurement Ring
