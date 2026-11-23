@@ -52,6 +52,26 @@ Schemes: `StressMonitor`, `"StressMonitorWatch Watch App"` (shared); `StressMoni
 
 ## Development Commands
 
+**Verify in the cloud first (default).** Do not build or test locally unless it is unavoidable. Build, tests and screenshots run on GitHub Actions in `.github/workflows/agent-verify.yml` (`macos-15`; artifacts kept 7 days).
+
+```bash
+# 1. Push to an agent/<topic> branch: runs all tests + screenshots automatically (always works)
+git push -u origin HEAD:agent/<topic>
+#    Filtered rerun (workflow_dispatch works only once agent-verify.yml is on the default branch):
+#    only_testing = comma-separated Target/Class[/method]; also -f device="iPhone 16"
+gh workflow run agent-verify.yml --ref agent/<topic> \
+  -f only_testing=StressMonitorTests/<Class> -f screenshots=true
+# 2. Find and watch the run (on failure: gh run view <id> --log-failed)
+gh run list --workflow agent-verify.yml --branch agent/<topic> -L 1
+gh run watch <id> --exit-status
+# 3. Download results (drop -n agent-screenshots when screenshots=false)
+gh run download <id> -n agent-xcresult -n agent-screenshots -D /tmp/agent-verify-<id>
+```
+
+Release-only compile errors show on the PR's `Release Build` check (`gh pr checks <pr>`).
+
+**If a local build is unavoidable:** use the commands below with `-parallel-testing-enabled NO` and a throwaway `-derivedDataPath /tmp/dd-<topic>`, then delete it (`rm -rf /tmp/dd-<topic>`). `scripts/xcode-disk-cleanup.sh` shows what else can go.
+
 ```bash
 # Build iOS (CI parity: signing off)
 xcodebuild build -project StressMonitor/StressMonitor.xcodeproj \
@@ -123,13 +143,14 @@ Run on simulator with `-demo-mode` launch argument to cycle stress levels throug
 ## Runtime / Tooling Preferences
 
 - **CI:** macOS 15, Xcode 26.3, Ruby 3.3, fastlane 2.236.1. **Local:** Xcode 26.6, system `python3` (no iOS device platform/simulator runtimes — Swift/Xcode verification is GitHub-Actions-only). Diagnose red jobs from the run log, not memory: `PaywallController.swift:59:40` is a Swift-6-mode *warning* only (`SWIFT_VERSION=5.0`); the actual Test-job failure was `MockAuthService` missing `signInWithApple(presenting:)` (fixed `5e55944`). The legacy Xcode Cloud `PR Gate` check fails separately — GitHub Actions is the validation path; don't mix the two.
+- **Agent verify:** `.github/workflows/agent-verify.yml` (push to `agent/**` or dispatch; inputs `only_testing`, `screenshots`, `device`; artifacts `agent-xcresult`, `agent-screenshots`) is the default build/test path for agents — see Development Commands. PR CI also runs `Release Build` (Release configuration).
 - **SPM deps (only two):** `firebase-ios-sdk` (Auth/Core) and `GoogleSignIn-iOS`, via a local proxy package. Trust `project.pbxproj`, not README/docs package tables.
 - **`GoogleService-Info.plist`** is **gitignored** and untracked — required locally at `StressMonitor/StressMonitor/GoogleService-Info.plist`; provision separately. Some Firebase tests self-disable without it.
 - **Release (CD):** merge to `main` → `build.yml` ("Build") → `.github/workflows/cd-testflight.yml` (ubuntu) runs `scripts/cd-testflight.sh`: starts Xcode Cloud workflow `Beta` via `asc xcode-cloud run --wait` (Beta has a Manual start condition on `main`; archives and uploads `INTERNAL_ONLY`; TestFlight group `Qa` gets all builds), waits for TestFlight processing, posts the result to Slack (repo secret `SLACK_WEBHOOK_URL`). If `main` moved past the commit Build validated, the CD run skips (notice only) and the newer Build's CD run ships. PR CI failures also post to Slack (same-repo PRs; fork PRs get no secrets and skip) (`ci.yml` job `notify-failure`). Xcode Cloud `PR Gate` is disabled; `main` requires the four `Lint & Build / *` checks. Xcode Cloud workflow settings are not in git — their written record is `docs/text2prod/specs/2026-09-26-cicd-testflight-design.md` §3.4 (rollback JSON in `plans/260926-1046-cicd-testflight-cd/backup/`). **Emergency fallback:** manual `.github/workflows/testflight.yml` (`asc` CLI + raw p12 cert `XPT2DHR688`; secrets `GOOGLE_SERVICE_INFO_PLIST_BASE64`, `BUILD_CERTIFICATE_P12_BASE64`, `P12_PASSWORD`; archive gate runs BEFORE Export IPA so a verify failure never uploads the signed IPA artifact on this public repo) — after using it, raise App Store Connect → Xcode Cloud → Settings → Build Number → Next Build Number above the uploaded number (web UI only), or the next Beta upload collides. Xcode Cloud also provisions Firebase config (`StressMonitor/ci_scripts/ci_post_clone.sh`); weekly `.github/workflows/xcodecloud-image-guard.yml` checks workflow image pairings. Other manual workflows: `distribute.yml` (`fastlane distribute_beta`), `release.yml` (`fastlane release`; `build_number`/`submit_for_review` inputs are ignored by the lane), `match.yml`. README's "How it ships" table is stale.
 - **Fastlane** (repo root): `bundle exec fastlane upload_beta|distribute_beta|release|build_only|build_widget|increment_build`. Requires `APP_STORE_CONNECT_API_KEY_*`, `MATCH_PASSWORD`, `MATCH_GIT_URL`. CI always syncs Match **readonly**; only `match.yml`/`setup_match` may regenerate.
 - **Signing:** automatic, team `K2TYLYAWMK`; CI builds disable signing. Bundle IDs: `stress.ai.com`, `stress.ai.com.watchkitapp`, `stress.ai.com.widget`. Targets: iOS 18.6 (some 26.1), watchOS 11.6 — ignore older "iOS 17+" doc claims. Archive/Export need `-allowProvisioningUpdates` + ASC API-key auth (manually dropping `.mobileprovision` files does nothing under Automatic signing). Adding a capability (e.g. Sign in with Apple, 2026-09-24) silently invalidates existing profiles — regenerate before building. `APPLE_ID_AUTH` is enabled on the App ID; the Firebase Apple provider must be enabled in the Firebase console before SIWA works end-to-end.
 - **Simulator interaction:** prefer the `argent` MCP server (wired via `.mcp.json`/`opencode.json`) over raw `xcrun simctl`. Exception: `scripts/run-tests.py` uses simctl internally.
-- **Scripts:** `scripts/run-tests.py` (tests), `scripts/generate_app_icons.py` (needs Pillow), `scripts/verify-archive.sh` (archive gate: entitlements, credentials, SDK manifests, and StoreKit-absence — fails on any `STOREKIT_*`-prefixed plist key) + `verify-archive-tests.sh` (7-test local suite, no Xcode needed — always run it after touching `verify-archive.sh`). `scripts/cd-testflight.sh` + `cd-testflight-tests.sh` (11 tests with a fake `asc`, no network — run after touching the script). Credential-scan allowlist includes `task-force-1996-hrv` (science-citation id, not a secret).
+- **Scripts:** `scripts/run-tests.py` (tests), `scripts/generate_app_icons.py` (needs Pillow), `scripts/verify-archive.sh` (archive gate: entitlements, credentials, SDK manifests, and StoreKit-absence — fails on any `STOREKIT_*`-prefixed plist key) + `verify-archive-tests.sh` (7-test local suite, no Xcode needed — always run it after touching `verify-archive.sh`). `scripts/cd-testflight.sh` + `cd-testflight-tests.sh` (11 tests with a fake `asc`, no network — run after touching the script). `scripts/xcode-disk-cleanup.sh` (local Xcode disk cleanup: old DerivedData, unavailable simulators, SwiftPM cache; dry run by default, `--delete` to act, `--days N`; never removes runtimes). Credential-scan allowlist includes `task-force-1996-hrv` (science-citation id, not a secret).
 
 ## Testing & QA
 
