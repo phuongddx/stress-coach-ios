@@ -1,6 +1,6 @@
 # Terms of Service
 
-*Last updated: September 6, 2026*
+*Last updated: November 23, 2026*
 
 Welcome and thank you for your interest in StressMonitor! These Terms of Service (this "Agreement" or these "Terms") describe the terms and conditions applicable to your use of the StressMonitor mobile application for iPhone, iPad, and Apple Watch (the "Mobile App") and the services, software, content, and product features relating to it (collectively with the Mobile App, the "Services"). The Mobile App is owned and operated by Stress Monitor LTD, a company incorporated in England and Wales, with registered offices at 71-75 Shelton Street, Covent Garden, London, United Kingdom, WC2H 9JQ (the "Company", "we" or "us").
 
@@ -55,11 +55,15 @@ You are solely responsible for the Content you provide and warrant that you own 
 
 You agree to use the Services only for lawful purposes and in compliance with all applicable laws and regulations. You will not use the Services for any fraudulent, unlawful, or abusive activity.
 
-## 9. Fees
+## 9. Fees and Subscriptions
 
-The current version of StressMonitor is free to use and offers no in-app purchases, subscriptions, or paid features. There is nothing to buy and nothing that automatically renews.
+StressMonitor is free to download and use. We offer an optional subscription, **StressMonitor Plus**, that unlocks additional features such as full charts, longer trend ranges, and unlimited AI Coaching Chat. Plus is available as a monthly or an annual auto-renewing subscription, purchased through the Apple App Store. The price is shown in the App Store, in your local currency, before you confirm the purchase.
 
-If we introduce optional purchases in a future version, the terms, pricing, and cancellation instructions disclosed at the time of purchase (and in this section) will apply, and payments will be processed by Apple; the Company does not receive or store your payment details.
+**Free trial.** The annual plan may include a 14-day free trial. Each Apple ID can use the free trial only once. Unless you cancel at least 24 hours before the trial ends, the trial converts into a paid annual subscription and your Apple ID is charged.
+
+**Automatic renewal.** Payment is charged to your Apple ID when you confirm the purchase (or when the free trial ends). Your subscription renews automatically for the same period and price unless you turn off auto-renew at least 24 hours before the end of the current period; your Apple ID is charged for renewal within the 24 hours before the current period ends. If you cancel, you keep access to Plus until the end of the current period.
+
+**Cancelling.** Payments are processed by Apple; the Company does not receive or store your payment details. To cancel a subscription made with your Apple ID, go to **Settings → your name → Subscriptions** on your iPhone (or **App Store → your profile → Subscriptions**), find the StressMonitor subscription, and follow the instructions, or request assistance at https://getsupport.apple.com. Refunds are handled by Apple under its own policies. If you are a California resident, this section serves as notice of your subscription renewal terms and cancellation instructions pursuant to California's Automatic Renewal Law. If you initiate a chargeback or otherwise reverse a payment, the Company may terminate or downgrade your subscription access in its sole discretion.
 
 ## 10. License to the Services
 
@@ -74,7 +78,7 @@ You agree that you will not:
 - Probe, scan, or test the vulnerability of the Services or any system or network, or breach or circumvent any security or authentication measures;
 - Access or tamper with non-public areas of the Services;
 - Use the Services to monitor, track, harass, or surveil any person;
-- Circumvent storage or usage limits, including attempting to circumvent our fees; or
+- Circumvent storage, usage, or subscription limits, including attempting to circumvent our fees; or
 - Use the Services in any manner that could damage, disable, overburden, or impair it.
 
 ## 12. Third-Party Services

@@ -1,6 +1,6 @@
 # Privacy Policy
 
-*Last updated: September 6, 2026*
+*Last updated: November 23, 2026*
 
 This Privacy Policy describes and governs the manner in which Stress Monitor LTD, a company incorporated in England and Wales, with registered offices at 71-75 Shelton Street, Covent Garden, London, United Kingdom, WC2H 9JQ ("we", "us", "our" or the "Company"), collects, uses, maintains and discloses information about you when you use the StressMonitor mobile application ("StressMonitor" or the "App") and our other online services (collectively, the "Services").
 
@@ -16,7 +16,7 @@ We may collect and process the following key categories of information:
 - **Product interaction data**: basic app-interaction data (for example, which features are used) shared via Google Firebase for app functionality; never used for tracking or advertising.
 - **Support communications**: if you contact us, we receive whatever information you choose to include (for example, your email address and the content of your message).
 
-We do not collect your name, phone number, or payment details. The current version of the app offers no in-app purchases or subscriptions.
+We do not collect your name, phone number, or payment details. Payments for the optional StressMonitor Plus subscription are processed entirely by Apple and are not visible to us; we receive only a confirmation of your subscription status from Apple, which we use to unlock Plus features.
 
 ## Health Information from Apple Health
 
