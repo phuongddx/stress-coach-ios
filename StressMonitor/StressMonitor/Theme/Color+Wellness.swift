@@ -41,42 +41,24 @@ extension Color {
         // MARK: - Adaptive Colors
 
         /// Primary background that adapts to color scheme
-        static let background = Color(
-            light: backgroundLight,
-            dark: backgroundDark
-        )
+        static let background = Color.V2.bg
 
         /// Surface color that adapts to color scheme
-        static let surface = Color(
-            light: surfaceLight,
-            dark: surfaceDark
-        )
+        static let surface = Color.V2.surface
 
         // MARK: - Adaptive UI Colors (Dashboard Redesign)
 
-        /// Adaptive background - warm cream light, deep dark
-        static let adaptiveBackground = Color(
-            light: Color(hex: "#FFFDF6"),
-            dark: Color(hex: "#121212")
-        )
+        /// Adaptive background — UI V2 canvas (`Color.V2.bg`)
+        static let adaptiveBackground = Color.V2.bg
 
         /// Adaptive card background
-        static let adaptiveCardBackground = Color(
-            light: Color.white,
-            dark: Color(hex: "#1E1E1E")
-        )
+        static let adaptiveCardBackground = Color.V2.surface
 
         /// Adaptive primary text
-        static let adaptivePrimaryText = Color(
-            light: Color(hex: "#101223"),
-            dark: Color.white
-        )
+        static let adaptivePrimaryText = Color.V2.ink
 
         /// Adaptive secondary text
-        static let adaptiveSecondaryText = Color(
-            light: Color(hex: "#6B6E7B"),
-            dark: Color(hex: "#9CA3AF")
-        )
+        static let adaptiveSecondaryText = Color.V2.ink2
 
         // MARK: - Fixed Accent Colors
 
@@ -101,10 +83,7 @@ extension Color {
         // MARK: - Timer Colors
 
         /// Timer track ring color (adaptive)
-        static let timerTrack = Color(
-            light: Color(hex: "#E5E7EB"),
-            dark: Color(hex: "#3A3A3C")
-        )
+        static let timerTrack = Color.V2.surface2
 
         // MARK: - Quick Action Colors
 

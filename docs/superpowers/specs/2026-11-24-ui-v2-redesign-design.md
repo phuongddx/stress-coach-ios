@@ -117,7 +117,7 @@ The legacy tokens (`Color.Wellness.*`, `Color.adaptive*`, `Color.stress*`, `Home
 ## 7. Verification
 
 - CI on every PR: `Lint & Build / Lint & Build`, `/ Build watchOS`, `/ Build Widget`, `/ Test`. The `Release Build` check proposed in PR #73 is not on `main`; each phase is also built locally with `-configuration Release` so previews and debug-only code cannot break Release.
-- Unit tests: `ContrastComplianceTests` gains V2 token pairs (text 4.5:1, UI 3:1, both appearances); `StressCategory` tests cover `fillColor`/shape; existing tests stay green and none are skipped or disabled.
+- Unit tests: `ContrastComplianceTests` gains V2 token pairs (text 4.5:1 on canvas and surfaces, on-colours 4.5:1 on their fills, both appearances; tier fills are dual-coded with shape and name rather than held to 3:1 on `surface`); `StressCategory` tests cover `fillColor`/shape; existing tests stay green and none are skipped or disabled.
 - Screenshots: each PR attaches before/after iPhone simulator captures in light and dark (demo mode, `-demo-mode`), stored under `docs/screenshots/ui-v2/<phase>/` and linked from the PR body.
 
 ## 8. Deferred (needs behaviour, not in this redesign)

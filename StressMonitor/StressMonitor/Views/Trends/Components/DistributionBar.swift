@@ -12,7 +12,6 @@ struct DistributionBar: View {
     let highDays: Int
     var comment: String? = nil
 
-    @Environment(\.colorScheme) private var colorScheme
 
     // MARK: - Derived
 
@@ -74,57 +73,40 @@ struct DistributionBar: View {
             HStack(spacing: 0) {
                 if s.relaxed > 0 {
                     barSegment(
-                        color: StressCategory.relaxed.color,
+                        color: StressCategory.relaxed.fillColor,
                         width: total * CGFloat(s.relaxed) / 100,
                         label: "\(s.relaxed)%",
-                        textColor: labelTextColor(for: .relaxed)
+                        textColor: StressCategory.relaxed.onFillColor
                     )
                 }
                 if s.mild > 0 {
                     barSegment(
-                        color: StressCategory.mild.color,
+                        color: StressCategory.mild.fillColor,
                         width: total * CGFloat(s.mild) / 100,
                         label: "\(s.mild)%",
-                        textColor: labelTextColor(for: .mild)
+                        textColor: StressCategory.mild.onFillColor
                     )
                 }
                 if s.moderate > 0 {
                     barSegment(
-                        color: StressCategory.moderate.color,
+                        color: StressCategory.moderate.fillColor,
                         width: total * CGFloat(s.moderate) / 100,
                         label: "\(s.moderate)%",
-                        textColor: labelTextColor(for: .moderate)
+                        textColor: StressCategory.moderate.onFillColor
                     )
                 }
                 if s.high > 0 {
                     barSegment(
-                        color: StressCategory.high.color,
+                        color: StressCategory.high.fillColor,
                         width: total * CGFloat(s.high) / 100,
                         label: "\(s.high)%",
-                        textColor: labelTextColor(for: .high)
+                        textColor: StressCategory.high.onFillColor
                     )
                 }
             }
         }
         .frame(height: 28)
         .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-    }
-
-    /// Per-tier segment-label text color, resolved against the tier's actual
-    /// fill in the current color scheme so 11pt semibold text clears the
-    /// 4.5:1 WCAG AA bar (this is normal-size text, not large text). Relaxed
-    /// and mild fills are never bright enough for white text in either
-    /// appearance; moderate and high flip between white (light fill) and
-    /// black (bright dark-mode fill).
-    private func labelTextColor(for tier: StressCategory) -> Color {
-        switch tier {
-        case .relaxed, .mild:
-            return .black
-        case .moderate, .high:
-            return colorScheme == .dark ? .black : .white
-        case .severe:
-            return colorScheme == .dark ? .black : .white
-        }
     }
 
     private func barSegment(color: Color, width: CGFloat, label: String, textColor: Color = .white) -> some View {
@@ -164,7 +146,7 @@ struct DistributionBar: View {
     private func legendItem(tier: StressCategory, label: String, days: Int, dimmed: Bool = false) -> some View {
         HStack(spacing: 8) {
             RoundedRectangle(cornerRadius: 3)
-                .fill(tier.color)
+                .fill(tier.fillColor)
                 .frame(width: 10, height: 10)
                 .stressDualCoding(tier, showsCaption: false)
             Text(label)
