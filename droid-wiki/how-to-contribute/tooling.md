@@ -53,5 +53,5 @@ A launch-argument flag (`-demo-mode`), DEBUG-only. Configured in the scheme's Ru
 ## Documentation tooling
 
 - `docs/` contains narrative architecture and design documents in markdown.
-- `docs-site/` contains a static site build (separate from the app).
+- The help, user guide and legal site lives in its own repo: https://github.com/phuongddx/stress-coach-ai
 - `design/` contains HTML mockups and the icon/character asset mapping.
