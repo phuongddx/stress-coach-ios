@@ -16,159 +16,40 @@ struct DataDeleteView: View {
         _viewModel = State(initialValue: viewModel)
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let scopeOptions: [(scope: DataDeleteScope, label: String)] = [
+        (.localOnly, "Local Only"),
+        (.cloudOnly, "Cloud Only"),
+        (.everything, "Everything")
+    ]
+
+    private let rangeOptions: [(range: DeleteDateRange, label: String)] = [
+        (.all, "All Time"),
+        (.threeMonths, "Last 3 Months"),
+        (.month, "Last Month"),
+        (.week, "Last Week")
+    ]
+
     var body: some View {
-        Form {
-            // Delete Scope Section
-            Section("Delete Options") {
-                Picker("Scope", selection: $viewModel.deleteScope) {
-                    Text("Local Only").tag(DataDeleteScope.localOnly)
-                    Text("Cloud Only").tag(DataDeleteScope.cloudOnly)
-                    Text("Everything").tag(DataDeleteScope.everything)
-                }
-                .pickerStyle(.segmented)
-                .accessibilityLabel("Delete scope selection")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                scopeSection
+                dateRangeSection
 
-                Text(viewModel.deleteScopeDescription)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 4)
-            }
-
-            // Date Range Section
-            Section("Date Range") {
-                Toggle("Custom Date Range", isOn: $viewModel.useCustomDateRange)
-                    .accessibilityLabel("Use custom date range")
-
-                if viewModel.useCustomDateRange {
-                    DatePicker("Start Date", selection: $viewModel.customStartDate, displayedComponents: .date)
-                        .accessibilityLabel("Start date")
-                    DatePicker("End Date", selection: $viewModel.customEndDate, displayedComponents: .date)
-                        .accessibilityLabel("End date")
+                if viewModel.isDeleting {
+                    progressSection
                 } else {
-                    Picker("Range", selection: $viewModel.dateRange) {
-                        Text("All Time").tag(DeleteDateRange.all)
-                        Text("Last 3 Months").tag(DeleteDateRange.threeMonths)
-                        Text("Last Month").tag(DeleteDateRange.month)
-                        Text("Last Week").tag(DeleteDateRange.week)
-                    }
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("Date range selection")
-                }
-
-                if let description = viewModel.dateRangeDescription {
-                    Text(description)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    affectedSection
+                    deleteButton
+                    infoSection
                 }
             }
-
-            // Affected Data Section
-            if !viewModel.isDeleting {
-                Section("Affected Data") {
-                    AffectedDataRow(
-                        icon: "heart.slash.fill",
-                        label: "Stress Measurements",
-                        count: viewModel.affectedMeasurementCount
-                    )
-
-                    if viewModel.deleteScope.includesBaseline {
-                        AffectedDataRow(
-                            icon: "chart.line.flattrend.xyaxis",
-                            label: "Personal Baseline",
-                            count: viewModel.affectedBaselineCount
-                        )
-                    }
-
-                    HStack {
-                        Text("Total")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("\(viewModel.totalAffectedCount) items")
-                            .fontWeight(.semibold)
-                            .foregroundColor(.error)
-                    }
-                    .accessibilityElement(children: .combine)
-                }
-            }
-
-            // Delete Progress Section
-            if viewModel.isDeleting {
-                Section {
-                    VStack(spacing: 16) {
-                        ZStack {
-                            Circle()
-                                .stroke(Color.secondary.opacity(0.2), lineWidth: 8)
-                                .frame(width: 80, height: 80)
-
-                            Circle()
-                                .trim(from: 0, to: viewModel.deleteProgress)
-                                .stroke(
-                                    Color.error,
-                                    style: StrokeStyle(lineWidth: 8, lineCap: .round)
-                                )
-                                .frame(width: 80, height: 80)
-                                .rotationEffect(.degrees(-90))
-                                .animation(.easeInOut(duration: 0.3), value: viewModel.deleteProgress)
-
-                            Text("\(Int(viewModel.deleteProgress * 100))%")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                        }
-
-                        Text(viewModel.currentOperation)
-                            .font(.callout)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Delete progress: \(Int(viewModel.deleteProgress * 100)) percent")
-                }
-            }
-
-            // Delete Button Section
-            if !viewModel.isDeleting {
-                Section {
-                    Button(action: {
-                        showingConfirmation = true
-                    }) {
-                        HStack {
-                            Spacer()
-                            Image(systemName: AppIconSystem.System.delete.sfSymbol)
-                            Text("Delete Data")
-                            Spacer()
-                        }
-                    }
-                    .disabled(viewModel.totalAffectedCount == 0)
-                    .accessibilityLabel("Delete data")
-                    .accessibilityHint(viewModel.totalAffectedCount == 0 ? "No data to delete" : "Double tap to confirm deletion")
-                }
-
-                // Information Section
-                Section {
-                    VStack(alignment: .leading, spacing: 12) {
-                        InfoRow(
-                            icon: "checkmark.circle.fill",
-                            text: viewModel.deleteScope.includesCloud ? "Data will be removed from all devices" : "Only local data will be affected",
-                            color: .primaryBlue
-                        )
-
-                        InfoRow(
-                            icon: "xmark.circle.fill",
-                            text: "This action cannot be undone",
-                            color: .error
-                        )
-
-                        InfoRow(
-                            icon: "info.circle.fill",
-                            text: "HealthKit data will not be affected",
-                            color: .secondary
-                        )
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationTitle("Delete Data")
         .navigationBarTitleDisplayMode(.inline)
         .accessibleDynamicType()
@@ -230,6 +111,204 @@ struct DataDeleteView: View {
         }
     }
 
+    // MARK: - Sections
+
+    private var scopeSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "What to delete")
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    ForEach(Array(scopeOptions.enumerated()), id: \.offset) { index, option in
+                        if index > 0 { SettingsPlainDivider() }
+                        radioRow(option.label, isSelected: viewModel.deleteScope == option.scope) {
+                            viewModel.deleteScope = option.scope
+                        }
+                    }
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel("Delete scope selection")
+            ActionGroupFooter(text: viewModel.deleteScopeDescription)
+        }
+    }
+
+    private var dateRangeSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "Range")
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    SettingsPlainRow(title: "Custom Date Range") {
+                        Toggle("Custom Date Range", isOn: $viewModel.useCustomDateRange)
+                            .labelsHidden()
+                            .tint(Color.V2.accent)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Use custom date range")
+
+                    if viewModel.useCustomDateRange {
+                        SettingsPlainDivider()
+                        datePickerRow("Start Date", selection: $viewModel.customStartDate, label: "Start date")
+                        SettingsPlainDivider()
+                        datePickerRow("End Date", selection: $viewModel.customEndDate, label: "End date")
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(Array(rangeOptions.enumerated()), id: \.offset) { _, option in
+                                SettingsPlainDivider()
+                                radioRow(option.label, isSelected: viewModel.dateRange == option.range) {
+                                    viewModel.dateRange = option.range
+                                }
+                            }
+                        }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityLabel("Date range selection")
+                    }
+                }
+            }
+            if let description = viewModel.dateRangeDescription {
+                ActionGroupFooter(text: description)
+            }
+        }
+    }
+
+    private var affectedSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "This will remove")
+            V2Card {
+                VStack(spacing: 12) {
+                    AffectedDataRow(
+                        icon: "heart.slash.fill",
+                        label: "Stress Measurements",
+                        count: viewModel.affectedMeasurementCount
+                    )
+
+                    if viewModel.deleteScope.includesBaseline {
+                        AffectedDataRow(
+                            icon: "chart.line.flattrend.xyaxis",
+                            label: "Personal Baseline",
+                            count: viewModel.affectedBaselineCount
+                        )
+                    }
+
+                    Rectangle()
+                        .fill(Color.V2.line)
+                        .frame(height: 0.5)
+                        .accessibilityHidden(true)
+
+                    HStack {
+                        Text("Total")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.V2.ink2)
+                        Spacer()
+                        Text("\(viewModel.totalAffectedCount) items")
+                            .font(.v2Number(.headline))
+                            .foregroundStyle(Color.V2.danger)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+            }
+        }
+    }
+
+    private var progressSection: some View {
+        V2Card {
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.V2.surface3, lineWidth: 8)
+                        .frame(width: 80, height: 80)
+
+                    Circle()
+                        .trim(from: 0, to: viewModel.deleteProgress)
+                        .stroke(
+                            Color.V2.danger,
+                            style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                        )
+                        .frame(width: 80, height: 80)
+                        .rotationEffect(.degrees(-90))
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.3), value: viewModel.deleteProgress)
+
+                    Text("\(Int(viewModel.deleteProgress * 100))%")
+                        .font(.v2Number(.headline, weight: .bold))
+                        .foregroundStyle(Color.V2.ink)
+                }
+
+                Text(viewModel.currentOperation)
+                    .font(.callout)
+                    .foregroundStyle(Color.V2.ink3)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Delete progress: \(Int(viewModel.deleteProgress * 100)) percent")
+        }
+    }
+
+    private var deleteButton: some View {
+        Button(action: {
+            showingConfirmation = true
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: AppIconSystem.System.delete.sfSymbol)
+                Text("Delete Data")
+            }
+        }
+        .buttonStyle(.v2(.destructiveFill))
+        .disabled(viewModel.totalAffectedCount == 0)
+        .accessibilityLabel("Delete data")
+        .accessibilityHint(viewModel.totalAffectedCount == 0 ? "No data to delete" : "Double tap to confirm deletion")
+    }
+
+    private var infoSection: some View {
+        V2Card(style: .flat) {
+            VStack(alignment: .leading, spacing: 12) {
+                InfoRow(
+                    icon: "checkmark.circle.fill",
+                    text: viewModel.deleteScope.includesCloud ? "Data will be removed from all devices" : "Only local data will be affected",
+                    color: Color.V2.accent
+                )
+
+                InfoRow(
+                    icon: "xmark.circle.fill",
+                    text: "This action cannot be undone",
+                    color: Color.V2.danger
+                )
+
+                InfoRow(
+                    icon: "info.circle.fill",
+                    text: "HealthKit data will not be affected",
+                    color: Color.V2.ink3
+                )
+            }
+        }
+    }
+
+    // MARK: - Row helpers
+
+    private func radioRow(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button {
+            action()
+            HapticManager.shared.buttonPress()
+        } label: {
+            SettingsPlainRow(title: title) {
+                SettingsRadioMark(isSelected: isSelected)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func datePickerRow(_ title: String, selection: Binding<Date>, label: String) -> some View {
+        DatePicker(title, selection: selection, displayedComponents: .date)
+            .font(.body)
+            .foregroundStyle(Color.V2.ink)
+            .tint(Color.V2.accent)
+            .padding(.horizontal, V2Metrics.margin)
+            .frame(minHeight: V2Metrics.minTouchTarget)
+            .accessibilityLabel(label)
+    }
+
     private func performDelete() async {
         do {
             try await viewModel.performDelete(modelContext: modelContext)
@@ -265,20 +344,26 @@ struct AffectedDataRow: View {
     let label: String
     let count: Int
 
+    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = 30
+
     var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .foregroundColor(.error)
-                .frame(width: 24)
+        HStack(spacing: 12) {
+            SettingsIconView(
+                systemName: icon,
+                color: Color.V2.dangerSoft,
+                foreground: Color.V2.danger,
+                size: tileSize
+            )
 
             Text(label)
-                .foregroundColor(.primary)
+                .font(.body)
+                .foregroundStyle(Color.V2.ink)
 
             Spacer()
 
             Text("\(count)")
-                .fontWeight(.semibold)
-                .foregroundColor(.error)
+                .font(.v2Number(.body))
+                .foregroundStyle(Color.V2.danger)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label): \(count) items")
@@ -294,13 +379,16 @@ struct InfoRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
-                .foregroundColor(color)
+                .foregroundStyle(color)
                 .frame(width: 20)
+                .accessibilityHidden(true)
 
             Text(text)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+                .fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
