@@ -2,11 +2,11 @@ import SwiftUI
 
 // MARK: - Character Detail View
 
-/// Character detail screen matching `17-character-detail.html`.
+/// Character detail screen (UI V2, `S.charDetail`).
 ///
-/// Shows a hero block (160px character with radial glow + name + role + quote),
-/// evolution stage strip (3 stages), 5-mood preview grid, stat pills,
-/// personality/strength text blocks, and a primary CTA.
+/// Hero (companion-tinted circle, name, role, quote), moods (when unlocked),
+/// evolution list, streak stat, strength/personality cards and either the
+/// "set as companion" action or the unlock requirement.
 struct CharacterDetailView: View {
     let creature: CharacterCreature
     let unlock: CharacterUnlock?
@@ -21,66 +21,52 @@ struct CharacterDetailView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
-                    // Hero
+                VStack(alignment: .leading, spacing: 16) {
                     heroBlock
-
-                    // Evolution stages
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("EVOLUTION · 3 STAGES")
-                            .sectionMetaLabel
-
-                        EvolutionStageRow(creature: creature, unlock: unlock)
-                    }
-                    .padding(.horizontal, 4)
 
                     // Mood previews (only if unlocked)
                     if isUnlocked {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("5 STRESS MOODS · \(creature.displayName.uppercased()) REACTS")
-                                .sectionMetaLabel
-
+                        VStack(alignment: .leading, spacing: 8) {
+                            sectionHeader("Moods")
                             MoodPreviewGrid(creature: creature, selectedMood: $previewMood)
-                                .padding(14)
-                                .background(Color.Wellness.adaptiveCardBackground)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
-                        .padding(.horizontal, 4)
                     }
 
-                    // Stat pills
+                    VStack(alignment: .leading, spacing: 8) {
+                        sectionHeader("Evolution")
+                        EvolutionStageRow(creature: creature, unlock: unlock)
+                    }
+
                     if isUnlocked, let unlock {
                         statRow(unlock: unlock)
                     }
 
-                    // Strength section
                     sectionBlock(
                         title: "\(creature.displayName)'s strength",
                         body: strengthText
                     )
 
-                    // Personality section
                     sectionBlock(
                         title: "\(creature.displayName)'s personality",
                         body: "\(creature.personality). \(creature.description)"
                     )
 
-                    // CTA
                     if isUnlocked {
                         ctaButton
                     } else {
                         unlockCTA
                     }
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, V2Metrics.margin)
                 .padding(.bottom, 40)
             }
-            .background(Color.Wellness.adaptiveBackground.ignoresSafeArea())
+            .background(Color.V2.bg.ignoresSafeArea())
             .navigationTitle("Companion")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(Color.V2.accent)
                 }
             }
         }
@@ -88,188 +74,180 @@ struct CharacterDetailView: View {
 
     // MARK: - Hero Block
 
+    private var roleText: String {
+        if isUnlocked { return "\(creature.subtitle) · Unlocked" }
+        switch creature.unlockType {
+        case .premium: return "\(creature.subtitle) · Plus companion"
+        case .streakGated: return "\(creature.subtitle) · \(creature.streakRequired)-day streak"
+        default: return creature.subtitle
+        }
+    }
+
     private var heroBlock: some View {
-        VStack(spacing: 8) {
-            // Character art (160px) with radial glow + bob animation
+        VStack(spacing: 6) {
             ZStack {
                 Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [creature.element.primaryColor.opacity(0.20), .clear],
-                            center: .center,
-                            startRadius: 20,
-                            endRadius: 100
-                        )
-                    )
-                    .frame(width: 200, height: 200)
+                    .fill(creature.element.v2Tint.opacity(0.22))
+                    .frame(width: 180, height: 180)
 
                 StressBuddyIllustration(
                     characterId: creature.id,
                     evolution: unlock?.evolutionStage ?? .droplet,
                     mood: isUnlocked ? previewMood : .serene,
-                    size: 160
+                    size: 140
                 )
+                .opacity(isUnlocked ? 1 : 0.65)
+                .saturation(isUnlocked ? 1 : 0.5)
             }
             .accessibilityHidden(true)
 
-            // Name
             Text(creature.displayName)
-                .font(.system(size: 30, weight: .bold, design: .rounded))
-                .tracking(-0.4)
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.title.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
                 .padding(.top, 4)
 
-            // Role
-            Text("\(creature.subtitle) · Element of \(creature.element.displayName)")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .tracking(0.8)
-                .foregroundStyle(creature.element.accentColor)
-
-            // Quote
-            Text("\"\(quoteText)\"")
-                .font(.system(size: 14))
-                .italic()
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            Text(roleText)
+                .font(.subheadline)
+                .foregroundStyle(Color.V2.ink2)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 280)
-                .padding(.top, 2)
+
+            Text("\"\(quoteText)\"")
+                .font(.callout)
+                .italic()
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 320)
+                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .padding(.horizontal, 16)
-        .background(
-            RadialGradient(
-                colors: [creature.element.primaryColor.opacity(0.08), Color.Wellness.adaptiveCardBackground],
-                center: .top,
-                startRadius: 30,
-                endRadius: 250
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .padding(.top, 8)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(Color.V2.ink)
+            .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - Stat Row
 
     private func statRow(unlock: CharacterUnlock) -> some View {
-        HStack(spacing: 8) {
-            statPill(
-                icon: "clock.fill",
-                value: "\(unlock.streakDays) days",
-                label: "reading streak"
-            )
-        }
-    }
-
-    private func statPill(icon: String, value: String, label: String) -> some View {
-        HStack(spacing: 10) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(creature.element.primaryColor.opacity(0.15))
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundStyle(creature.element.accentColor)
-            }
+        HStack(spacing: 12) {
+            Image(systemName: "clock.fill")
+                .font(.body)
+                .foregroundStyle(Color.V2.accent)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous)
+                        .fill(Color.V2.accentSoft)
+                )
+                .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-                Text(label.uppercased())
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.4)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                Text("\(unlock.streakDays) \(unlock.streakDays == 1 ? "day" : "days")")
+                    .font(.v2Number(.title3, weight: .bold))
+                    .foregroundStyle(Color.V2.ink)
+                Text("Reading streak")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
         .padding(12)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .v2CardBackground()
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Section Block
 
     private func sectionBlock(title: String, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-            Text(body)
-                .font(.system(size: 13))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .lineSpacing(3)
+        V2Card {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+                Text(body)
+                    .font(.callout)
+                    .foregroundStyle(Color.V2.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     // MARK: - CTA
 
-    @ViewBuilder
     private var ctaButton: some View {
         Button {
             onSelect?()
         } label: {
-            Text(isActive ? "\(creature.displayName) is Active" : "Set \(creature.displayName) as Active")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .foregroundStyle(.white)
-                .background(
-                    isActive
-                    ? AnyShapeStyle(creature.element.primaryColor.opacity(0.4))
-                    : AnyShapeStyle(creature.element.primaryColor)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            Text(isActive ? "\(creature.displayName) is your companion" : "Set as companion")
         }
+        .buttonStyle(.v2(.primary))
         .disabled(isActive)
         .accessibilityHint(isActive ? "Currently active character" : "Set as your active companion")
+        .padding(.top, 4)
     }
 
     // MARK: - Unlock CTA
 
     @ViewBuilder
     private var unlockCTA: some View {
-        VStack(spacing: 12) {
-            // Premium creatures are filtered out of the collection while
-            // purchases are postponed; the guard keeps the price and the
-            // upgrade CTA unreachable even via a stale deep link.
-            if creature.unlockType == .premium, PurchaseAvailability.isEnabled {
-                Image(systemName: AppIconSystem.System.premium.sfSymbol)
-                    .font(.system(size: 36))
-                    .foregroundStyle(.orange)
-
-                Text("Plus Character")
-                    .font(.system(size: 17, weight: .semibold))
-
-                Text("Unlock with StressMonitor Plus")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            } else if creature.unlockType == .streakGated {
-                Image(systemName: AppIconSystem.Metric.streak.sfSymbol)
-                    .font(.system(size: 36))
-                    .foregroundStyle(Color(hex: "#7B86CB"))
-
-                Text("\(creature.streakRequired)-Day Streak Required")
-                    .font(.system(size: 17, weight: .semibold))
-
-                let current = unlock?.streakDays ?? 0
-                Text("Keep logging daily to unlock \(creature.displayName). Current streak: \(current) days.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .multilineTextAlignment(.center)
+        // Premium creatures are filtered out of the collection while
+        // purchases are postponed; the guard keeps the upgrade copy
+        // unreachable even via a stale deep link.
+        if creature.unlockType == .premium, PurchaseAvailability.isEnabled {
+            V2Card(style: .flat) {
+                VStack(alignment: .leading, spacing: 8) {
+                    V2PlusPill(showsLock: true)
+                    Text("Plus companion")
+                        .font(.headline)
+                        .foregroundStyle(Color.V2.ink)
+                    Text("Unlock with StressMonitor Plus")
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink2)
+                    Text("Ember and Zephyr come with Plus. Lumi unlocks with a 30-day streak.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .accessibilityElement(children: .combine)
+        } else if creature.unlockType == .streakGated {
+            let current = unlock?.streakDays ?? 0
+            let progress = min(Double(current) / Double(max(creature.streakRequired, 1)), 1)
+            V2Card(style: .flat) {
+                VStack(alignment: .leading, spacing: 8) {
+                    CharacterTag(
+                        title: "\(creature.streakRequired)-day streak",
+                        systemImage: AppIconSystem.Metric.streak.sfSymbol
+                    )
+                    Text("\(creature.streakRequired)-day streak required")
+                        .font(.headline)
+                        .foregroundStyle(Color.V2.ink)
+                    Text("Keep logging daily to unlock \(creature.displayName). Current streak: \(current) \(current == 1 ? "day" : "days").")
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.V2.surface3)
+                            Capsule()
+                                .fill(creature.element.v2Tint)
+                                .frame(width: geo.size.width * progress)
+                        }
+                    }
+                    .frame(height: 6)
+                    .accessibilityHidden(true)
+                    Text("\(min(current, creature.streakRequired)) of \(creature.streakRequired) days · not part of Plus")
+                        .font(.v2Number(.footnote))
+                        .foregroundStyle(Color.V2.ink3)
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
-        .frame(maxWidth: .infinity)
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .multilineTextAlignment(.center)
     }
 
     // MARK: - Character Copy
@@ -299,21 +277,4 @@ struct CharacterDetailView: View {
             return "Lumi is a quiet companion for winding down and keeping a restful rhythm."
         }
     }
-}
-
-// MARK: - Section Meta Label Modifier
-
-private struct SectionMetaLabel: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-            .tracking(0.6)
-            .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            .padding(.leading, 4)
-            .padding(.bottom, 2)
-    }
-}
-
-private extension View {
-    var sectionMetaLabel: some View { modifier(SectionMetaLabel()) }
 }
