@@ -5,6 +5,7 @@ struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
     @Environment(PaywallController.self) private var paywall
+    @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
     @State private var viewModel: StressViewModel
     @Environment(\.scenePhase) private var scenePhase
     @State private var appeared = false
@@ -215,16 +216,17 @@ struct DashboardView: View {
             data: viewModel.weeklyStressPoints,
             onOpenHistory: { router.homePath.append(Route.history) }
         )
+            .plusLocked(.homeStressOverTime)
             .opacity(appearAnimation ? 1 : 0)
 
         // 9. Premium upsell — frosted glass banner (full-screen paywall).
         // Hidden while purchases are postponed, so the dashboard never
-        // references purchasable content.
-        if PurchaseAvailability.isEnabled {
+        // references purchasable content. Plus members never see it.
+        if PurchaseAvailability.isEnabled && !PremiumState.shared.isPremiumUser {
             Button {
                 paywall.present(reason: .general)
             } label: {
-                PremiumBanner()
+                PremiumBanner(trialPeriodUnit: (injectedPlusAccess ?? .shared).trialPeriodUnit)
             }
             .buttonStyle(.plain)
             .opacity(appearAnimation ? 1 : 0)

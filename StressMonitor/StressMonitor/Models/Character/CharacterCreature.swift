@@ -103,7 +103,7 @@ enum EvolutionStage: String, Codable, CaseIterable, Sendable {
 /// How a character can be unlocked
 enum CharacterUnlockType: String, Codable, Sendable {
     case free         // Available from start
-    case premium      // Requires premium subscription
+    case premium      // Requires a StressMonitor Plus subscription
     case streakGated  // Requires a streak milestone
 }
 

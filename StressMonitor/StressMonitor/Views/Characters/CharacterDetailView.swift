@@ -244,7 +244,7 @@ struct CharacterDetailView: View {
                     .font(.system(size: 36))
                     .foregroundStyle(.orange)
 
-                Text("Premium Character")
+                Text("Plus Character")
                     .font(.system(size: 17, weight: .semibold))
 
                 Text("Unlock with StressMonitor Plus")

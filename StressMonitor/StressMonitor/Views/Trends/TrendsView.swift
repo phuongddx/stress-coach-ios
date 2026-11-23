@@ -13,7 +13,14 @@ import SwiftData
 
 struct TrendsView: View {
     @Environment(\.modelContext) private var modelContext
+    // Optional so the preview without the app root's environment still runs.
+    @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
+    @Environment(PaywallController.self) private var paywall: PaywallController?
     @State private var viewModel: TrendsViewModel
+
+    private var isRangeLocked: Bool {
+        (injectedPlusAccess ?? .shared).isChartLocked
+    }
 
     /// Allocated once, not per view re-evaluation. `.task` swaps in the real
     /// environment `modelContext` on first appearance.
@@ -61,6 +68,11 @@ struct TrendsView: View {
             viewModel = TrendsViewModel(modelContext: modelContext)
             await viewModel.loadTrendData()
         }
+        .onChange(of: isRangeLocked) { _, locked in
+            if viewModel.enforceRangeLock(locked) {
+                Task { await viewModel.loadTrendData() }
+            }
+        }
     }
 
     // MARK: - Chip Row
@@ -78,11 +90,22 @@ struct TrendsView: View {
 
     private func chipView(_ chip: TrendsChip) -> some View {
         let isActive = chip.toTrendsTimeRange == viewModel.selectedTimeRange
+        let isLocked = isRangeLocked && chip.toTrendsTimeRange.requiresPlus
         return Button {
-            viewModel.selectedTimeRange = chip.toTrendsTimeRange
-            Task { await viewModel.loadTrendData() }
+            if viewModel.selectRange(chip.toTrendsTimeRange, locked: isRangeLocked) {
+                paywall?.present(reason: .trendsLongRange)
+            } else {
+                Task { await viewModel.loadTrendData() }
+            }
         } label: {
-            Text(chip.title)
+            HStack(spacing: 4) {
+                if isLocked {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
+                Text(chip.title)
+            }
                 .font(.system(size: 13, weight: isActive ? .semibold : .medium))
                 .foregroundStyle(
                     isActive
@@ -100,6 +123,7 @@ struct TrendsView: View {
         }
         .buttonStyle(.plain)
         .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+        .accessibilityLabel(isLocked ? "\(chip.title), requires Plus" : chip.title)
     }
 
     // MARK: - 1. Editorial Summary
@@ -150,6 +174,7 @@ struct TrendsView: View {
             dailyStress: viewModel.dailyStressData,
             averageValue: viewModel.dailyStressAverage
         )
+        .plusLocked(.trendsDailyBars)
     }
 
     // MARK: - 3. Distribution
@@ -173,6 +198,7 @@ struct TrendsView: View {
                 highDays: d.high,
                 comment: viewModel.distributionComment
             )
+            .plusLocked(.trendsDistribution)
         }
     }
 
@@ -180,6 +206,7 @@ struct TrendsView: View {
 
     private var calendarCard: some View {
         MonthlyCalendarHeatmap(dailyLevels: viewModel.monthlyCalendar)
+            .plusLocked(.trendsCalendar)
     }
 
     // MARK: - 5. HRV Trend
@@ -191,6 +218,7 @@ struct TrendsView: View {
             deltaText: viewModel.hrvDeltaText,
             periodLabel: viewModel.selectedTimeRange.periodLabel
         )
+        .plusLocked(.trendsHRV)
     }
 
     // MARK: - 6. Editorial Insight
