@@ -4,10 +4,10 @@ import SwiftUI
 ///
 /// - Happy Ripple, "Nice and steady" and a one-line recap
 /// - Vitals: Time and Cycles
-/// - HRV before / after with the change, the HRV across-session chart (Plus,
-///   `.plusLocked(.breathingBeforeAfter)` inside the chart) and a "Why HRV
-///   changes after breathing" sources row — only when HealthKit returned
-///   both samples
+/// - HRV before / after with the change, the HRV across-session chart (Plus;
+///   the lock lives inside `BeforeAfterHRVChart`) and a "Why HRV changes
+///   after breathing" sources row — only when HealthKit returned both
+///   samples
 /// - Ripple note
 /// - Done (primary) and Share (ghost)
 ///
