@@ -71,7 +71,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             | xcpretty
 
-      - name: Verify no StoreKit keys in merged Info.plist
+      - name: Verify Plus StoreKit keys in merged Info.plist
         run: |
           set -e
           PLIST="build/Build/Products/Debug-iphonesimulator/StressMonitor.app/Info.plist"
@@ -79,13 +79,27 @@ jobs:
             echo "error: merged Info.plist not found at $PLIST" >&2
             exit 1
           fi
-          HITS=$(grep -c STOREKIT "$PLIST") || [ $? -eq 1 ]
+          # 1.1 sells StressMonitor Plus only: credit packs must stay out.
+          HITS=$(grep -c STOREKIT_CREDITS "$PLIST") || [ $? -eq 1 ]
           if [ "$HITS" -ne 0 ]; then
-            echo "error: found $HITS STOREKIT_* reference(s) in merged Info.plist — this release ships no IAP." >&2
-            plutil -p "$PLIST" | grep STOREKIT >&2
+            echo "error: found $HITS STOREKIT_CREDITS_* reference(s) in merged Info.plist — credit packs are not sold in 1.1." >&2
             exit 1
           fi
-          echo "OK: no STOREKIT_* keys in merged Info.plist"
+          for KEY in STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID; do
+            VALUE=$(/usr/libexec/PlistBuddy -c "Print :$KEY" "$PLIST" 2>/dev/null || true)
+            if [ -z "$VALUE" ]; then
+              echo "error: $KEY missing or empty in merged Info.plist." >&2
+              exit 1
+            fi
+            case "$KEY" in
+              *_PRODUCT_ID)
+                case "$VALUE" in
+                  com.stressmonitor.app.plus.*) ;;
+                  *) echo "error: $KEY=$VALUE must start with com.stressmonitor.app.plus." >&2; exit 1 ;;
+                esac ;;
+            esac
+          done
+          echo "OK: Plus StoreKit keys present with plus.* product IDs; no credit-pack keys"
 
   build-watchos:
     name: Build watchOS
