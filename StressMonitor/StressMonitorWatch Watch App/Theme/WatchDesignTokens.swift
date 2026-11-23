@@ -2,56 +2,48 @@ import SwiftUI
 
 // MARK: - WatchDesignTokens
 
-/// iOS Design System v1.4.2 token values, scoped for the watch canvas.
+/// Watch theme tokens, re-pointed at the UI V2 dark palette (`WatchV2`).
 ///
-/// All values are lifted directly from `design/css/app.css` so the watch
-/// reads as a sibling of the iPhone app: same light surfaces, ink ramp,
-/// separators, radii, and motion curves.  The previous dark/scoreless
-/// watch token set has been replaced entirely.
-///
-/// Sources:
-/// - `design/css/app.css` (canonical CSS variables)
-/// - `design/design-system.html` (DS v1.4.2 spec)
-/// - watch design output `stressmonitor-watch-v2/index.html`
+/// The watch is dark-only on a true-black canvas. The token *names* are kept
+/// so every existing call site picks up the V2 palette; the values now come
+/// from `WatchV2` (the only place hex colours live).
 enum WatchDesignTokens {
 
-    // MARK: - Surfaces (LIGHT theme — exact from app.css)
+    // MARK: - Surfaces (V2 dark)
 
-    /// `--bg` · system grouped background.
-    static let canvas          = Color(hex: "#F2F2F7")
-    /// `--surface` · cards, reading rows, picker items.
-    static let surface         = Color(hex: "#FFFFFF")
-    /// `--surface-2` · secondary elevated surface.
-    static let surfaceSecondary = Color(hex: "#FBFBFD")
-    /// `--settings-bg` · warm cream for Watch Face Settings (iOS Settings lineage).
-    static let settingsCanvas  = Color(hex: "#FFFDF6")
+    /// True-black watch canvas.
+    static let canvas          = WatchV2.canvas
+    /// Cards, reading rows, picker items.
+    static let surface         = WatchV2.surface
+    /// Secondary elevated surface / tracks.
+    static let surfaceSecondary = WatchV2.surface2
+    /// Settings canvas — same true black as every other watch screen.
+    static let settingsCanvas  = WatchV2.canvas
 
     // MARK: - Ink
 
-    /// `--fg` · primary text/ink.
-    static let ink             = Color(hex: "#101223")
-    /// `--fg-secondary` · secondary text.
-    static let inkSecondary    = Color(hex: "#3C3C43")
-    /// `--muted` · meta / caption text. Retuned from `#777986` (3.86:1 on
-    /// `canvas`, failing 4.5:1) to the `#6B6E7B` family — the same
-    /// authorized override used on iOS (4.54:1 on the watch `canvas`).
-    static let muted           = Color(hex: "#6B6E7B")
-    /// `--muted-2` · system gray.
-    static let mutedSystem     = Color(hex: "#8E8E93")
+    /// Primary text/ink.
+    static let ink             = WatchV2.ink
+    /// Secondary text.
+    static let inkSecondary    = WatchV2.ink2
+    /// Meta / caption text.
+    static let muted           = WatchV2.ink3
+    /// Quiet glyphs, inactive marks.
+    static let mutedSystem     = WatchV2.ink3
 
-    /// `--separator` at 0.5pt — hairline divider colour.
-    static let separator       = Color(red: 60/255, green: 60/255, blue: 67/255, opacity: 0.12)
-    /// `--separator-strong` — used for inactive phase dots / control borders.
-    static let separatorStrong = Color(red: 60/255, green: 60/255, blue: 67/255, opacity: 0.29)
+    /// Hairline divider colour.
+    static let separator       = WatchV2.line
+    /// Inactive phase dots / control borders.
+    static let separatorStrong = WatchV2.surface3
 
-    // MARK: - Ripple accent (budget: max 2 per screen)
+    // MARK: - Accent
 
-    /// `--accent` · Ripple blue.
-    static let accent          = Color(hex: "#4FC3F7")
-    /// `--accent-strong` · deep Ripple blue for borders / selected states.
-    static let accentStrong    = Color(hex: "#0288D1")
-    /// `--accent-soft` · accent tint wash (callouts, selected theme well).
-    static let accentSoft      = Color(red: 79/255, green: 195/255, blue: 247/255, opacity: 0.14)
+    /// V2 accent (teal).
+    static let accent          = WatchV2.accent
+    /// Borders / selected states — same teal in dark.
+    static let accentStrong    = WatchV2.accent
+    /// Accent tint wash (callouts, selected wells).
+    static let accentSoft      = WatchV2.accentSoft
 
     // MARK: - Radii (from app.css)
 

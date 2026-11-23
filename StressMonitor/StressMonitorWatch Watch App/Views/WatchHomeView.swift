@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// Watch **Home** screen — stress readout hero.
+/// Watch **Home** screen — stress readout hero (UI V2).
 ///
-/// Full-bleed light canvas with the watch-face tint. A semicircle gauge
-/// halo arcs above the Ripple otter; the rounded stress score and tier
-/// label sit beneath the character, followed by an "out of 100" caption.
-/// Mirrors the Open Design Home screen (semicircle gauge + otter hero +
-/// compact readout).
+/// True-black canvas with a faint companion tint. A 240° gauge (same
+/// geometry as the iPhone `V2StressGauge`) wraps the companion; below it
+/// sits the one number for this glance, the tier (colour + shape + name)
+/// and an "out of 100 · time" caption.
 struct WatchHomeView: View {
     @Bindable var viewModel: WatchStressViewModel
 
@@ -20,32 +19,31 @@ struct WatchHomeView: View {
     private var category: StressCategory? { viewModel.currentLevel.map(StressCategory.category(for:)) }
     private var score: Int? { viewModel.currentLevel.map { Int($0.rounded()) } }
 
+    @ScaledMetric(relativeTo: .largeTitle) private var gaugeSize: CGFloat = 112
+
+    private var readingTime: Date? {
+        viewModel.currentStress?.timestamp ?? WatchSharedDataStore.shared.latest?.timestamp
+    }
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
             Spacer(minLength: 0)
 
-            // Semicircle gauge halo + character layered together so the
-            // arc reads as a halo behind the otter.
-            ZStack {
-                SemicircleStressGauge(
-                    score: viewModel.currentLevel,
-                    radius: 55,
-                    strokeWidth: 10
-                )
-                .offset(y: -6)
-
+            WatchStressGauge(score: viewModel.currentLevel, lineWidth: 9) {
                 CharacterFaceView(
                     creature: creature,
                     category: category,
-                    size: 112,
+                    size: min(gaugeSize, 132) * 0.52,
                     showsHalo: true
                 )
             }
-
-            Spacer(minLength: 0)
+            .frame(width: min(gaugeSize, 132), height: min(gaugeSize, 132))
+            // The 240° arc is open at the bottom — tuck the readout into it.
+            .padding(.bottom, -min(gaugeSize, 132) * 0.16)
 
             readout
-                .padding(.bottom, 10)
+
+            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(homeBackground.ignoresSafeArea())
@@ -57,27 +55,38 @@ struct WatchHomeView: View {
 
     // MARK: - Subviews
 
-    /// Compact numeric readout: big rounded score in tier ink, mono
-    /// uppercase tier label in tier colour, and an "out of 100" caption.
+    /// One number per glance: the score in ink, the tier as colour + shape
+    /// + name, and an "out of 100 · time" caption.
     private var readout: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 1) {
             Text(score.map(String.init) ?? "—")
-                .font(.system(size: 42, weight: .bold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
-                .tracking(-0.028 * 42)
-                .foregroundStyle(category?.inkColor ?? WatchDesignTokens.muted)
+                .font(.v2Number(.largeTitle, weight: .bold))
+                .foregroundStyle(score == nil ? WatchV2.ink3 : WatchV2.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .contentTransition(.numericText(value: Double(score ?? 0)))
 
-            Text(category?.displayName.uppercased() ?? "NO READING YET")
-                .font(.system(size: 9, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
-                .tracking(0.08 * 9)
-                .foregroundStyle(category?.color ?? WatchDesignTokens.muted)
+            if let category {
+                WatchTierBadge(category: category, font: .footnote.weight(.semibold))
+            } else {
+                Text("No reading yet")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(WatchV2.ink3)
+            }
 
-            Text("out of 100")
-                .font(.system(size: 9.5, weight: .regular, design: .default)) // dated exception 2026-09-05: fixed full-bleed hero composition, no scroll container; readout accessibility-labeled
-                .foregroundStyle(WatchDesignTokens.muted)
+            Text(caption)
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
         .accessibilityElement()
         .accessibilityLabel(viewModel.currentLevel.map { StressCategory.category(for: $0).accessibilityValue(level: $0) } ?? "No stress reading yet")
+    }
+
+    private var caption: String {
+        guard score != nil, let readingTime else { return "out of 100" }
+        return "out of 100 · \(readingTime.formatted(date: .omitted, time: .shortened))"
     }
 
     // MARK: - Helpers

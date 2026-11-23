@@ -1,25 +1,27 @@
 import SwiftUI
 
-/// Watch **Cycle** screen — current menstrual-cycle phase and context.
+/// Watch **Cycle** screen — current menstrual-cycle phase and context (UI V2).
 ///
-/// Shows the current phase card with SF Symbol, day-of-cycle indicator,
-/// next-prediction date, and a short stress-correlation note. All cards
-/// use `WatchDesignTokens` surfaces, radii, and ink colours.
+/// A cycle ring (day of cycle / length) next to "Day N · of L · Phase",
+/// then cards for the next phase, the predicted next period and a short
+/// stress-correlation note. Scrolled with the Digital Crown.
 struct WatchCycleView: View {
     @State private var viewModel = WatchCycleViewModel()
 
-    @ScaledMetric(relativeTo: .body) private var bodyScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
-    @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .title) private var titleScale: CGFloat = 1
     var body: some View {
         ScrollView {
-            VStack(spacing: WatchDesignTokens.Spacing.sm) {
+            VStack(spacing: 6) {
                 if let data = viewModel.cycleData {
-                    phaseCard(data)
-                    dayIndicator(data)
+                    phaseHeader(data)
+                    infoCard(
+                        title: "Next phase",
+                        value: viewModel.predictNextPhase().displayName
+                    )
                     if let prediction = data.nextPrediction {
-                        predictionRow(prediction)
+                        infoCard(
+                            title: "Next period",
+                            value: prediction.formatted(date: .abbreviated, time: .omitted)
+                        )
                     }
                     if let note = viewModel.stressCorrelationForToday() {
                         correlationNote(note)
@@ -28,8 +30,8 @@ struct WatchCycleView: View {
                     emptyState
                 }
             }
-            .padding(.horizontal, WatchDesignTokens.contentSidePadding)
-            .padding(.top, 4)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
             .padding(.bottom, 12)
         }
         .background(WatchDesignTokens.canvas.ignoresSafeArea())
@@ -37,150 +39,120 @@ struct WatchCycleView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Phase card
+    // MARK: - Phase header (ring + day)
 
-    private func phaseCard(_ data: CycleData) -> some View {
-        HStack(spacing: 9) {
+    private func phaseHeader(_ data: CycleData) -> some View {
+        let fraction = CGFloat(min(max(Double(data.dayOfCycle) / Double(max(data.cycleLength, 1)), 0), 1))
+        return HStack(spacing: 10) {
             ZStack {
                 Circle()
-                    .fill(WatchDesignTokens.accentSoft)
-                    .frame(width: 40, height: 40)
+                    .stroke(WatchV2.surface2, lineWidth: 7)
+                Circle()
+                    .trim(from: 0, to: fraction)
+                    .stroke(WatchV2.cycle, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
                 Image(systemName: data.currentPhase.icon)
-                    .font(.system(size: 16, weight: .semibold)) // dated exception 2026-09-05: icon inside fixed 40pt circular well
-                    .foregroundStyle(WatchDesignTokens.accentStrong)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(WatchV2.cycle)
             }
-            VStack(alignment: .leading, spacing: 1) {
-                Text("CURRENT PHASE")
-                    .font(.system(size: 7.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                    .tracking(0.08 * 7.5)
-                    .foregroundStyle(WatchDesignTokens.muted)
-                Text(data.currentPhase.displayName)
-                    .font(.system(size: 14 * footnoteScale, weight: .semibold, design: .rounded))
-                    .tracking(-0.01 * 14)
-                    .foregroundStyle(WatchDesignTokens.ink)
+            .frame(width: 52, height: 52)
+            .padding(3.5)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Day \(data.dayOfCycle)")
+                    .font(.v2Number(.title3, weight: .bold))
+                    .foregroundStyle(WatchV2.ink)
+                Text("of \(data.cycleLength) · \(data.currentPhase.displayName)")
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink2)
+                    .lineLimit(2)
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, WatchDesignTokens.Spacing.xs)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Day indicator
+    // MARK: - Info card
 
-    private func dayIndicator(_ data: CycleData) -> some View {
-        HStack(spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text("DAY \(data.dayOfCycle)")
-                    .font(.system(size: 18 * bodyScale, weight: .bold, design: .rounded).monospacedDigit())
-                    .tracking(-0.02 * 18)
-                    .foregroundStyle(WatchDesignTokens.ink)
-                Text("OF \(data.cycleLength)")
-                    .font(.system(size: 8 * caption2Scale, weight: .semibold, design: .monospaced))
-                    .tracking(0.08 * 8)
-                    .foregroundStyle(WatchDesignTokens.muted)
-            }
-            Spacer(minLength: 0)
-            Text("Next: \(viewModel.predictNextPhase().displayName)")
-                .font(.system(size: 10 * caption2Scale, weight: .medium, design: .rounded))
-                .foregroundStyle(WatchDesignTokens.muted)
-                .multilineTextAlignment(.trailing)
+    private func infoCard(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
+            Text(value)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(WatchV2.ink)
         }
-        .padding(.horizontal, WatchDesignTokens.Spacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
+            RoundedRectangle(cornerRadius: WatchV2.radiusCard, style: .continuous)
+                .fill(WatchV2.surface)
         )
-    }
-
-    // MARK: - Prediction
-
-    private func predictionRow(_ date: Date) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "calendar")
-                .font(.system(size: 11 * caption2Scale, weight: .semibold))
-                .foregroundStyle(WatchDesignTokens.muted)
-            Text(date.formatted(date: .abbreviated, time: .omitted))
-                .font(.system(size: 13 * footnoteScale, weight: .semibold, design: .rounded))
-                .tracking(-0.01 * 13)
-                .foregroundStyle(WatchDesignTokens.ink)
-            Spacer(minLength: 0)
-            Text("NEXT")
-                .font(.system(size: 7 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 7)
-                .foregroundStyle(WatchDesignTokens.muted)
-        }
-        .padding(.horizontal, WatchDesignTokens.Spacing.xs)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Correlation note
 
     private func correlationNote(_ note: String) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
                 Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 9 * caption2Scale, weight: .semibold))
-                    .foregroundStyle(WatchDesignTokens.accentStrong)
-                Text("STRESS NOTE")
-                    .font(.system(size: 7.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                    .tracking(0.08 * 7.5)
-                    .foregroundStyle(WatchDesignTokens.accentStrong)
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
+                Text("Stress note")
             }
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(WatchV2.accent)
             Text(note)
-                .font(.system(size: 9.5 * caption2Scale, weight: .regular, design: .default))
-                .foregroundStyle(WatchDesignTokens.inkSecondary)
+                .font(.footnote)
+                .foregroundStyle(WatchV2.ink2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, WatchDesignTokens.Spacing.xs)
+        .padding(.horizontal, 12)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.accentSoft)
+            RoundedRectangle(cornerRadius: WatchV2.radiusCard, style: .continuous)
+                .fill(WatchV2.accentSoft)
         )
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Empty
 
     private var emptyState: some View {
         VStack(spacing: 6) {
-            Spacer(minLength: 0)
             Image(systemName: "drop")
-                .font(.system(size: 28 * titleScale, weight: .regular))
-                .foregroundStyle(WatchDesignTokens.mutedSystem)
+                .font(.title2)
+                .foregroundStyle(WatchV2.cycle)
+                .accessibilityHidden(true)
             Text("No cycle logged")
-                .font(.system(size: 12 * footnoteScale, weight: .semibold, design: .default))
-                .foregroundStyle(WatchDesignTokens.ink)
+                .font(.headline)
+                .foregroundStyle(WatchV2.ink)
             Text("Log the start of your cycle to see predictions and stress correlations.")
-                .font(.system(size: 9.5 * caption2Scale, weight: .regular, design: .default))
-                .foregroundStyle(WatchDesignTokens.muted)
+                .font(.footnote)
+                .foregroundStyle(WatchV2.ink3)
                 .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, 6)
             Button {
                 viewModel.logCycleStart(Date())
             } label: {
                 Text("Log Today")
-                    .font(.system(size: 11 * caption2Scale, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.headline)
+                    .foregroundStyle(WatchV2.onAccent)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 32)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(WatchDesignTokens.accentStrong)
-                    )
+                    .frame(minHeight: 36)
+                    .background(Capsule(style: .continuous).fill(WatchV2.accent))
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            Spacer(minLength: 0)
+            .padding(.horizontal, 6)
         }
+        .padding(.top, 6)
         .padding(.bottom, 10)
     }
 }

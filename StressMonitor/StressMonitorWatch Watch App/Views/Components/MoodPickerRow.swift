@@ -2,23 +2,26 @@ import SwiftUI
 
 // MARK: - MoodPickerRow
 
-/// Horizontal row of 5 mood buttons used on the Logging tab.
+/// Grid of the 5 mood buttons used on the Today screen (UI V2).
 ///
-/// Each mood is rendered as a compact SF Symbol inside a circular well.
-/// The selected mood gets an accent-strong border and soft tinted
-/// background; unselected moods are hairlined. Tap behaviour is delegated
-/// to the `onSelected` callback so the parent owns the source of truth.
-///
-/// Colour is never the only signal — each button also grows slightly and
-/// shows a bolded label glyph when selected (WCAG dual-coding).
+/// Each mood is a 32 pt circular well with its SF Symbol, and the mood name
+/// beneath it; the whole cell is the tap target (at least 44 × 44 pt). Three
+/// per row so every hit area keeps its full 44 pt width on a 41–45 mm
+/// display. The selected mood gets an accent well, an accent ring and a
+/// bold name — colour is never the only signal.
 struct MoodPickerRow: View {
     @Binding var selectedMood: WatchMood?
     let onSelected: (WatchMood) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private let columns = Array(
+        repeating: GridItem(.flexible(minimum: WatchV2.minHitTarget), spacing: 2),
+        count: 3
+    )
+
     var body: some View {
-        HStack(spacing: 6) {
+        LazyVGrid(columns: columns, spacing: 4) {
             ForEach(WatchMood.allCases) { mood in
                 moodButton(mood)
             }
@@ -36,29 +39,21 @@ struct MoodPickerRow: View {
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: mood.icon)
-                    .font(.system(size: isSelected ? 18 : 15, weight: .semibold)) // dated exception 2026-09-05: icon in 5-across fixed-height circular mood wells
-                    .foregroundStyle(isSelected ? WatchDesignTokens.accentStrong : WatchDesignTokens.ink)
-                Text(mood.displayName.prefix(3).uppercased())
-                    .font(.system(size: 7, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: 3-char label in 5-across mood wells — cannot fit the ramp
-                    .tracking(0.03 * 7)
-                    .foregroundStyle(isSelected ? WatchDesignTokens.accentStrong : WatchDesignTokens.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8) // dated exception 2026-09-05: 5-across mood-well row cannot wrap; shrink keeps labels visible
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 46)
-            .background(
-                Circle()
-                    .fill(isSelected ? WatchDesignTokens.accentSoft : WatchDesignTokens.surface)
-            )
-            .overlay(
-                Circle()
-                    .stroke(
-                        isSelected ? WatchDesignTokens.accentStrong : WatchDesignTokens.separator,
-                        lineWidth: isSelected ? 1.5 : 0.5
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(isSelected ? WatchV2.onAccent : WatchV2.ink)
+                    .frame(width: WatchV2.minVisibleTarget, height: WatchV2.minVisibleTarget)
+                    .background(Circle().fill(isSelected ? WatchV2.accent : WatchV2.surface))
+                    .overlay(
+                        Circle().stroke(isSelected ? WatchV2.ink : .clear, lineWidth: 1.5)
                     )
-            )
-            .scaleEffect(isSelected ? 1.04 : 1.0)
+                Text(mood.displayName)
+                    .font(isSelected ? .caption2.weight(.bold) : .caption2)
+                    .foregroundStyle(isSelected ? WatchV2.ink : WatchV2.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity, minHeight: WatchV2.minHitTarget)
+            .contentShape(Rectangle())
             .animation(
                 WatchDesignTokens.motion(WatchDesignTokens.Motion.fast, reduceMotion: reduceMotion),
                 value: isSelected
@@ -76,7 +71,7 @@ struct MoodPickerRow: View {
         var body: some View {
             MoodPickerRow(selectedMood: $mood) { _ in }
                 .padding()
-                .background(WatchDesignTokens.canvas)
+                .background(WatchV2.canvas)
         }
     }
     return PreviewWrapper()

@@ -1,8 +1,8 @@
 import SwiftUI
 
 // MARK: - Rectangular Stress View
-/// SwiftUI view component for rectangular stress display
-/// Provides a reusable view for showing stress metrics in a compact layout
+/// Reusable rectangular stress display (UI V2): tier shape chip, "Stress N"
+/// with the tier name, and HRV / heart rate. "—" when there is no reading.
 struct RectangularStressView: View {
     let stressLevel: Double
     let category: StressCategory
@@ -28,98 +28,67 @@ struct RectangularStressView: View {
     }
 
     var body: some View {
-        HStack(spacing: horizontalSpacing) {
-            // Left: Stress level indicator
+        HStack(spacing: 8) {
             stressIndicator
 
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Stress")
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink2)
+                Text(stressLevelText)
+                    .font(.v2Number(.title3, weight: .bold))
+                    .foregroundStyle(hasData ? WatchV2.ink : WatchV2.ink3)
+                if hasData {
+                    WatchTierBadge(category: category, font: .caption2.weight(.semibold))
+                }
+            }
+
             Spacer(minLength: 4)
 
-            // Center: Current stress level
-            stressLevelDisplay
-
-            Spacer(minLength: 4)
-
-            // Right: Health metrics
             healthMetrics
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
         .frame(width: width, height: height)
-        .padding(.horizontal, horizontalPadding)
-        .padding(.vertical, verticalPadding)
     }
 
     // MARK: - View Components
-    /// Stress level indicator with icon
+    /// Tier shape on a tinted chip.
     private var stressIndicator: some View {
         ZStack {
             Circle()
-                .fill(category.color.opacity(0.15))
-
-            Image(systemName: category.icon)
-                .font(.system(size: iconSize)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                .foregroundColor(category.color)
+                .fill(hasData ? category.color.opacity(0.18) : WatchV2.surface2)
+            Image(systemName: hasData ? category.icon : "minus")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(hasData ? category.color : WatchV2.ink3)
         }
-        .frame(width: indicatorSize, height: indicatorSize)
+        .frame(width: 28, height: 28)
+        .accessibilityHidden(true)
     }
 
-    /// Stress level number display
-    private var stressLevelDisplay: some View {
-        VStack(alignment: .leading, spacing: verticalTextSpacing) {
-            Text("Stress")
-                .font(.system(size: labelSize, weight: .medium)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                .foregroundColor(.secondary)
-
-            Text(stressLevelText)
-                .font(.system(size: valueSize, weight: .bold, design: .rounded)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                .foregroundColor(category.color)
-        }
-    }
-
-    /// Health metrics (HRV and heart rate)
+    /// HRV and (space permitting) heart rate.
     private var healthMetrics: some View {
-        VStack(alignment: .trailing, spacing: verticalTextSpacing) {
+        VStack(alignment: .trailing, spacing: 2) {
             Text("HRV")
-                .font(.system(size: metricLabelSize, weight: .medium)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                .foregroundColor(.secondary)
-
-            HStack(spacing: 2) {
-                Text(hrvText)
-                    .font(.system(size: metricValueSize, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                    .foregroundColor(.primary)
-
-                Text("ms")
-                    .font(.system(size: unitSize, weight: .regular)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                    .foregroundColor(.secondary)
-            }
-
-            // Heart rate (optional, shown if space allows)
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
+            metric(hrvText, unit: "ms")
             if height >= 70 {
-                HStack(spacing: 2) {
-                    Text(heartRateText)
-                        .font(.system(size: metricValueSize, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                        .foregroundColor(.primary)
-
-                    Text("bpm")
-                        .font(.system(size: unitSize, weight: .regular)) // dated exception 2026-09-05: parametric accessory rectangular slot — font proportional to slot size
-                        .foregroundColor(.secondary)
-                }
+                metric(heartRateText, unit: "bpm")
             }
         }
     }
 
-    // MARK: - Layout Constants (computed from size)
-    private var horizontalSpacing: CGFloat { width * 0.05 }
-    private var horizontalPadding: CGFloat { width * 0.04 }
-    private var verticalPadding: CGFloat { height * 0.05 }
-
-    private var indicatorSize: CGFloat { min(width, height) * 0.25 }
-    private var iconSize: CGFloat { min(width, height) * 0.10 }
-
-    private var labelSize: CGFloat { height * 0.14 }
-    private var valueSize: CGFloat { height * 0.24 }
-    private var metricLabelSize: CGFloat { height * 0.12 }
-    private var metricValueSize: CGFloat { height * 0.18 }
-    private var unitSize: CGFloat { height * 0.11 }
-    private var verticalTextSpacing: CGFloat { height * 0.04 }
+    private func metric(_ value: String, unit: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(value)
+                .font(.v2Number(.footnote, weight: .semibold))
+                .foregroundStyle(WatchV2.ink)
+            Text(unit)
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
+        }
+    }
 
     // MARK: - Computed Properties
     private var stressLevelText: String {
@@ -127,11 +96,11 @@ struct RectangularStressView: View {
     }
 
     private var hrvText: String {
-        hasData ? String(format: "%.0f", hrv) : "--"
+        hasData ? String(format: "%.0f", hrv) : "—"
     }
 
     private var heartRateText: String {
-        hasData ? String(format: "%.0f", heartRate) : "--"
+        hasData ? String(format: "%.0f", heartRate) : "—"
     }
 
     private var hasData: Bool {

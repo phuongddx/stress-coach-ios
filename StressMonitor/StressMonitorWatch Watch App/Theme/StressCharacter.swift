@@ -39,25 +39,26 @@ enum CharacterCreature: String, CaseIterable, Codable, Sendable, Identifiable {
         }
     }
 
-    /// Primary character colour (`--ripple`, `--blossom`, …).
+    /// Companion tint (V2 dark) — background wash and halo only; the
+    /// companion art keeps its own palette.
     var primaryColor: Color {
         switch self {
-        case .ripple:  return Color(hex: "#4FC3F7")
-        case .blossom: return Color(hex: "#A5D6A7")
-        case .ember:   return Color(hex: "#FFAB91")
-        case .zephyr:  return Color(hex: "#D1C4E9")
-        case .lumi:    return Color(hex: "#7986CB")
+        case .ripple:  return WatchV2.Companion.rippleDark
+        case .blossom: return WatchV2.Companion.blossomDark
+        case .ember:   return WatchV2.Companion.emberDark
+        case .zephyr:  return WatchV2.Companion.zephyrDark
+        case .lumi:    return WatchV2.Companion.lumiDark
         }
     }
 
-    /// Deeper companion colour used for gradient ramps.
+    /// Deeper companion tint (V2 light value) used for gradient ramps.
     var secondaryColor: Color {
         switch self {
-        case .ripple:  return Color(hex: "#0288D1")
-        case .blossom: return Color(hex: "#81C784")
-        case .ember:   return Color(hex: "#FF8A65")
-        case .zephyr:  return Color(hex: "#B39DDB")
-        case .lumi:    return Color(hex: "#5C6BC0")
+        case .ripple:  return WatchV2.Companion.rippleLight
+        case .blossom: return WatchV2.Companion.blossomLight
+        case .ember:   return WatchV2.Companion.emberLight
+        case .zephyr:  return WatchV2.Companion.zephyrLight
+        case .lumi:    return WatchV2.Companion.lumiLight
         }
     }
 
@@ -495,7 +496,7 @@ private struct CharacterRosterPreview: View {
                 VStack(spacing: 6) {
                     CharacterFaceView(creature: creature, category: .relaxed, size: 72, showsHalo: true)
                     Text(creature.displayName)
-                        .font(.system(size: 10, design: .rounded))
+                        .font(.caption2)
                         .foregroundStyle(WatchDesignTokens.muted)
                 }
             }
@@ -515,9 +516,7 @@ private struct ExpressionPreview: View {
             ForEach(StressCategory.allCases) { tier in
                 VStack(spacing: 4) {
                     CharacterFaceView(creature: .ripple, category: tier, size: 64, showsRing: true)
-                    Text(tier.glyphLabel)
-                        .font(.system(size: 9, design: .monospaced))
-                        .foregroundStyle(WatchDesignTokens.muted)
+                    WatchTierBadge(category: tier, font: .caption2)
                 }
             }
         }

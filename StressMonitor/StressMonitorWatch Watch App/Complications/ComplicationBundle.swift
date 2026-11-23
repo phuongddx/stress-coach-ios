@@ -4,14 +4,14 @@ import SwiftUI
 // MARK: - Complication Bundle
 /// WidgetKit bundle configuration for watchOS complications.
 ///
-/// Supports 4 families, all rendered with the iOS stress scale and the
-/// Ripple companion glyph.  Dark canvas here is the watchOS platform
-/// convention — complications are always-on-dark by system contract, so
-/// this is the one place the dark palette is acceptable.
-/// - **Accessory Circular** — ring + score + tier glyph
-/// - **Accessory Rectangular** — companion glyph + score + tier label
-/// - **Accessory Inline** — companion glyph + score (single line)
-/// - **Accessory Corner** — companion glyph + score (watchOS 10+)
+/// Supports 4 families, all rendered with the UI V2 tier colours and tier
+/// shapes. "—" stands for no data; no emoji anywhere.
+/// - **Accessory Circular** — 240° gauge + score + tier shape
+/// - **Accessory Rectangular** — companion + "Stress N" + tier (shape +
+///   name) + HRV + level bar
+/// - **Accessory Inline** — tier shape + score + tier name (single line;
+///   the inline family only renders one image and text)
+/// - **Accessory Corner** — companion + score, curved tier shape + name
 struct ComplicationBundle: WidgetBundle {
     var body: some Widget {
         CircularComplication()
@@ -82,14 +82,25 @@ struct CornerComplicationProvider: TimelineProvider {
 struct CornerComplicationView: View {
     let entry: CornerComplicationEntry
 
+    private var isPlaceholder: Bool { ComplicationDataProvider.shared.fetchLatestEntry().isPlaceholder }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            CharacterFaceView(creature: .ripple, category: entry.category, size: 22, showsHalo: false)
-            Text(ComplicationDataProvider.shared.fetchLatestEntry().isPlaceholder
-                 ? "—" : "\(Int(entry.stressLevel.rounded()))")
-                .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: accessory corner template — system-fixed slot
-                .foregroundColor(entry.category.color)
+            CharacterFaceView(creature: .ripple, category: isPlaceholder ? nil : entry.category, size: 22, showsHalo: false)
+            Text(isPlaceholder ? "—" : "\(Int(entry.stressLevel.rounded()))")
+                .font(.v2Number(.headline, weight: .bold))
+                .foregroundStyle(isPlaceholder ? WatchV2.ink3 : entry.category.color)
+                .widgetAccentable()
         }
-        .widgetLabel { Text("Ripple") }
+        .widgetLabel {
+            if isPlaceholder {
+                Text("No data")
+            } else {
+                Text("\(Image(systemName: entry.category.icon)) \(entry.category.displayName)")
+                    .foregroundStyle(entry.category.color)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(isPlaceholder ? "No stress reading yet" : entry.category.accessibilityValue(level: entry.stressLevel))
     }
 }
