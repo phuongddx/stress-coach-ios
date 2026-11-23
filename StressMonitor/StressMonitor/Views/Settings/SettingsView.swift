@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import HealthKit
+import StoreKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -13,6 +14,7 @@ struct SettingsView: View {
     @State private var accountViewModel = AccountViewModel()
     @State private var docsURL: URL? = nil
     @State private var showChatSheet = false
+    @State private var showManageSubscriptions = false
     @State private var showSignInErrorAlert = false
     @State private var showDeleteAccountConfirm = false
     @State private var showAccountDeletedAlert = false
@@ -93,6 +95,7 @@ struct SettingsView: View {
         .sheet(item: $docsURL) { url in
             SafariView(url: url).ignoresSafeArea()
         }
+        .manageSubscriptionsSheet(isPresented: $showManageSubscriptions)
         .sheet(isPresented: $showChatSheet) {
             ChatBottomSheetView(
                 stressResult: viewModel.chatStressResult,
@@ -154,7 +157,17 @@ struct SettingsView: View {
     /// Nil while purchases are postponed so `MeHeroCard` drops the PLUS pill.
     private var plusTapHandler: (() -> Void)? {
         guard PurchaseAvailability.isEnabled else { return nil }
-        return { paywall.present(reason: .general) }
+        return plusTapped
+    }
+
+    /// Plus members manage their subscription with Apple; everyone else
+    /// gets the paywall.
+    private func plusTapped() {
+        if PremiumState.shared.isPremiumUser {
+            showManageSubscriptions = true
+        } else {
+            paywall.present(reason: .general)
+        }
     }
 
     private var meHeroSection: some View {
@@ -378,9 +391,11 @@ struct SettingsView: View {
                         setting: .stressMonitorPlus,
                         tint: .premiumGold,
                         title: "StressMonitor Plus",
-                        value: CreditBalanceFormatter.plusRowValue(creditService.balance),
+                        value: PremiumState.shared.isPremiumUser
+                            ? "Active"
+                            : CreditBalanceFormatter.plusRowValue(creditService.balance),
                         valueTint: .premiumGold,
-                        action: { paywall.present(reason: .general) }
+                        action: plusTapped
                     )
                     hairlineDivider
                 }
