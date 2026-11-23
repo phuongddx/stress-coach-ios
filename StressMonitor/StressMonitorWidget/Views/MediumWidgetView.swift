@@ -2,7 +2,9 @@ import SwiftUI
 import Charts
 import WidgetKit
 
-/// Medium widget — **character face + mini trend sparkline, no numeric score**.
+/// Medium widget (UI V2): score and tier on the left, recent readings on the
+/// right. Fewer than two readings shows "Gathering data…"; stale readings dim
+/// and say when they were last updated; no reading shows "—".
 @available(iOS 17.0, *)
 public struct MediumWidgetView: View {
 
@@ -12,120 +14,86 @@ public struct MediumWidgetView: View {
         self.entry = entry
     }
 
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
-    @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .title) private var titleScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .title3) private var title3Scale: CGFloat = 1
     public var body: some View {
-        HStack(spacing: 0) {
-            if entry.isPlaceholder {
-                placeholderView
-            } else if let stress = entry.latestStress {
-                stressContent(stress: stress, isStale: entry.dataState == .stale)
-            } else {
-                emptyStateView
-            }
+        HStack(alignment: .top, spacing: 16) {
+            summaryColumn
+                .frame(width: 128, alignment: .leading)
+                .frame(maxHeight: .infinity, alignment: .topLeading)
+            historyColumn
         }
-        .containerBackground(.fill.tertiary, for: .widget)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WidgetReadingText.accessibilitySummary(entry.latestStress, state: entry.dataState))
+        .widgetV2HomeContainer(isPlaceholder: entry.isPlaceholder)
     }
 
-    // MARK: - Character-Reactive Content
+    // MARK: - Summary
 
-    @ViewBuilder
-    private func stressContent(stress: StressData, isStale: Bool) -> some View {
-        let tier = WidgetStressTier.from(level: stress.level)
+    private var summaryColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Stress AI Coach")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
-        HStack(spacing: 12) {
-            // Left: Character face
-            VStack(spacing: 4) {
-                WidgetCharacterFace(tier: tier, size: 56, showsRing: true, glow: true)
+            Spacer(minLength: 0)
 
-                if isStale {
-                    Text(stress.timestamp, format: .relative(presentation: .named))
-                        .font(.system(size: 12 * footnoteScale, weight: .medium))
-                        .foregroundColor(.secondary)
-                } else {
-                    Text(tier.label)
-                        .font(.system(size: 10 * caption2Scale, weight: .semibold, design: .rounded))
-                        .foregroundColor(tier.accent)
+            if let stress = entry.latestStress {
+                let isStale = entry.dataState == .stale
+                Group {
+                    WidgetScoreText(level: stress.level)
+                    WidgetTierLabel(category: stress.stressCategory)
                 }
-            }
-            .opacity(isStale ? 0.6 : 1.0)
-            .frame(width: 90)
-            .padding(.leading, 8)
-
-            // Right: Mini trend sparkline (colour-coded, no axis numbers)
-            if entry.history.count >= 2 {
-                sparklineSection(tier: tier)
+                .opacity(isStale ? 0.6 : 1)
+                Text(isStale ? WidgetReadingText.updated(stress, state: entry.dataState) : WidgetReadingText.time(stress.timestamp))
+                    .font(.caption2)
+                    .foregroundStyle(isStale ? Color.V2.ink2 : Color.V2.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             } else {
-                // Not enough data — show character mood descriptor
-                VStack(spacing: 4) {
-                    Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 20 * title3Scale))
-                        .foregroundColor(tier.accent.opacity(0.6))
-                    Text("Gathering data…")
-                        .font(.system(size: 9 * caption2Scale))
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity)
+                WidgetScoreText(level: nil)
+                Text("No reading yet")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                    .lineLimit(1)
+                Text("Open the app to measure")
+                    .font(.caption2)
+                    .foregroundStyle(Color.V2.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
-        .padding(.vertical, 10)
     }
 
-    @ViewBuilder
-    private func sparklineSection(tier: WidgetStressTier) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Trend")
-                .font(.system(size: 9 * caption2Scale, weight: .semibold))
-                .foregroundColor(.secondary)
+    // MARK: - History
 
-            Chart(entry.history.suffix(12)) { item in
-                let pTier = WidgetStressTier.from(level: item.level)
-                LineMark(
-                    x: .value("Time", item.timestamp),
-                    y: .value("Stress", item.level)
-                )
-                .foregroundStyle(pTier.accent)
-                .interpolationMethod(.catmullRom)
-                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
+    private var historyColumn: some View {
+        let readings = widgetRecentReadings(entry.history, limit: 12)
+        let tier = entry.latestStress.map { WidgetStressTier.from(level: $0.level) } ?? .resting
+
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .center) {
+                Text("Recent readings")
+                    .font(.caption2)
+                    .foregroundStyle(Color.V2.ink3)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                WidgetCompanionBadge(tier: tier, size: 30)
             }
-            .chartYScale(domain: 0...100)
-            .chartYAxis(.hidden)
-            .chartXAxis(.hidden)
-            .frame(height: 50)
+
+            if entry.latestStress == nil {
+                Text("Readings appear here after your first measurement.")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            } else if readings.count >= 2 {
+                WidgetTrendLine(readings: readings)
+                    .opacity(entry.dataState == .stale ? 0.6 : 1)
+            } else {
+                WidgetGatheringView()
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.trailing, 12)
-    }
-
-    // MARK: - Placeholder
-
-    private var placeholderView: some View {
-        HStack(spacing: 12) {
-            WidgetCharacterFace(tier: .balanced, size: 50, showsRing: true)
-                .opacity(0.5)
-            Text("StressMonitor")
-                .font(.system(size: 11 * caption2Scale, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-        .padding(12)
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Text("💧")
-                .font(.system(size: 28 * titleScale))
-            Text("No Data")
-                .font(.system(size: 11 * caption2Scale, weight: .medium))
-                .foregroundColor(.primary)
-            Text("Open StressMonitor to measure")
-                .font(.system(size: 9 * caption2Scale))
-                .foregroundColor(.secondary)
-        }
-        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
