@@ -12,19 +12,23 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP_GROUP="group.stress.ai.com"
 WIDGET_POINT_ID="com.apple.widgetkit-extension"
 
-# Merged-plist keys that must NOT be present in this free-only release — this app ships
-# no IAP (see plans/260925-0819-remove-iap-mentions). A merged app Info.plist containing
-# any of these keys means IAP evidence leaked back into the build. Kept for documentation
-# only: the actual check below matches ANY key prefixed STOREKIT_, not just these six, so
-# it also catches a future/renamed StoreKit key such as STOREKIT_CREDITS_MEDIUM_PRODUCT_ID.
-STOREKIT_KEYS=(
-    STOREKIT_CREDITS_LARGE_PRODUCT_ID
-    STOREKIT_CREDITS_SMALL_PRODUCT_ID
-    STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID
+# StoreKit rules for the merged app Info.plist (1.1 sells StressMonitor Plus,
+# see plans/261122-2200-subscriptions-v11-launch):
+#   - all three PLUS_KEYS must be present and non-empty;
+#   - the two product-ID keys must start with PLUS_PRODUCT_PREFIX;
+#   - no other STOREKIT_* key may appear (credit packs and the weekly tier are not
+#     sold). Prefix match, so a future/renamed key such as
+#     STOREKIT_CREDITS_MEDIUM_PRODUCT_ID is caught too.
+PLUS_KEYS=(
     STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID
-    STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID
+    STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID
     STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID
 )
+PLUS_PRODUCT_KEYS=(
+    STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID
+    STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID
+)
+PLUS_PRODUCT_PREFIX="com.stressmonitor.app.plus."
 
 # AUTH-01 credential-scan pattern set (case-insensitive): private-key material, sk- prefixed
 # keys, anon keys, api secrets, PEM headers, Bearer tokens (20+ token chars), Supabase
@@ -190,18 +194,43 @@ else
 fi
 
 if [ -n "$APP_PLIST_DUMP" ]; then
-    # Prefix match (not the STOREKIT_KEYS list above) so a renamed/new StoreKit key
-    # is caught too. Anchored to the dump's "key" => line shape so a STOREKIT_-prefixed
-    # *value* under an unrelated key can't produce a false positive.
-    plist_present=""
+    # Anchored to the dump's "key" => line shape so a STOREKIT_-prefixed *value*
+    # under an unrelated key can't produce a false positive.
+    storekit_problems=""
+    unexpected=""
     while IFS= read -r key; do
-        [ -n "$key" ] && plist_present="$plist_present $key"
+        [ -z "$key" ] && continue
+        allowed=0
+        for plus_key in "${PLUS_KEYS[@]}"; do
+            [ "$key" = "$plus_key" ] && allowed=1
+        done
+        [ "$allowed" -eq 0 ] && unexpected="$unexpected $key"
     done < <(grep -oE '^[[:space:]]*"STOREKIT_[^"]+"[[:space:]]*=>' <<<"$APP_PLIST_DUMP" \
         | grep -oE '"STOREKIT_[^"]+"' | tr -d '"' | sort -u)
-    if [ -n "$plist_present" ]; then
-        note_fail "MERGED PLISTS" "this release ships no IAP — found STOREKIT keys that must not be present:$plist_present"
+    [ -n "$unexpected" ] && storekit_problems="$storekit_problems; keys that must not be present:$unexpected"
+
+    missing=""
+    for plus_key in "${PLUS_KEYS[@]}"; do
+        value=$(/usr/libexec/PlistBuddy -c "Print :$plus_key" "$APP_PLIST" 2>/dev/null || true)
+        if [ -z "$value" ] || [[ "$value" == '$('* ]]; then
+            missing="$missing $plus_key"
+        fi
+    done
+    [ -n "$missing" ] && storekit_problems="$storekit_problems; missing Plus keys:$missing"
+
+    bad_prefix=""
+    for plus_key in "${PLUS_PRODUCT_KEYS[@]}"; do
+        value=$(/usr/libexec/PlistBuddy -c "Print :$plus_key" "$APP_PLIST" 2>/dev/null || true)
+        if [ -n "$value" ] && [[ "$value" != "$PLUS_PRODUCT_PREFIX"* ]]; then
+            bad_prefix="$bad_prefix $plus_key=$value"
+        fi
+    done
+    [ -n "$bad_prefix" ] && storekit_problems="$storekit_problems; product IDs must start with $PLUS_PRODUCT_PREFIX:$bad_prefix"
+
+    if [ -n "$storekit_problems" ]; then
+        note_fail "MERGED PLISTS" "StoreKit keys wrong${storekit_problems}"
     else
-        note_pass "MERGED PLISTS" "no STOREKIT_* keys present in app Info.plist (expected for this free-only release)"
+        note_pass "MERGED PLISTS" "Plus keys present (monthly, annual, group) with plus.* product IDs; no other STOREKIT_* keys"
     fi
 
     # The URL-schemes check parses the canonical XML serialization instead of

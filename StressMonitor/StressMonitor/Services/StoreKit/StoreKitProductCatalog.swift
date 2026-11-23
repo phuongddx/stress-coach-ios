@@ -14,7 +14,6 @@ struct StoreKitProductCatalog: Sendable {
 
     // MARK: - Public API
 
-    let weeklyProductID: String?
     let monthlyProductID: String?
     let annualProductID: String?
     let subscriptionGroupID: String?
@@ -23,13 +22,12 @@ struct StoreKitProductCatalog: Sendable {
 
     /// All non-nil product IDs.
     var allProductIDs: Set<String> {
-        Set([weeklyProductID, monthlyProductID, annualProductID].compactMap { $0 })
+        Set([monthlyProductID, annualProductID].compactMap { $0 })
     }
 
     /// Returns the product ID for a given subscription period.
     func productID(for period: SubscriptionPeriod) -> String? {
         switch period {
-        case .weekly:  weeklyProductID
         case .monthly: monthlyProductID
         case .annual:  annualProductID
         }
@@ -37,7 +35,6 @@ struct StoreKitProductCatalog: Sendable {
 
     /// Returns the period for a given product ID, or nil if unknown.
     func period(for productID: String) -> SubscriptionPeriod? {
-        if productID == weeklyProductID  { return .weekly }
         if productID == monthlyProductID { return .monthly }
         if productID == annualProductID  { return .annual }
         return nil
@@ -72,16 +69,6 @@ struct StoreKitProductCatalog: Sendable {
     ) {
         let env = environment ?? ProcessInfo.processInfo.environment
         let defs = defaults ?? .standard
-
-        self.weeklyProductID = Self.resolve(
-            infoKey: "STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID",
-            envKey: "STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID",
-            defaultsKey: "storeKitPremiumWeeklyProductID",
-            infoDictionary: infoDictionary,
-            bundle: bundle,
-            environment: env,
-            defaults: defs
-        )
 
         self.monthlyProductID = Self.resolve(
             infoKey: "STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID",
@@ -135,13 +122,11 @@ struct StoreKitProductCatalog: Sendable {
     }
 
     /// Direct initializer for tests that already have resolved values.
-    init(weeklyProductID: String? = nil,
-         monthlyProductID: String? = nil,
+    init(monthlyProductID: String? = nil,
          annualProductID: String? = nil,
          subscriptionGroupID: String? = nil,
          smallPackProductID: String? = nil,
          largePackProductID: String? = nil) {
-        self.weeklyProductID = Self.clean(weeklyProductID)
         self.monthlyProductID = Self.clean(monthlyProductID)
         self.annualProductID = Self.clean(annualProductID)
         self.subscriptionGroupID = Self.clean(subscriptionGroupID)

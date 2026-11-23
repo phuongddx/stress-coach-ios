@@ -101,6 +101,9 @@ struct BeforeAfterHRVChart: View {
                 }
             }
             .frame(height: 120)
+            // Attached here rather than in BreathingSummaryView so the summary
+            // screen stays untouched; the header row above stays readable.
+            .plusLocked(.breathingBeforeAfter)
         }
     }
 }

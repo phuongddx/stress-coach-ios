@@ -24,7 +24,7 @@ struct HabitViewModelTests {
     init() throws {
         container = try ModelContainer(
             for: Habit.self,
-            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
         )
     }
 

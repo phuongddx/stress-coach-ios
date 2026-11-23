@@ -18,11 +18,13 @@ struct PurchaseSuccessView: View {
 
     let purchasedPack: CreditPack?
     let newBalanceText: String
+    let isRestore: Bool
 
     /// Character ids unlocked by Premium.
     private static let unlockedByPremium = CharacterCreature.allCharacters.filter { $0.unlockType == .premium }.map(\.id)
 
-    init(purchasedPack: CreditPack? = nil, newBalanceText: String = "") {
+    init(purchasedPack: CreditPack? = nil, newBalanceText: String = "", isRestore: Bool = false) {
+        self.isRestore = isRestore
         self.purchasedPack = purchasedPack
         self.newBalanceText = newBalanceText
     }
@@ -57,11 +59,11 @@ struct PurchaseSuccessView: View {
         VStack(spacing: 14) {
             successSeal
 
-            Text("Welcome to Premium")
+            Text(isRestore ? "Plus restored" : "Welcome to Plus")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(Color.Wellness.adaptivePrimaryText)
 
-            Text("Your premium companions are unlocked, along with trends, AI coaching, and deeper recovery insights.")
+            Text("Your premium companions are unlocked, along with all your charts, 30- and 90-day trends, and unlimited AI chat.")
                 .font(.subheadline)
                 .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
                 .multilineTextAlignment(.center)
@@ -154,10 +156,10 @@ struct PurchaseSuccessView: View {
 
     private var benefitsList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            benefitRow(icon: "chart.line.uptrend.xyaxis", text: "Trends: HRV, distribution, and recovery patterns")
-            benefitRow(icon: "bubble.left.and.bubble.right.fill", text: "AI coaching with Ripple")
+            benefitRow(icon: "chart.xyaxis.line", text: "All your charts, unblurred")
+            benefitRow(icon: "chart.line.uptrend.xyaxis", text: "30- and 90-day Trends")
+            benefitRow(icon: "bubble.left.and.bubble.right.fill", text: "Unlimited AI chat with Ripple")
             benefitRow(icon: "sparkles", text: "All elemental companions and evolution stages")
-            benefitRow(icon: "icloud.fill", text: "CloudKit sync across your devices")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)

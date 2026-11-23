@@ -164,6 +164,21 @@ struct PaywallOutOfCreditsGuardTests {
         #expect(paywall.presentation == nil)
     }
 
+    @Test("a locked chart presents the chart paywall only for non-Plus users")
+    func chartReasonRespectsPremiumGuard() {
+        let suite = "PaywallChart-\(UUID().uuidString)"
+        let state = PremiumState(defaults: UserDefaults(suiteName: suite)!, key: "isPremiumUser")
+        let paywall = PaywallController(premiumState: state, availability: .enabled)
+
+        paywall.present(reason: .chart(.trendsHRV))
+        #expect(paywall.presentation?.reason == .chart(.trendsHRV))
+
+        paywall.dismiss()
+        state.isPremiumUser = true
+        paywall.present(reason: .chart(.trendsHRV))
+        #expect(paywall.presentation == nil)
+    }
+
     @Test("postponed purchases suppress every paywall reason")
     func postponedPurchasesSuppressPaywall() {
         let suite = "PaywallPostponed-\(UUID().uuidString)"
@@ -180,9 +195,10 @@ struct PaywallOutOfCreditsGuardTests {
         #expect(paywall.presentation == nil)
     }
 
-    @Test("shipping build postpones purchases")
-    func shippingBuildPostponesPurchases() {
-        #expect(!PurchaseAvailability.isEnabled)
+    @Test("shipping 1.1 build sells Plus")
+    func shippingBuildEnablesPurchases() {
+        #expect(PurchaseAvailability.current == .enabled)
+        #expect(PurchaseAvailability.isEnabled)
     }
 }
 

@@ -254,6 +254,27 @@ class TrendsViewModel {
         }
     }
 
+    // MARK: - Plus Range Lock
+
+    /// Switches to `range` unless it needs Plus while charts are locked.
+    /// - Returns: true when the paywall should open instead; the range is
+    ///   then left unchanged.
+    @discardableResult
+    func selectRange(_ range: TrendsTimeRange, locked: Bool) -> Bool {
+        if locked && range.requiresPlus { return true }
+        selectedTimeRange = range
+        return false
+    }
+
+    /// Falls back to 7 days when Plus ends while a 30- or 90-day view is open.
+    /// - Returns: true when the range changed and the data needs reloading.
+    @discardableResult
+    func enforceRangeLock(_ locked: Bool) -> Bool {
+        guard locked && selectedTimeRange.requiresPlus else { return false }
+        selectedTimeRange = .week
+        return true
+    }
+
     func selectDate(_ date: Date) {
         selectedDate = date
         Task {
@@ -543,6 +564,11 @@ enum TrendsTimeRange: String, CaseIterable {
         case .month: return "Last 30 days"
         case .threeMonths: return "Last 3 months"
         }
+    }
+
+    /// 30- and 90-day views are part of Plus (SPEC 6.1).
+    var requiresPlus: Bool {
+        self == .month || self == .threeMonths
     }
 
     /// Compact window label for chart headers.

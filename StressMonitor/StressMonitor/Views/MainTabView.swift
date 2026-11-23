@@ -5,6 +5,8 @@ struct MainTabView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
     @Environment(PaywallController.self) private var paywall
+    @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
+    @AppStorage(OnboardingPaywallGate.didShowKey) private var didShowOnboardingPaywall = false
     /// Single source of the latest reading: the Home dashboard drives it and the
     /// Action tab reads it, so both show the same real result.
     @State private var stressViewModel: StressViewModel?
@@ -98,6 +100,7 @@ struct MainTabView: View {
                 stressViewModel = makeStressViewModel(repository: StressRepository(modelContext: modelContext))
             }
             restoreNavigationIfNeeded()
+            presentOnboardingPaywallIfNeeded()
             // The dashboard loads the shared reading when Home appears; a launch
             // restored onto another tab would otherwise leave Action without one.
             if router.selectedTab != .home, let viewModel = stressViewModel, viewModel.currentStress == nil {
@@ -135,6 +138,20 @@ struct MainTabView: View {
         .fullScreenCover(item: $paywall.presentation) { presentation in
             PaywallView(reason: presentation.reason)
         }
+    }
+
+    /// New users see the paywall once when they first land here from
+    /// onboarding; a dismissal is final.
+    private func presentOnboardingPaywallIfNeeded() {
+        let shouldPresent = OnboardingPaywallGate.shouldPresent(
+            didShowOnboardingPaywall: didShowOnboardingPaywall,
+            isLegacyUser: (injectedPlusAccess ?? .shared).isLegacyUser,
+            availability: .current,
+            isPremiumUser: PremiumState.shared.isPremiumUser
+        )
+        guard shouldPresent else { return }
+        didShowOnboardingPaywall = true
+        paywall.present(reason: .onboarding)
     }
 
     @ViewBuilder
@@ -187,5 +204,6 @@ struct MainTabView: View {
     MainTabView()
         .environment(AppRouter())
         .environment(PaywallController())
+        .environment(PlusAccess.shared)
         .modelContainer(for: [StressMeasurement.self, CharacterUnlock.self], inMemory: true)
 }

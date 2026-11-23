@@ -219,10 +219,11 @@ struct CreditsViewModelTests {
         #expect(text != "0 credits")
     }
 
-    @Test("low-remaining state below the 20-credit tier threshold flags short responses")
+    @Test("fewer than 5 free messages left flags the low-messages warning")
     func lowRemainingFlagsShortResponses() {
-        #expect(CreditBalanceFormatter.isLowCredits(makeBalance(total: 50, used: 31)))
-        #expect(!CreditBalanceFormatter.isLowCredits(makeBalance(total: 50, used: 30)))
+        #expect(CreditBalanceFormatter.shortResponseThreshold == 5)
+        #expect(CreditBalanceFormatter.isLowCredits(makeBalance(total: 20, used: 16)))
+        #expect(!CreditBalanceFormatter.isLowCredits(makeBalance(total: 20, used: 15)))
 
         let premium = makeBalance(total: 999_999, used: 0, planType: .premium, freeResetAt: nil)
         #expect(!CreditBalanceFormatter.isLowCredits(premium))

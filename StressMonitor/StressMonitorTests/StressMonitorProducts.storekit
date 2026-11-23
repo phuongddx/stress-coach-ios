@@ -1,11 +1,10 @@
 {
   "identifier" : "SM000001",
-  "nonRenewingSubscriptions" : [
-
-  ],
+  "nonRenewingSubscriptions" : [],
   "products" : [
     {
       "displayPrice" : "1.99",
+      "familyShareable" : false,
       "internalID" : "SMCP0010",
       "localizations" : [
         {
@@ -20,6 +19,7 @@
     },
     {
       "displayPrice" : "19.99",
+      "familyShareable" : false,
       "internalID" : "SMCP0150",
       "localizations" : [
         {
@@ -33,95 +33,57 @@
       "type" : "Consumable"
     }
   ],
-  "settings" : {
-
-  },
+  "settings" : {},
   "subscriptionGroups" : [
     {
-      "id" : "22353146",
-      "localizations" : [
-
-      ],
-      "name" : "Premium",
+      "id" : "22605738",
+      "localizations" : [],
+      "name" : "Plus",
       "subscriptions" : [
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "2.99",
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "4.99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "SMWK0001",
+          "internalID" : "6837996775",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "StressMonitor Plus weekly",
-              "displayName" : "Weekly",
+              "description" : "All charts, full history and more AI chat",
+              "displayName" : "Plus Monthly",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.stressmonitor.app.premium.weekly",
-          "recurringSubscriptionPeriod" : "P1W",
-          "referenceName" : "Weekly",
-          "subscriptionGroupID" : "22353146",
-          "type" : "RecurringSubscription"
-        },
-        {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-          "displayPrice" : "7.99",
-          "familyShareable" : false,
-          "groupNumber" : 1,
-          "internalID" : "SMMO0001",
-          "introductoryOffer" : null,
-          "localizations" : [
-            {
-              "description" : "StressMonitor Plus monthly",
-              "displayName" : "Monthly",
-              "locale" : "en_US"
-            }
-          ],
-          "productID" : "com.stressmonitor.app.premium.monthly",
+          "productID" : "com.stressmonitor.app.plus.monthly",
           "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Monthly",
-          "subscriptionGroupID" : "22353146",
+          "referenceName" : "Plus Monthly",
+          "subscriptionGroupID" : "22605738",
           "type" : "RecurringSubscription"
         },
         {
-          "adHocOffers" : [
-
-          ],
-          "codeOffers" : [
-
-          ],
-      "displayPrice" : "59.99",
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "25.99",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "SMAN0001",
+          "internalID" : "6837996372",
           "introductoryOffer" : {
-            "displayPrice" : "0",
-            "internalID" : "SMINTRO01",
-            "paymentMode" : "freeTrial",
-            "subscriptionPeriod" : "P1W"
+            "internalID" : "6837996373",
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P2W"
           },
           "localizations" : [
             {
-              "description" : "StressMonitor Plus annual",
-              "displayName" : "Annual",
+              "description" : "All charts, full history and more AI chat",
+              "displayName" : "Plus Annual",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.stressmonitor.app.premium.annual",
+          "productID" : "com.stressmonitor.app.plus.annual",
           "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Annual",
-          "subscriptionGroupID" : "22353146",
+          "referenceName" : "Plus Annual",
+          "subscriptionGroupID" : "22605738",
           "type" : "RecurringSubscription"
         }
       ]

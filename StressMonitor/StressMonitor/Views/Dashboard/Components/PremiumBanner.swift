@@ -5,11 +5,24 @@ import SwiftUI
 /// The gradient is built from three premium character colors (Ember / Zephyr /
 /// Lumi) so it reads as narrative rather than decoration. A frost layer (iOS
 /// Control Center lineage) sits over the gradient. Three companion busts
-/// overlap on the right; copy + a "Try 7 days free" CTA pill sit on the left.
+/// overlap on the right; copy + a CTA pill sit on the left. The pill offers a
+/// trial only when `trialPeriodUnit` comes from an eligible StoreKit product.
 ///
 /// Spec reference: design/screens/04-home.html — `.premium-banner`.
 struct PremiumBanner: View {
     var onUpgrade: (() -> Void)? = nil
+    /// Trial length from the annual product (e.g. "14-day"); nil hides trial copy.
+    var trialPeriodUnit: String? = nil
+
+    private static let benefits = "Unlimited chat · all your charts · premium companions"
+
+    private var ctaTitle: String {
+        trialPeriodUnit.map { "\($0) free trial" } ?? "See Plus"
+    }
+
+    private var accessibilityHintText: String {
+        trialPeriodUnit.map { "Double tap to start a \($0) free trial" } ?? "Double tap to see StressMonitor Plus"
+    }
 
     var body: some View {
         ZStack {
@@ -25,8 +38,8 @@ struct PremiumBanner: View {
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("StressMonitor Plus. Meet your full companion team. Three premium companions, 4-hour stress forecast, unlimited history.")
-        .accessibilityHint("Double tap to start a 7-day free trial")
+        .accessibilityLabel("StressMonitor Plus. Meet your full companion team. \(Self.benefits.replacingOccurrences(of: " · ", with: ", ")).")
+        .accessibilityHint(accessibilityHintText)
     }
 
     // MARK: - Background layers
@@ -88,7 +101,7 @@ struct PremiumBanner: View {
                 .foregroundStyle(.white)
                 .padding(.top, 1)
 
-            Text("3 premium companions · 4-hour stress forecast · unlimited history")
+            Text(Self.benefits)
                 .font(.system(size: 11, weight: .regular))
                 .foregroundStyle(Color.white.opacity(0.92))
                 .lineSpacing(2)
@@ -105,7 +118,7 @@ struct PremiumBanner: View {
             onUpgrade?()
         } label: {
             HStack(spacing: 4) {
-                Text("Try 7 days free")
+                Text(ctaTitle)
                     .font(.system(size: 11, weight: .bold))
                 Image(systemName: AppIconSystem.Nav.forward.sfSymbol)
                     .font(.system(size: 9, weight: .bold))
@@ -150,7 +163,10 @@ struct PremiumBanner: View {
 // MARK: - Preview
 
 #Preview("PremiumBanner") {
-    PremiumBanner(onUpgrade: {})
-        .padding()
-        .background(HomeCharacterDesignTokens.homeBackground)
+    VStack(spacing: 16) {
+        PremiumBanner(onUpgrade: {}, trialPeriodUnit: "14-day")
+        PremiumBanner(onUpgrade: {})
+    }
+    .padding()
+    .background(HomeCharacterDesignTokens.homeBackground)
 }

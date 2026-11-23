@@ -25,7 +25,7 @@ struct IAPNavBar: View {
 
             Spacer()
 
-            Text("StressMonitor Premium")
+            Text("StressMonitor Plus")
                 .font(Typography.iapNavTitle)
                 .foregroundStyle(Color.iapTextMuted)
 

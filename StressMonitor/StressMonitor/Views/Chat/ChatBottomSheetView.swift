@@ -193,7 +193,7 @@ struct ChatBottomSheetView: View {
             }
             .buttonStyle(.plain)
             .frame(minHeight: 44)
-            .accessibilityLabel("Out of credits. Tap to view options.")
+            .accessibilityLabel("No free messages left this month. Tap to see Plus.")
         } else {
             pillLabel(
                 systemImage: "circlebadge.2",

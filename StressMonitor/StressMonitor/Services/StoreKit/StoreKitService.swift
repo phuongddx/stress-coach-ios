@@ -31,6 +31,7 @@ final class StoreKitService: StoreKitServiceProtocol {
     private let creditService: CreditServiceProtocol?
     private let redeemer: PurchaseRedeemer
     private let subscriptionVerifier: PurchaseRedeemer
+    private let plusAccess: PlusAccess
     private var productsByID: [String: Product] = [:]
     private var transactionUpdatesTask: Task<Void, Never>?
     private static let logger = Logger(subsystem: "com.stressmonitor.app", category: "StoreKitService")
@@ -43,9 +44,11 @@ final class StoreKitService: StoreKitServiceProtocol {
         creditService: CreditServiceProtocol? = nil,
         redeemer: PurchaseRedeemer? = nil,
         subscriptionVerifier: PurchaseRedeemer? = nil,
+        plusAccess: PlusAccess? = nil,
         availability: PurchaseAvailability = .current
     ) {
         self.premiumState = premiumState ?? .shared
+        self.plusAccess = plusAccess ?? .shared
         self.catalog = catalog ?? .live
         self.creditService = creditService
         let apiClient = StressAPIClient()
@@ -66,26 +69,24 @@ final class StoreKitService: StoreKitServiceProtocol {
 
     // MARK: - StoreKitServiceProtocol
 
+    /// Plans built only from loaded StoreKit products. Empty when products
+    /// are not configured or fail to load: the paywall must never show an
+    /// invented price.
     var availablePlans: [SubscriptionPlan] {
         get async {
             let productIDs = catalog.allProductIDs
             guard !productIDs.isEmpty else {
-                // No product IDs configured — return fallback display plans.
-                return SubscriptionPlan.defaultPlans
+                plusAccess.markCatalogLoaded(false)
+                return []
             }
 
             do {
                 let products = try await Product.products(for: Array(productIDs))
-                guard !products.isEmpty else {
-                    return SubscriptionPlan.defaultPlans
-                }
 
-                // Cache products by ID
                 for product in products {
                     productsByID[product.id] = product
                 }
 
-                // Map to SubscriptionPlan, sorted annual first, then monthly, then weekly
                 var plans = products.compactMap { [catalog] product -> SubscriptionPlan? in
                     guard let period = catalog.period(for: product.id) else { return nil }
                     return Self.planFromProduct(product, period: period, catalog: catalog)
@@ -94,26 +95,69 @@ final class StoreKitService: StoreKitServiceProtocol {
                     Self.periodSortOrder(lhs.period) < Self.periodSortOrder(rhs.period)
                 }
 
-                // Real savings, not a hardcoded guess — needs both prices loaded
-                // together, which is only true here, after all products fetched.
-                if let monthly = plans.first(where: { $0.period == .monthly }),
-                   let annualIndex = plans.firstIndex(where: { $0.period == .annual }),
-                   monthly.pricePerMonth > 0 {
-                    let annualPricePerMonth = plans[annualIndex].pricePerMonth
-                    let savings = (monthly.pricePerMonth - annualPricePerMonth) / monthly.pricePerMonth
-                    let percent = Int((savings as NSDecimalNumber).doubleValue * 100)
-                    if percent > 0 {
-                        plans[annualIndex].savingsPercent = percent
-                    }
-                }
+                Self.applySavings(to: &plans)
 
-                return plans.isEmpty ? SubscriptionPlan.defaultPlans : plans
+                // Charts lock only once the store can actually sell Plus.
+                plusAccess.markCatalogLoaded(!plans.isEmpty)
+                return plans
             } catch {
-                // Fetch failed — return fallback display plans.
-                // Purchases will still fail clearly since no cached product exists.
-                return SubscriptionPlan.defaultPlans
+                plusAccess.markCatalogLoaded(false)
+                return []
             }
         }
+    }
+
+    /// Whole-percent saving of the annual plan versus twelve monthly
+    /// payments, rounded down so the label never overstates. Nil when either
+    /// price is missing or the annual plan is not cheaper.
+    nonisolated static func savingsPercent(monthlyPrice: Decimal, annualPrice: Decimal) -> Int? {
+        guard monthlyPrice > 0, annualPrice > 0 else { return nil }
+        let yearOfMonthly = monthlyPrice * 12
+        var percent = (yearOfMonthly - annualPrice) / yearOfMonthly * 100
+        var whole = Decimal()
+        NSDecimalRound(&whole, &percent, 0, .down)
+        let value = NSDecimalNumber(decimal: whole).intValue
+        return value > 0 ? value : nil
+    }
+
+    /// Sets the annual plan's savings label from the two loaded prices. The
+    /// label needs both: with no monthly plan it stays nil and is hidden.
+    nonisolated static func applySavings(to plans: inout [SubscriptionPlan]) {
+        guard let annualIndex = plans.firstIndex(where: { $0.period == .annual }) else { return }
+        guard let monthly = plans.first(where: { $0.period == .monthly }) else {
+            plans[annualIndex].savingsPercent = nil
+            return
+        }
+        plans[annualIndex].savingsPercent = savingsPercent(
+            monthlyPrice: monthly.pricePerPeriod,
+            annualPrice: plans[annualIndex].pricePerPeriod
+        )
+    }
+
+    /// The price the customer is shown, as a Decimal. `displayPrice` is
+    /// parsed with the product's own currency format; `price` is the fallback
+    /// when it does not parse. In the StoreKit test environment on a Mac set
+    /// to a region that writes decimals with a comma (en_VN), `price` comes
+    /// back with its decimals cut off (4 and 25 for the monthly and annual
+    /// Plus prices) while `displayPrice` stays right, so every figure derived
+    /// from a price must start here.
+    nonisolated static func resolvedPrice(
+        price: Decimal,
+        displayPrice: String,
+        format: Decimal.FormatStyle.Currency
+    ) -> Decimal {
+        guard let shown = try? format.parseStrategy.parse(displayPrice), shown > 0 else {
+            return price
+        }
+        return shown
+    }
+
+    /// Annual price per month in the product's currency, e.g. "$2.17".
+    nonisolated static func monthlyEquivalent(
+        annualPrice: Decimal,
+        format: Decimal.FormatStyle.Currency
+    ) -> String {
+        format.format(annualPrice / 12)
     }
 
     var isPremiumUser: Bool {
@@ -492,22 +536,27 @@ final class StoreKitService: StoreKitServiceProtocol {
         period: SubscriptionPeriod,
         catalog: StoreKitProductCatalog
     ) -> SubscriptionPlan {
-        let pricePerPeriod = product.price ?? .zero
+        let pricePerPeriod = resolvedPrice(
+            price: product.price,
+            displayPrice: product.displayPrice,
+            format: product.priceFormatStyle
+        )
         // Months per billing cycle for pricePerMonth normalization
         let months: Decimal
         switch period {
         case .annual:  months = 12
         case .monthly: months = 1
-        case .weekly:  months = 12.0 / 52.0  // ~0.23 months per week
         }
         let pricePerMonth = pricePerPeriod / months
 
         let isAnnual = period == .annual
+        let monthlyEquivalent = isAnnual
+            ? monthlyEquivalent(annualPrice: pricePerPeriod, format: product.priceFormatStyle)
+            : nil
         let billingSummary: String? = {
             switch period {
             case .annual:  return "Billed annually"
             case .monthly: return "Billed monthly"
-            case .weekly:  return "Billed weekly"
             }
         }()
 
@@ -529,16 +578,16 @@ final class StoreKitService: StoreKitServiceProtocol {
             displayPrice: product.displayPrice,
             billingSummary: billingSummary,
             hasIntroductoryOffer: product.subscription?.introductoryOffer != nil,
-            introOfferPeriodUnit: Self.introOfferPeriodUnit(from: product)
+            introOfferPeriodUnit: Self.introOfferPeriodUnit(from: product),
+            monthlyEquivalentDisplay: monthlyEquivalent
         )
     }
 
-    /// Display sort order: annual (0) -> monthly (1) -> weekly (2).
+    /// Display sort order: annual (0) -> monthly (1).
     private static func periodSortOrder(_ period: SubscriptionPeriod) -> Int {
         switch period {
         case .annual:  0
         case .monthly: 1
-        case .weekly:  2
         }
     }
 
@@ -553,7 +602,11 @@ final class StoreKitService: StoreKitServiceProtocol {
             displayName: product.displayName.isEmpty ? fallback.displayName : product.displayName,
             productID: product.id,
             displayPrice: product.displayPrice,
-            pricePerPack: product.price
+            pricePerPack: resolvedPrice(
+                price: product.price,
+                displayPrice: product.displayPrice,
+                format: product.priceFormatStyle
+            )
         )
     }
 

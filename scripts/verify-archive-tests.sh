@@ -9,31 +9,27 @@
 #
 # Proves the artifact gate detects what it claims to detect:
 #   1. ENTITLEMENTS checks pass on the golden build-13 archive; MERGED PLISTS is
-#               EXPECTED to FAIL there for the six legacy STOREKIT_* keys this frozen
-#               build predates removing (plans/260925-0819-remove-iap-mentions) — also
+#               EXPECTED to FAIL there because this frozen build predates 1.1 (it
+#               carries credit-pack/weekly keys and pre-Plus product IDs) — also
 #               asserts the exact "verify-archive: 1 check failure(s)" summary line, so
 #               a mere nonzero exit can't hide some other check also failing.
 #   2. RED    — a copy of the golden app binary with a planted JWT-shaped string
 #               appended makes the credential scan (scan mode) exit non-zero.
 #   3. ENTITLEMENTS — the per-bundle entitlements check reports PASS for all three
 #               bundles (app, widget appex, watch app) of the golden archive.
-#   4. GREEN  — a copy of the golden archive with the six legacy STOREKIT_* keys
-#               deleted from its app Info.plist exits 0 and reports the
-#               no-STOREKIT-keys PASS line — proves the gate can fully pass (11/11
-#               internal checks, full mode — same mode Task 7's TestFlight gate
-#               uses) on a real post-cleanup archive, not just a synthetic one.
+#   4. GREEN  — a copy of the golden archive with its legacy STOREKIT_* keys
+#               replaced by the three 1.1 Plus keys exits 0 and reports the Plus
+#               PASS line.
 #   5. RED    — a planted app Info.plist with an empty CFBundleURLSchemes array
 #               makes the merged-plists URL-schemes check report FAIL, and the
 #               PASS line must NOT appear (guards against the check passing on
-#               the key line's own quotes). This same planted plist has no
-#               STOREKIT_* keys (free-only release), so it must also report the
-#               no-STOREKIT-keys PASS.
+#               the key line's own quotes). The planted plist carries the three
+#               Plus keys, so it must also report the Plus PASS.
 #   6. GREEN  — the same planted plist with one scheme entry reports PASS.
-#   7. RED    — a planted plist with exactly one STOREKIT_* key present must FAIL
-#               MERGED PLISTS naming that key, must NOT emit the no-STOREKIT-keys
-#               PASS line, and must exit non-zero — proves the gate's bite does not
-#               depend on the gitignored golden archive and can't be silently broken
-#               to always-pass.
+#   7. RED    — Plus keys plus one credit-pack key must FAIL naming that key.
+#   8. RED    — one Plus key missing must FAIL naming that key.
+#   9. RED    — a product ID outside com.stressmonitor.app.plus. must FAIL.
+#  10. GREEN  — exactly the three Plus keys with plus.* IDs must PASS.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,6 +50,32 @@ expect_pass() { # name, condition already evaluated by caller via $?
     fi
 }
 
+PLUS_PASS="PASS MERGED PLISTS — Plus keys present (monthly, annual, group) with plus.* product IDs; no other STOREKIT_* keys"
+STOREKIT_FAIL="FAIL MERGED PLISTS — StoreKit keys wrong"
+
+add_plus_keys() { # plist
+    /usr/libexec/PlistBuddy \
+        -c 'Add :STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID string com.stressmonitor.app.plus.monthly' \
+        -c 'Add :STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID string com.stressmonitor.app.plus.annual' \
+        -c 'Add :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID string 22605738' \
+        "$1" >/dev/null 2>&1
+}
+
+# A planted minimal archive: one URL scheme plus the three Plus keys.
+make_plus_archive() { # dir -> echoes the app Info.plist path
+    local app="$1/Products/Applications/StressMonitor.app"
+    mkdir -p "$app"
+    plutil -create xml1 "$app/Info.plist" >/dev/null
+    /usr/libexec/PlistBuddy \
+        -c 'Add :CFBundleURLTypes array' \
+        -c 'Add :CFBundleURLTypes:0 dict' \
+        -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
+        -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.googleusercontent.apps.planted' \
+        "$app/Info.plist" >/dev/null 2>&1
+    add_plus_keys "$app/Info.plist"
+    echo "$app/Info.plist"
+}
+
 # The golden archive is gitignored (*.xcarchive) and exists only on machines that
 # preserved it manually — no CI workflow provisions it. Skip its four tests with
 # a clear message instead of cascading failures; the planted-plist tests below
@@ -67,16 +89,14 @@ fi
 if [ "$GOLDEN_PRESENT" -eq 1 ]; then
 
     # Test 1: the gate's ENTITLEMENTS checks pass on the known-good build-13 archive.
-    # NOTE: this frozen build predates the free-only-release IAP cleanup
-    # (plans/260925-0819-remove-iap-mentions) and still bakes in the six legacy
-    # STOREKIT_* keys, so under the inverted MERGED PLISTS check it is EXPECTED to
-    # report FAIL MERGED PLISTS for them and exit non-zero overall — that failure
-    # is correct, not a regression.
+    # NOTE: this frozen build predates 1.1 and still bakes in the six legacy
+    # STOREKIT_* keys, so it is EXPECTED to report FAIL MERGED PLISTS for them and
+    # exit non-zero overall — that failure is correct, not a regression.
     bash "$VERIFY" "$GOLDEN" > /tmp/verify-archive-tests-green.$$ 2>&1
     rc=$?
     grep -q "PASS ENTITLEMENTS" /tmp/verify-archive-tests-green.$$
     a=$?
-    grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present" /tmp/verify-archive-tests-green.$$
+    grep -qF "FAIL MERGED PLISTS — StoreKit keys wrong" /tmp/verify-archive-tests-green.$$
     s=$?
     grep -qF "verify-archive: 1 check failure(s)" /tmp/verify-archive-tests-green.$$
     f=$?
@@ -101,8 +121,8 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     rm -rf "$TMPD"
 
     # Test 3 (entitlements direction): all three bundles report the app group.
-    # NOTE: does not require overall exit=0 — this golden build predates the IAP
-    # cleanup and legitimately fails MERGED PLISTS for legacy STOREKIT_* keys (see
+    # NOTE: does not require overall exit=0 — this golden build predates 1.1
+    # and legitimately fails MERGED PLISTS for legacy STOREKIT_* keys (see
     # Test 1 above); only the ENTITLEMENTS lines are asserted here.
     bash "$VERIFY" "$GOLDEN" > /tmp/verify-archive-tests-ent.$$ 2>&1
     rc=$?
@@ -116,8 +136,8 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
     expect_pass $? "test_entitlements_all_three_bundles (app=$a widget=$b watch=$c)"
     rm -f /tmp/verify-archive-tests-ent.$$
 
-    # Test 4 (green direction): a copy of the golden archive with the six legacy
-    # STOREKIT_* keys deleted from its app Info.plist must fully pass (exit 0) —
+    # Test 4 (green direction): a copy of the golden archive with the legacy
+    # STOREKIT_* keys replaced by the 1.1 Plus keys must fully pass (exit 0) —
     # proves the gate can pass end-to-end on a real archive, not only a synthetic
     # minimal one.
     TMPD4=$(mktemp -d)
@@ -131,12 +151,13 @@ if [ "$GOLDEN_PRESENT" -eq 1 ]; then
         -c 'Delete :STOREKIT_PREMIUM_WEEKLY_PRODUCT_ID' \
         -c 'Delete :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID' \
         "$CLEAN_APP_PLIST" >/dev/null 2>&1
+    add_plus_keys "$CLEAN_APP_PLIST"
     bash "$VERIFY" "$TMPD4/golden-copy" > "$TMPD4/golden-clean.log" 2>&1
     rc=$?
-    grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present in app Info.plist" "$TMPD4/golden-clean.log"
+    grep -qF "$PLUS_PASS" "$TMPD4/golden-clean.log"
     p=$?
     [ "$rc" -eq 0 ] && [ "$p" -eq 0 ]
-    expect_pass $? "test_green_on_golden_archive_copy_with_storekit_keys_removed (exit=$rc, no-storekit-pass=$p)"
+    expect_pass $? "test_green_on_golden_archive_copy_with_plus_keys (exit=$rc, plus-pass=$p)"
     rm -rf "$TMPD4"
 
 fi
@@ -154,20 +175,20 @@ plutil -create xml1 "$PPLIST" >/dev/null
     -c 'Add :CFBundleURLTypes:0 dict' \
     -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
     "$PPLIST" >/dev/null 2>&1
+add_plus_keys "$PPLIST"
 
 # Test 5 (red direction): empty CFBundleURLSchemes must FAIL — and must not emit
 # the PASS line (the vacuous form that matched the key line's own quotes). This
-# planted plist also has no STOREKIT_* keys (free-only release), so it must
-# report PASS MERGED PLISTS for that check too.
+# planted plist carries the three Plus keys, so it must report the Plus PASS too.
 bash "$VERIFY" --skip-entitlements "$TMPD2/planted" > "$TMPD2/red-urlschemes.log" 2>&1
 grep -q "CFBundleURLSchemes missing or empty" "$TMPD2/red-urlschemes.log"
 a=$?
 grep -q "CFBundleURLSchemes has at least one entry" "$TMPD2/red-urlschemes.log"
 b=$?
-grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present in app Info.plist" "$TMPD2/red-urlschemes.log"
+grep -qF "$PLUS_PASS" "$TMPD2/red-urlschemes.log"
 s=$?
 [ "$a" -eq 0 ] && [ "$b" -ne 0 ] && [ "$s" -eq 0 ]
-expect_pass $? "test_red_on_empty_cfbundleurlschemes (fail line present=$a, vacuous pass absent=$b, storekit-absent pass=$s)"
+expect_pass $? "test_red_on_empty_cfbundleurlschemes (fail line present=$a, vacuous pass absent=$b, plus pass=$s)"
 
 # Test 6 (green direction): one scheme entry must PASS — and must not emit the
 # FAIL line.
@@ -183,31 +204,57 @@ b=$?
 expect_pass $? "test_green_on_populated_cfbundleurlschemes (pass line present=$a, fail line absent=$b)"
 rm -rf "$TMPD2"
 
-# Test 7 (red direction): exactly one STOREKIT_* key present in an otherwise-clean
-# planted plist must FAIL MERGED PLISTS naming that key, must NOT emit the
-# no-STOREKIT-keys PASS line, and must exit non-zero — proves the bite doesn't
-# depend on the golden archive and can't be silently broken to always-pass.
-TMPD3=$(mktemp -d)
-SINGLE_KEY_APP="$TMPD3/singlekey/Products/Applications/StressMonitor.app"
-mkdir -p "$SINGLE_KEY_APP"
-SKPLIST="$SINGLE_KEY_APP/Info.plist"
-plutil -create xml1 "$SKPLIST" >/dev/null
-/usr/libexec/PlistBuddy \
-    -c 'Add :STOREKIT_CREDITS_MEDIUM_PRODUCT_ID string credits.medium.reintroduced' \
-    -c 'Add :CFBundleURLTypes array' \
-    -c 'Add :CFBundleURLTypes:0 dict' \
-    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' \
-    -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string com.googleusercontent.apps.singlekey' \
-    "$SKPLIST" >/dev/null 2>&1
-bash "$VERIFY" --skip-entitlements "$TMPD3/singlekey" > "$TMPD3/singlekey.log" 2>&1
-rc=$?
-grep -qF "FAIL MERGED PLISTS — this release ships no IAP — found STOREKIT keys that must not be present: STOREKIT_CREDITS_MEDIUM_PRODUCT_ID" "$TMPD3/singlekey.log"
-a=$?
-grep -qF "PASS MERGED PLISTS — no STOREKIT_* keys present" "$TMPD3/singlekey.log"
-b=$?
-[ "$rc" -ne 0 ] && [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
-expect_pass $? "test_red_on_single_storekit_key_present (exit=$rc, fail-names-key=$a, no-storekit-pass-absent=$b)"
-rm -rf "$TMPD3"
+# run_storekit_case <name> <plist-mutation...>: plants a Plus archive, applies the
+# PlistBuddy commands, runs the gate, and leaves the log in $CASE_LOG / exit in $CASE_RC.
+run_storekit_case() {
+    local dir; dir=$(mktemp -d)
+    local plist; plist=$(make_plus_archive "$dir/case")
+    shift
+    local cmd
+    for cmd in "$@"; do
+        /usr/libexec/PlistBuddy -c "$cmd" "$plist" >/dev/null 2>&1
+    done
+    CASE_LOG="$dir/case.log"
+    bash "$VERIFY" --skip-entitlements "$dir/case" > "$CASE_LOG" 2>&1
+    CASE_RC=$?
+    CASE_DIR="$dir"
+}
+
+# Test 7 (red direction): Plus keys plus one credit-pack key — credits are not sold
+# in 1.1, so the gate must FAIL naming the key, and must not emit the Plus PASS.
+run_storekit_case credits 'Add :STOREKIT_CREDITS_SMALL_PRODUCT_ID string com.stressmonitor.app.credits.small'
+grep -qF "$STOREKIT_FAIL; keys that must not be present: STOREKIT_CREDITS_SMALL_PRODUCT_ID" "$CASE_LOG"; a=$?
+grep -qF "$PLUS_PASS" "$CASE_LOG"; b=$?
+[ "$CASE_RC" -ne 0 ] && [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
+expect_pass $? "test_red_on_credit_pack_key_present (exit=$CASE_RC, fail-names-key=$a, plus-pass-absent=$b)"
+rm -rf "$CASE_DIR"
+
+# Test 8 (red direction): one Plus key missing must FAIL naming it.
+run_storekit_case missing 'Delete :STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID'
+grep -qF "missing Plus keys: STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID" "$CASE_LOG"; a=$?
+grep -qF "$PLUS_PASS" "$CASE_LOG"; b=$?
+[ "$CASE_RC" -ne 0 ] && [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
+expect_pass $? "test_red_on_missing_plus_key (exit=$CASE_RC, fail-names-key=$a, plus-pass-absent=$b)"
+rm -rf "$CASE_DIR"
+
+# Test 9 (red direction): a pre-1.1 product ID must FAIL. The legacy prefix is
+# assembled from parts so the retired ID never appears verbatim in the repo.
+LEGACY_ID="com.stressmonitor.app.$(printf 'prem%s' 'ium').annual"
+run_storekit_case legacy "Set :STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID $LEGACY_ID"
+grep -qF "product IDs must start with com.stressmonitor.app.plus.: STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID=$LEGACY_ID" "$CASE_LOG"; a=$?
+grep -qF "$PLUS_PASS" "$CASE_LOG"; b=$?
+[ "$CASE_RC" -ne 0 ] && [ "$a" -eq 0 ] && [ "$b" -ne 0 ]
+expect_pass $? "test_red_on_legacy_product_id (exit=$CASE_RC, fail-names-id=$a, plus-pass-absent=$b)"
+rm -rf "$CASE_DIR"
+
+# Test 10 (green direction): exactly the three Plus keys with plus.* IDs must PASS
+# and must not emit any StoreKit FAIL line.
+run_storekit_case green
+grep -qF "$PLUS_PASS" "$CASE_LOG"; a=$?
+grep -qF "$STOREKIT_FAIL" "$CASE_LOG"; b=$?
+[ "$a" -eq 0 ] && [ "$b" -ne 0 ]
+expect_pass $? "test_green_on_plus_keys_only (plus-pass=$a, storekit-fail-absent=$b)"
+rm -rf "$CASE_DIR"
 
 echo "verify-archive tests: $failures failure(s)"
 exit "$failures"

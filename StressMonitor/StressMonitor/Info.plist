@@ -15,5 +15,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID</key>
+	<string>com.stressmonitor.app.plus.annual</string>
+	<key>STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID</key>
+	<string>com.stressmonitor.app.plus.monthly</string>
+	<key>STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID</key>
+	<string>22605738</string>
 </dict>
 </plist>

@@ -40,10 +40,13 @@ struct PaywallView: View {
 
     private var balanceHeader: some View {
         VStack(spacing: DesignTokens.Spacing.xs) {
-            if reason == .outOfCredits {
-                Text("You're out of credits")
+            if let headline = reason.headline {
+                Text(headline)
                     .font(Typography.iapPlanName)
                     .foregroundStyle(Color.iapHeaderTeal)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, DesignTokens.Spacing.lg)
                     .padding(.top, DesignTokens.Spacing.sm)
                     .accessibilityAddTraits(.isHeader)
             }
@@ -67,7 +70,7 @@ struct PaywallView: View {
                 lowCreditsLine
             }
         }
-        .padding(.top, reason == .outOfCredits ? 0 : DesignTokens.Spacing.sm)
+        .padding(.top, reason.headline == nil ? DesignTokens.Spacing.sm : 0)
         .padding(.bottom, DesignTokens.Spacing.xs)
         .accessibleDynamicType()
     }
@@ -77,7 +80,7 @@ struct PaywallView: View {
     private var lowCreditsLine: some View {
         HStack(spacing: 6) {
             Image(systemName: "battery.25")
-            Text("Low on credits — AI responses get shorter until you top up.")
+            Text("Low on free messages this month. Plus gives you unlimited chat.")
         }
         .font(.caption)
         .foregroundStyle(Color(hex: "B25000"))

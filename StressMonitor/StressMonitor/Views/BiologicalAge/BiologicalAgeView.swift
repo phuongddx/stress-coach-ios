@@ -194,6 +194,7 @@ struct BiologicalAgeView: View {
                         estimates: viewModel.dailyEstimates,
                         chronologicalAge: chronologicalAge
                     )
+                    .plusLocked(.bioAgeDaily)
                 }
             }
             .padding(16)

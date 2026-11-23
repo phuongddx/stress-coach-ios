@@ -4,7 +4,30 @@ import Foundation
 final class MockStoreKitService: StoreKitServiceProtocol {
     private let premiumState: PremiumState
 
-    let availablePlans: [SubscriptionPlan] = SubscriptionPlan.defaultPlans
+    /// `-mock-iap` sample mirroring StressMonitorProducts.storekit, so the
+    /// paywall is purchasable in this double. Never used in Release.
+    let availablePlans: [SubscriptionPlan] = {
+        let format = Decimal.FormatStyle.Currency(code: "USD")
+        let annual: Decimal = 25.99
+        let monthly: Decimal = 4.99
+        return [
+            SubscriptionPlan(
+                id: .annual, displayName: "Plus Annual", pricePerMonth: annual / 12, pricePerPeriod: annual,
+                period: .annual,
+                savingsPercent: StoreKitService.savingsPercent(monthlyPrice: monthly, annualPrice: annual),
+                isBestValue: true, subtitle: "Best value option", productID: nil,
+                displayPrice: format.format(annual), billingSummary: "Billed annually",
+                hasIntroductoryOffer: true, introOfferPeriodUnit: "14-day",
+                monthlyEquivalentDisplay: format.format(annual / 12)
+            ),
+            SubscriptionPlan(
+                id: .monthly, displayName: "Plus Monthly", pricePerMonth: monthly, pricePerPeriod: monthly,
+                period: .monthly, savingsPercent: nil, isBestValue: false, subtitle: nil, productID: nil,
+                displayPrice: format.format(monthly), billingSummary: "Billed monthly",
+                hasIntroductoryOffer: false, introOfferPeriodUnit: nil
+            )
+        ]
+    }()
 
     var availablePacks: [CreditPack] {
         get async { CreditPack.defaultPacks }
