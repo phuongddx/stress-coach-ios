@@ -39,18 +39,54 @@ struct IAPTrustIndicators: View {
 
 // MARK: - Footer Utility Links
 
+/// Paywall legal and account links (UI V2): Terms of Use, Privacy Policy and
+/// Manage subscription. Restore lives in the pinned nav row, so it is always
+/// on screen. One line when it fits, two lines otherwise, one per line at the
+/// largest text sizes.
 struct IAPFooterLinks: View {
-    let onRestore: () -> Void
+    private static let manageSubscriptionsURL = URL(string: "https://apps.apple.com/account/subscriptions")!
 
     var body: some View {
-        HStack(spacing: 13) {
-            Button("Restore") { onRestore() }
-                .foregroundStyle(Color.iapTextSecondary)
-
-            Link("Manage subscription", destination: URL(string: "https://apps.apple.com/account/subscriptions")!)
-                .foregroundStyle(Color.iapTextSecondary)
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 0) { terms; dot; privacy; dot; manage }
+            VStack(spacing: 0) {
+                HStack(spacing: 0) { terms; dot; privacy }
+                manage
+            }
+            VStack(spacing: 0) { terms; privacy; manage }
         }
-        .font(Typography.iapUtilityLabel)
+        .font(.footnote.weight(.semibold))
+        .frame(maxWidth: .infinity)
+    }
+
+    private var terms: some View {
+        Link("Terms of Use", destination: DocsURL.terms).modifier(FooterLinkStyle())
+    }
+
+    private var privacy: some View {
+        Link("Privacy Policy", destination: DocsURL.privacy).modifier(FooterLinkStyle())
+    }
+
+    private var manage: some View {
+        Link("Manage subscription", destination: Self.manageSubscriptionsURL).modifier(FooterLinkStyle())
+    }
+
+    private var dot: some View {
+        Text("\u{00B7}")
+            .foregroundStyle(Color.V2.ink3)
+            .padding(.horizontal, 4)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct FooterLinkStyle: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(Color.V2.accent)
+            .lineLimit(1)
+            .fixedSize()
+            .frame(minHeight: V2Metrics.minTouchTarget)
+            .contentShape(Rectangle())
     }
 }
 

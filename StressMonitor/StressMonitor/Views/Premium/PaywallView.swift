@@ -11,8 +11,8 @@ import SwiftUI
 /// while this view happens to be on screen. This view must never construct
 /// its own instance; that was the original bug.
 ///
-/// Above the paywall content it renders the live server credit balance
-/// header (count or "Unlimited" for premium, never the raw sentinel), the
+/// Below the paywall hero it renders the reason headline, the live server
+/// credit balance header (count or "Unlimited" for premium, never the raw sentinel), the
 /// free-tier reset date, and — when presented because chat hit HTTP 402 —
 /// the out-of-credits heading variant (DEC-2 placement-a).
 struct PaywallView: View {
@@ -25,13 +25,12 @@ struct PaywallView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        IAPPremiumView(
+            storeKit: storeKitService,
+            premiumState: PremiumState.shared,
+            credits: CreditsViewModel(creditService: creditService, storeKit: storeKitService)
+        ) {
             balanceHeader
-            IAPPremiumView(
-                storeKit: storeKitService,
-                premiumState: PremiumState.shared,
-                credits: CreditsViewModel(creditService: creditService, storeKit: storeKitService)
-            )
         }
         .task { try? await creditService.refreshBalance() }
     }
@@ -39,55 +38,53 @@ struct PaywallView: View {
     // MARK: - Balance Header
 
     private var balanceHeader: some View {
-        VStack(spacing: DesignTokens.Spacing.xs) {
-            if let headline = reason.headline {
-                Text(headline)
-                    .font(Typography.iapPlanName)
-                    .foregroundStyle(Color.iapHeaderTeal)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, DesignTokens.Spacing.lg)
-                    .padding(.top, DesignTokens.Spacing.sm)
-                    .accessibilityAddTraits(.isHeader)
-            }
+        VStack(spacing: 8) {
+            // Reason headline keeps its logic; reasons without one get the
+            // default title.
+            Text(reason.headline ?? "Get more from your stress data")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
-            HStack(spacing: DesignTokens.Spacing.xs) {
+            HStack(spacing: 6) {
                 Image(systemName: "circlebadge.2")
                 Text(CreditBalanceFormatter.balanceText(creditService.balance))
             }
             .font(.subheadline.weight(.medium))
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Color.V2.ink2)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Credit balance: \(CreditBalanceFormatter.balanceText(creditService.balance))")
 
             if let resetLine = CreditBalanceFormatter.resetDateText(creditService.balance) {
                 Text(resetLine)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.V2.ink3)
             }
 
             if reason != .outOfCredits, CreditBalanceFormatter.isLowCredits(creditService.balance) {
                 lowCreditsLine
             }
         }
-        .padding(.top, reason.headline == nil ? DesignTokens.Spacing.sm : 0)
-        .padding(.bottom, DesignTokens.Spacing.xs)
-        .accessibleDynamicType()
+        .frame(maxWidth: .infinity)
     }
 
     /// Expectation-setting copy for the backend's token-tier shrink below 20
     /// credits (research Pitfall 5). Dual coded: color paired with icon+text.
     private var lowCreditsLine: some View {
-        HStack(spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             Image(systemName: "battery.25")
+                .foregroundStyle(StressCategory.moderate.color)
             Text("Low on free messages this month. Plus gives you unlimited chat.")
+                .foregroundStyle(Color.V2.ink)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .font(.caption)
-        .foregroundStyle(Color(hex: "B25000"))
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
         .background(
-            Capsule().fill(Color(hex: "B25000").opacity(0.10))
+            RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous).fill(Color.V2.warnSoft)
         )
         .accessibilityElement(children: .combine)
     }

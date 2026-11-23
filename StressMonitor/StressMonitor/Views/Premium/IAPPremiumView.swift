@@ -1,130 +1,78 @@
 import SwiftUI
 
-struct IAPPremiumView: View {
+/// Plus paywall body (UI V2 `S.paywall`).
+///
+/// Layout: a pinned nav row (Restore, Close), then the companion hero, the
+/// caller's `header` (reason headline and credit balance), what Plus unlocks
+/// and the plans. The CTA, the auto-renew sentence and the legal links sit in
+/// a footer pinned above the home indicator (inside the safe area). At
+/// accessibility text sizes the footer moves to the end of the scroll so it
+/// never covers the content.
+///
+/// Prices, periods and the trial length come only from the StoreKit-backed
+/// `SubscriptionPlan` values on `PremiumViewModel`.
+struct IAPPremiumView<Header: View>: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: PremiumViewModel
     @State private var creditsViewModel: CreditsViewModel
     @State private var showPurchaseSuccess = false
     @State private var showPackSuccess = false
 
+    private let header: Header
+
     init(
         storeKit: StoreKitServiceProtocol,
         premiumState: PremiumState,
-        credits: CreditsViewModel
+        credits: CreditsViewModel,
+        @ViewBuilder header: () -> Header
     ) {
         _viewModel = State(initialValue: PremiumViewModel(storeKit: storeKit, premiumState: premiumState))
         _creditsViewModel = State(initialValue: credits)
+        self.header = header()
     }
 
     private var isLoadingPlans: Bool { viewModel.loadState == .loading }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 0) {
-                    IAPNavBar(onBack: { dismiss() }, onClose: { dismiss() })
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                hero
+                header
+                IAPBenefitsCard()
+                plansSection
 
-                    // Section 1 — Transformation hero
-                    RippleTransformationHero()
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
-
-                    // Section 2 — Features (lead with Trends)
-                    IAPBenefitsCard()
-                        .padding(.horizontal, 16)
-                        .padding(.top, 20)
-
-                    // Section 3 — Plan grid (with loading skeleton)
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("CHOOSE YOUR PLAN")
-                            .font(Typography.iapSectionHeader)
-                            .kerning(0.10 * 12)
-                            .foregroundStyle(Color.iapHeaderTeal)
-                            .padding(.horizontal, 4)
-
-                        if viewModel.loadState == .failed {
-                            loadFailedCard
-                        } else {
-                            planGrid
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 24)
-
-                    if viewModel.showsTrialOffer {
-                        trialBanner
-                            .padding(.horizontal, 16)
-                            .padding(.top, 18)
-                    }
-
-                    // Section 5 — Trust indicators
-                    TrustRow()
-                        .padding(.horizontal, 16)
-                        .padding(.top, 14)
-
-                    // Spacer for sticky bottom bar
-                    Color.clear.frame(height: 150)
+                if dynamicTypeSize.isAccessibilitySize {
+                    purchaseFooter
+                        .padding(.top, 4)
                 }
-                .padding(.bottom, 20)
+
+                paymentNote
             }
-            .background(
-                ZStack {
-                    Color.iapWarmBackground
-                    RadialGradient(
-                        colors: [Color.iapGradientStart.opacity(0.12), .clear],
-                        center: .top,
-                        startRadius: 0,
-                        endRadius: 350
-                    )
-                }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 4)
+            .padding(.bottom, 24)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            IAPNavBar(
+                isRestoreDisabled: viewModel.isLoading,
+                onRestore: { Task { await viewModel.restorePurchases() } },
+                onClose: { dismiss() }
             )
-            .accessibleDynamicType()
-
-            // Sticky bottom CTA bar
-            VStack(spacing: 0) {
-                IAPCTAButton(title: viewModel.ctaTitle, isLoading: viewModel.isLoading) {
-                    Task { await viewModel.purchaseSelectedPlan() }
-                }
-                .disabled(!viewModel.canPurchase)
-                .opacity(viewModel.canPurchase || viewModel.isLoading ? 1 : 0.45)
-
-                VStack(spacing: 4) {
-                    Text(viewModel.renewalTerms)
-                        .font(Typography.iapFinePrint)
-                        .foregroundStyle(Color.iapTextSecondary)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 4) {
-                        Link("Terms", destination: DocsURL.terms)
-                            .foregroundStyle(Color.iapHeaderTeal)
-                        Text("\u{00B7}")
-                            .foregroundStyle(Color.iapTextSecondary)
-                        Link("Privacy", destination: DocsURL.privacy)
-                            .foregroundStyle(Color.iapHeaderTeal)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                purchaseFooter
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+                    .background(Color.V2.bg.ignoresSafeArea(edges: .bottom))
+                    .overlay(alignment: .top) {
+                        Rectangle().fill(Color.V2.line).frame(height: 0.5)
                     }
-                    .font(Typography.iapFinePrint)
-                }
-                .padding(.top, 9)
-
-                IAPFooterLinks {
-                    Task { await viewModel.restorePurchases() }
-                }
-                .disabled(viewModel.isLoading)
-                .padding(.top, 8)
-            }
-            .padding(.horizontal, 17)
-            .padding(.top, 12)
-            .padding(.bottom, 18)
-            .background(
-                Color.iapWarmBackground.opacity(0.88)
-                    .background(.ultraThinMaterial)
-                    .ignoresSafeArea()
-            )
-            .overlay(alignment: .top) {
-                Divider().background(Color.iapIconBorder.opacity(0.15))
             }
         }
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationBarHidden(true)
         .task {
             await viewModel.loadInitialData()
@@ -168,122 +116,168 @@ struct IAPPremiumView: View {
         }
     }
 
-    // MARK: - Plan grid
+    // MARK: - Hero
 
-    private var planGrid: some View {
+    /// Ripple with the two Plus companions, then the Plus pill.
+    private var hero: some View {
         VStack(spacing: 10) {
-            ForEach(Array(orderedPlans.enumerated()), id: \.offset) { _, plan in
+            HStack(alignment: .bottom, spacing: 0) {
+                CharacterAssetResolver.characterView(for: "zephyr", mood: .serene, size: 52)
+                CharacterAssetResolver.characterView(for: "ripple", mood: .happy, size: 76)
+                CharacterAssetResolver.characterView(for: "ember", mood: .serene, size: 52)
+            }
+            .accessibilityHidden(true)
+
+            Text("StressMonitor Plus")
+                .font(.caption.weight(.bold))
+                .textCase(.uppercase)
+                .tracking(0.4)
+                .foregroundStyle(Color.V2.plus)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(Capsule().fill(Color.V2.plusBg))
+                .overlay(Capsule().strokeBorder(Color.V2.plusLine, lineWidth: 0.5))
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    // MARK: - Plans
+
+    private var plansSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Choose your plan")
+                .v2Eyebrow()
+                .padding(.horizontal, 4)
+                .accessibilityAddTraits(.isHeader)
+
+            switch viewModel.loadState {
+            case .failed:
+                loadFailedCard
+            case .loading:
+                loadingPlans
+            case .loaded:
+                if orderedPlans.isEmpty {
+                    loadingPlans
+                } else {
+                    planList
+                }
+            }
+        }
+    }
+
+    private var planList: some View {
+        VStack(spacing: 10) {
+            ForEach(orderedPlans) { plan in
                 PlanCard(
                     plan: plan,
-                    isSelected: viewModel.selectedPlan == plan?.period,
-                    isLoading: isLoadingPlans,
+                    isSelected: viewModel.selectedPlan == plan.period,
+                    isLoading: false,
+                    trialPeriodUnit: plan.period == .annual ? viewModel.trialPeriodUnit : nil,
                     onSelect: {
-                        if let period = plan?.period {
-                            viewModel.selectedPlan = period
-                            HapticManager.shared.buttonPress()
-                        }
+                        viewModel.selectedPlan = plan.period
+                        HapticManager.shared.buttonPress()
                     }
                 )
             }
         }
     }
 
-    /// SPEC ST7: no price could be loaded, so no plan is shown at all.
-    private var loadFailedCard: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "wifi.exclamationmark")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(Color.iapHeaderTeal)
-                .accessibilityHidden(true)
-            Text("Couldn't load prices. Check your connection and try again.")
-                .font(Typography.iapPlanFooter)
-                .foregroundStyle(Color.iapTextPrimary)
+    /// Two plan-shaped skeletons while StoreKit resolves the products.
+    private var loadingPlans: some View {
+        VStack(spacing: 10) {
+            PlanCard(plan: nil, isSelected: false, isLoading: true, onSelect: {})
+            PlanCard(plan: nil, isSelected: false, isLoading: true, onSelect: {})
+            Text("Loading prices from the App Store…")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+                .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-            Button {
-                HapticManager.shared.buttonPress()
-                Task { await viewModel.retryLoading() }
-            } label: {
-                Text("Retry")
-                    .font(Typography.iapPlanName)
-                    .foregroundStyle(Color.iapHeaderTeal)
-                    .padding(.horizontal, 22)
-                    .padding(.vertical, 8)
-                    .background(Capsule().stroke(Color.iapHeaderTeal.opacity(0.4), lineWidth: 1.2))
-            }
-            .buttonStyle(.plain)
-            .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity)
-        .background(Color.iapCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 23))
-        .overlay(
-            RoundedRectangle(cornerRadius: 23)
-                .stroke(Color.iapIconBorder.opacity(0.15), lineWidth: 1.4)
-        )
     }
 
-    // MARK: - Trial banner
-
-    private var trialBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "gift.fill")
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(Color.iapAmber)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(trialHeadline)
-                    .font(Typography.iapPlanName)
-                    .foregroundStyle(Color.iapTextPrimary)
-                Text("Then \(selectedPlanPriceDisplay). Cancel anytime during the trial.")
-                    .font(Typography.iapPlanFooter)
-                    .foregroundStyle(Color.iapTextSecondary)
-            }
-            Spacer()
+    /// SPEC ST7: no price could be loaded, so no plan is shown at all.
+    private var loadFailedCard: some View {
+        V2StateView(
+            systemImage: "wifi.exclamationmark",
+            title: "Couldn't load plans",
+            message: "Couldn't load prices. Check your connection and try again. You won't be charged.",
+            actionTitle: "Retry"
+        ) {
+            HapticManager.shared.buttonPress()
+            Task { await viewModel.retryLoading() }
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 14)
-        .background(
-            LinearGradient(
-                colors: [Color.iapAmber.opacity(0.14), Color.iapCardBackground.opacity(0.6)],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.iapAmber.opacity(0.25), lineWidth: 1)
-        )
+        .v2CardBackground()
+    }
+
+    // MARK: - Purchase footer
+
+    /// CTA, the auto-renew sentence for the selected product, and the Terms,
+    /// Privacy and Manage subscription links next to the purchase button.
+    private var purchaseFooter: some View {
+        VStack(spacing: 10) {
+            Button {
+                Task { await viewModel.purchaseSelectedPlan() }
+            } label: {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .tint(Color.V2.onAccent)
+                        .accessibilityLabel("Purchasing")
+                } else {
+                    Text(viewModel.ctaTitle)
+                }
+            }
+            .buttonStyle(.v2(.primary))
+            // Full strength while purchasing (spinner shows), dimmed only
+            // when no product is ready to buy; taps are ignored while busy.
+            .disabled(!(viewModel.canPurchase || viewModel.isLoading))
+            .allowsHitTesting(!viewModel.isLoading)
+
+            Text(autoRenewSentence)
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            IAPFooterLinks()
+        }
+    }
+
+    private var paymentNote: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Image(systemName: "lock.fill")
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text("Payment is handled securely by Apple. Cancel anytime in Settings.")
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.footnote)
+        .foregroundStyle(Color.V2.ink3)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(trialHeadline), then \(selectedPlanPriceDisplay). Cancel anytime during the trial.")
     }
 
     // MARK: - Derived
 
-    /// Plans ordered annual -> monthly. While loading, returns two
-    /// `nil` placeholders so the grid renders two skeleton cards.
-    private var orderedPlans: [SubscriptionPlan?] {
-        if isLoadingPlans || viewModel.plans.isEmpty {
-            // Two skeleton slots matching the expected plan count
-            return [nil, nil]
-        }
+    /// Loaded plans ordered annual -> monthly.
+    private var orderedPlans: [SubscriptionPlan] {
         let order: [SubscriptionPeriod] = [.annual, .monthly]
         return order.compactMap { period in
             viewModel.plans.first(where: { $0.period == period })
         }
     }
 
-    /// Price with its period ("$25.99/year") so the post-trial charge is explicit.
-    private var selectedPlanPriceDisplay: String {
-        guard let plan = viewModel.selectedPlanDetails, plan.hasStorePrice else { return "\u{2014}" }
-        return "\(plan.priceDisplay)\(plan.periodUnitDisplay)"
-    }
-
-    private var trialHeadline: String {
-        if let unit = viewModel.trialPeriodUnit {
-            return "\(unit) free trial"
+    /// Auto-renew terms built from the selected StoreKit product: price,
+    /// period and, when offered, the trial length.
+    private var autoRenewSentence: String {
+        let renewal = "Renews automatically unless cancelled at least 24 hours before the end of the period; manage or cancel in Settings \u{203A} Apple ID \u{203A} Subscriptions."
+        guard let plan = viewModel.selectedPlanDetails, plan.hasStorePrice else {
+            return "Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period; manage or cancel in Settings \u{203A} Apple ID \u{203A} Subscriptions."
         }
-        return "Free trial"
+        let price = "\(plan.priceDisplay)\(plan.periodUnitDisplay)"
+        if viewModel.showsTrialOffer, let unit = viewModel.trialPeriodUnit {
+            return "Includes a \(unit) free trial, then \(price). \(renewal)"
+        }
+        return "\(price). \(renewal)"
     }
 }

@@ -5,8 +5,7 @@ import SwiftUI
 ///
 /// Premium mode (default): unlocks the premium characters (Ember, Zephyr) and
 /// the streak-gated Lumi by updating existing `CharacterUnlock` rows
-/// additively, then renders the newly-available SwiftUI character views at
-/// 80pt.
+/// additively, then lists everything Plus unlocked (UI V2 `S.success`).
 ///
 /// Pack mode (`purchasedPack` non-nil): a consumable credit-pack top-up —
 /// shows the granted credits and the new balance. No character unlock and no
@@ -31,24 +30,23 @@ struct PurchaseSuccessView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 28) {
+            VStack(spacing: 24) {
                 if let pack = purchasedPack {
                     packHeader(pack)
                     actions
                 } else {
                     header
 
-                    unlockedCharactersPreview
-
-                    benefitsList
+                    unlockedList
 
                     actions
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 28)
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 40)
+            .padding(.bottom, 24)
         }
-        .background(HomeCharacterDesignTokens.homeBackground.ignoresSafeArea())
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .accessibilityElement(children: .contain)
     }
@@ -56,71 +54,95 @@ struct PurchaseSuccessView: View {
     // MARK: - Header (Premium)
 
     private var header: some View {
-        VStack(spacing: 14) {
-            successSeal
+        VStack(spacing: 12) {
+            companionTrio
 
             Text(isRestore ? "Plus restored" : "Welcome to Plus")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-            Text("Your premium companions are unlocked, along with all your charts, 30- and 90-day trends, and unlimited AI chat.")
-                .font(.subheadline)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.title.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
+
+            Text(isRestore
+                 ? "Your Plus subscription is active on this iPhone again. Everything below is unlocked."
+                 : "Everything below is unlocked and ready to use.")
+                .font(.callout)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 8)
+    }
+
+    /// Ripple flanked by the companions Plus unlocks.
+    private var companionTrio: some View {
+        let ids = Self.unlockedByPremium
+        return HStack(alignment: .bottom, spacing: 0) {
+            if let first = ids.first {
+                CharacterAssetResolver.characterView(for: first, mood: .happy, size: 64)
+            }
+            CharacterAssetResolver.characterView(for: "ripple", mood: .happy, size: 88)
+            ForEach(ids.dropFirst(), id: \.self) { id in
+                CharacterAssetResolver.characterView(for: id, mood: .happy, size: 64)
+            }
+        }
+        .accessibilityHidden(true)
     }
 
     // MARK: - Header (Credit pack)
 
     private func packHeader(_ pack: CreditPack) -> some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             successSeal
 
             Text("\(pack.credits) Credits Added")
-                .font(.system(size: 26, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.title.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
+                .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("New balance: \(newBalanceText)")
+            Text("New balance: \(Text(newBalanceText).font(.v2Number(.subheadline)))")
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .foregroundStyle(Color.V2.ink2)
 
             Text("Your credits are ready to use right away — no unlock needed.")
-                .font(.subheadline)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.callout)
+                .foregroundStyle(Color.V2.ink2)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 8)
     }
 
     private var successSeal: some View {
-        ZStack {
-            Circle()
-                .fill(HomeCharacterDesignTokens.Ripple.light.opacity(0.32))
-                .frame(width: 110, height: 110)
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 52))
-                .foregroundStyle(Color(hex: "#4FC01B"))
-        }
-        .accessibilityHidden(true)
+        Image(systemName: "checkmark")
+            .font(.title.weight(.bold))
+            .foregroundStyle(StressCategory.relaxed.color)
+            .frame(width: 72, height: 72)
+            .background(Circle().fill(StressCategory.relaxed.fillColor.opacity(0.18)))
+            .accessibilityHidden(true)
     }
 
-    // MARK: - Unlocked Characters
+    // MARK: - What unlocked
 
-    private var unlockedCharactersPreview: some View {
-        VStack(spacing: 12) {
-            Text("New companions unlocked")
-                .font(.headline)
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+    /// One grouped list of what Plus unlocked, each row ticked.
+    private var unlockedList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Now unlocked")
+                .v2Eyebrow()
+                .padding(.horizontal, 4)
+                .accessibilityAddTraits(.isHeader)
 
-            HStack(spacing: 16) {
-                ForEach(Self.unlockedByPremium, id: \.self) { id in
-                    if let creature = CharacterCreature.find(by: id) {
-                        characterChip(creature: creature)
-                    }
-                }
+            VStack(spacing: 0) {
+                unlockedRow(icon: "bubble.left.and.bubble.right.fill", text: "Unlimited AI chat with Ripple")
+                divider
+                unlockedRow(icon: "chart.xyaxis.line", text: "All your charts, unblurred")
+                divider
+                unlockedRow(icon: "calendar", text: "30- and 90-day Trends")
+                divider
+                unlockedRow(icon: "face.smiling", text: companionsLine)
+                divider
+                unlockedRow(icon: "sparkles", text: "All elemental companions and evolution stages")
             }
+            .v2CardBackground()
         }
         .task {
             CharacterCollectionViewModel.syncPremiumCharacterEntitlement(
@@ -130,85 +152,67 @@ struct PurchaseSuccessView: View {
         }
     }
 
-    private func characterChip(creature: CharacterCreature) -> some View {
-        VStack(spacing: 6) {
-            CharacterAssetResolver.characterView(for: creature.id, mood: .happy, size: 80)
-            Text(creature.displayName)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            Text(creature.subtitle)
-                .font(.system(size: 11))
-                .foregroundStyle(creature.element.accentColor)
-        }
-        .frame(width: 96)
-        .padding(.vertical, 10)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(creature.element.primaryColor.opacity(0.3), lineWidth: 1)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(creature.displayName), \(creature.subtitle), now unlocked")
+    /// "Ember and Zephyr unlocked", from the premium-gated characters.
+    private var companionsLine: String {
+        let names = Self.unlockedByPremium.compactMap { CharacterCreature.find(by: $0)?.displayName }
+        guard !names.isEmpty else { return "Plus companions unlocked" }
+        return ListFormatter.localizedString(byJoining: names) + " unlocked"
     }
 
-    // MARK: - Benefits
-
-    private var benefitsList: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            benefitRow(icon: "chart.xyaxis.line", text: "All your charts, unblurred")
-            benefitRow(icon: "chart.line.uptrend.xyaxis", text: "30- and 90-day Trends")
-            benefitRow(icon: "bubble.left.and.bubble.right.fill", text: "Unlimited AI chat with Ripple")
-            benefitRow(icon: "sparkles", text: "All elemental companions and evolution stages")
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.V2.line)
+            .frame(height: 0.5)
+            .padding(.leading, 52)
     }
 
-    private func benefitRow(icon: String, text: String) -> some View {
+    private func unlockedRow(icon: String, text: String) -> some View {
         HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
                 .frame(width: 24)
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .foregroundStyle(Color.V2.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Image(systemName: "checkmark")
+                .font(.body.weight(.bold))
+                .foregroundStyle(Color.V2.accent)
         }
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, V2Metrics.margin)
+        .frame(minHeight: V2Metrics.minTouchTarget)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(text)
     }
 
     // MARK: - Actions
 
     private var actions: some View {
-        VStack(spacing: 12) {
-            Button {
+        VStack(spacing: 8) {
+            Button(purchasedPack == nil ? "Back to Home" : "Done") {
                 dismiss()
-            } label: {
-                Text(purchasedPack == nil ? "Back to Home" : "Done")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(HomeCharacterDesignTokens.Ripple.deep)
+            .buttonStyle(.v2(.primary))
             .accessibilityLabel(purchasedPack == nil ? "Back to Home" : "Done")
 
             if purchasedPack == nil {
-                Button {
+                Button("Restore purchases") {
                     Task { await restoreOrDismiss() }
-                } label: {
-                    Text("Restore purchases")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
                 }
+                .buttonStyle(.v2(.ghost, compact: true))
                 .accessibilityLabel("Restore purchases")
+
+                Text("Manage or cancel anytime in Settings \u{203A} Apple ID \u{203A} Subscriptions.")
+                    .font(.caption)
+                    .foregroundStyle(Color.V2.ink3)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 4)
     }
 
     // MARK: - Unlock Logic
