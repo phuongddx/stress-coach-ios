@@ -3,7 +3,6 @@ import Foundation
 enum SubscriptionPeriod: String, CaseIterable {
     case annual
     case monthly
-    case weekly
 }
 
 struct SubscriptionPlan: Identifiable {
@@ -22,30 +21,29 @@ struct SubscriptionPlan: Identifiable {
     let billingSummary: String?
     let hasIntroductoryOffer: Bool
     let introOfferPeriodUnit: String?
+    /// Annual only: the per-month equivalent formatted in the product's own
+    /// currency (e.g. "$2.17"). Nil for placeholders and monthly plans.
+    var monthlyEquivalentDisplay: String? = nil
 
-    /// Human-readable period unit for display (e.g. "/week", "/month", "/year").
+    /// Human-readable period unit for display (e.g. "/month", "/year").
     var periodUnitDisplay: String {
         switch period {
-        case .weekly:  return "/week"
         case .monthly: return "/month"
         case .annual:  return "/year"
         }
     }
 
-    private static let priceFormatter: NumberFormatter = {
-        let f = NumberFormatter()
-        f.numberStyle = .currency
-        f.locale = Locale.current
-        return f
-    }()
+    /// True only when the price came from a loaded StoreKit product.
+    var hasStorePrice: Bool {
+        guard let displayPrice else { return false }
+        return !displayPrice.isEmpty
+    }
 
-    /// Prefer StoreKit `displayPrice` when available, otherwise format `pricePerPeriod`
-    /// (not `pricePerMonth`) so it aligns with `periodUnitDisplay` ("/month" or "/year").
+    /// StoreKit `displayPrice` (storefront currency). Placeholders have no
+    /// price, so this is a dash rather than an invented amount.
     var priceDisplay: String {
-        if let displayPrice, !displayPrice.isEmpty {
-            return displayPrice
-        }
-        return Self.priceFormatter.string(from: pricePerPeriod as NSDecimalNumber) ?? "$0.00"
+        guard hasStorePrice, let displayPrice else { return "\u{2014}" }
+        return displayPrice
     }
 
     var savingsDisplay: String? {
@@ -53,49 +51,36 @@ struct SubscriptionPlan: Identifiable {
         return "Save \(savings)%"
     }
 
+    /// Placeholder slots for the loading skeleton: names only, no prices,
+    /// savings or trial. Real values come from StoreKit products.
     static let defaultPlans: [SubscriptionPlan] = [
         SubscriptionPlan(
             id: .annual,
             displayName: "Annually",
-            pricePerMonth: 4.99,
-            pricePerPeriod: 59.88,
+            pricePerMonth: .zero,
+            pricePerPeriod: .zero,
             period: .annual,
-            savingsPercent: 37,
+            savingsPercent: nil,
             isBestValue: true,
-            subtitle: "Best value option",
+            subtitle: nil,
             productID: nil,
             displayPrice: nil,
-            billingSummary: "Billed annually",
+            billingSummary: nil,
             hasIntroductoryOffer: false,
             introOfferPeriodUnit: nil
         ),
         SubscriptionPlan(
             id: .monthly,
             displayName: "Monthly",
-            pricePerMonth: 7.99,
-            pricePerPeriod: 7.99,
+            pricePerMonth: .zero,
+            pricePerPeriod: .zero,
             period: .monthly,
             savingsPercent: nil,
             isBestValue: false,
-            subtitle: "Most popular",
+            subtitle: nil,
             productID: nil,
             displayPrice: nil,
-            billingSummary: "Billed monthly",
-            hasIntroductoryOffer: false,
-            introOfferPeriodUnit: nil
-        ),
-        SubscriptionPlan(
-            id: .weekly,
-            displayName: "Weekly",
-            pricePerMonth: 12.95,
-            pricePerPeriod: 2.99,
-            period: .weekly,
-            savingsPercent: nil,
-            isBestValue: false,
-            subtitle: "Try it out, cancel anytime",
-            productID: nil,
-            displayPrice: nil,
-            billingSummary: "Billed weekly",
+            billingSummary: nil,
             hasIntroductoryOffer: false,
             introOfferPeriodUnit: nil
         )

@@ -8,17 +8,15 @@ import Foundation
 /// flipping the single case below turns the paywall, the credit balance UI and
 /// every upsell on or off without touching call sites.
 ///
-/// Postponed for 1.0.1 (App Review submission 2292ae85, Guideline 2.1(b)): the
-/// credit consumables were never created in App Store Connect and the three
-/// subscriptions were never attached to a review submission, so the app must
-/// not reference purchasable content. Flip to `.enabled` only once all five
-/// products exist, carry App Review screenshots, and are attached to the
-/// version submission.
+/// Enabled for 1.1: the two StressMonitor Plus subscriptions
+/// (`com.stressmonitor.app.plus.monthly`, `com.stressmonitor.app.plus.annual`)
+/// exist in App Store Connect. `.postponed` stays as the kill switch: flipping
+/// `current` back hides every paywall, upsell and chart lock at once (AC-13).
 enum PurchaseAvailability: Sendable, Equatable {
     case enabled
     case postponed(reason: PostponedReason)
 
-    static var current: PurchaseAvailability { .postponed(reason: .awaitingAppStoreProducts) }
+    static var current: PurchaseAvailability { .enabled }
 
     static var isEnabled: Bool { current == .enabled }
 }

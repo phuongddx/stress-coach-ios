@@ -4,8 +4,8 @@ import SwiftUI
 ///
 /// Shows a shimmering `SkeletonBlock` while prices are still resolving so the
 /// layout doesn't jump when `StoreKitService.availablePlans` returns. Once a
-/// plan is available the card renders name, price/period, savings badge and a
-/// "Most Popular" pill for the monthly tier.
+/// plan is available the card renders name, the StoreKit price for the billing
+/// period (annual adds a smaller per-month equivalent) and the savings label.
 struct PlanCard: View {
     let plan: SubscriptionPlan?
     let isSelected: Bool
@@ -109,12 +109,17 @@ struct PlanCard: View {
 
                 VStack(alignment: .trailing, spacing: 1) {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(priceText(for: plan))
+                        Text(plan.priceDisplay)
                             .font(Typography.iapPrice)
                             .tracking(-0.045 * 22)
                             .foregroundStyle(Color.iapTextPrimary)
-                        Text(priceUnit(for: plan))
+                        Text(plan.periodUnitDisplay)
                             .font(Typography.iapPerMonth)
+                            .foregroundStyle(Color.iapTextSecondary)
+                    }
+                    if let monthly = plan.monthlyEquivalentDisplay {
+                        Text("\u{2248} \(monthly)/month")
+                            .font(Typography.iapPlanFooter)
                             .foregroundStyle(Color.iapTextSecondary)
                     }
                 }
@@ -146,24 +151,10 @@ struct PlanCard: View {
 
     // MARK: - Derived
 
-    private func priceText(for plan: SubscriptionPlan) -> String {
-        switch plan.period {
-        case .annual:
-            return Self.currencyFormatter.string(from: plan.pricePerMonth as NSDecimalNumber) ?? "$4.99"
-        case .monthly, .weekly:
-            return plan.priceDisplay
-        }
-    }
-
-    private func priceUnit(for plan: SubscriptionPlan) -> String {
-        plan.period == .annual ? "/mo" : plan.periodUnitDisplay
-    }
-
     private func leftFooter(for plan: SubscriptionPlan) -> String {
         switch plan.period {
-        case .annual:  return plan.savingsDisplay ?? plan.billingSummary ?? ""
+        case .annual:  return plan.savingsDisplay ?? ""
         case .monthly: return "No commitment"
-        case .weekly:  return "Cancel anytime"
         }
     }
 
@@ -177,25 +168,38 @@ struct PlanCard: View {
         }
         guard let plan else { return "Plan" }
         let selected = isSelected ? ", selected" : ""
-        return "\(plan.displayName), \(priceText(for: plan)) \(priceUnit(for: plan))\(selected)"
+        var label = "\(plan.displayName), \(plan.priceDisplay) \(plan.periodUnitDisplay)"
+        if let monthly = plan.monthlyEquivalentDisplay {
+            label += ", about \(monthly) per month"
+        }
+        return label + selected
     }
-
-    private static let currencyFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.locale = Locale.current
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter
-    }()
 }
 
 #Preview {
     VStack(spacing: 16) {
-        PlanCard(plan: SubscriptionPlan.defaultPlans[0], isSelected: true, isLoading: false, onSelect: {})
-        PlanCard(plan: SubscriptionPlan.defaultPlans[1], isSelected: false, isLoading: false, onSelect: {})
+        PlanCard(plan: PlanCard.previewAnnual, isSelected: true, isLoading: false, onSelect: {})
+        PlanCard(plan: PlanCard.previewMonthly, isSelected: false, isLoading: false, onSelect: {})
         PlanCard(plan: nil, isSelected: false, isLoading: true, onSelect: {})
     }
     .padding()
     .background(Color(hex: "F5F2EC"))
 }
+
+#if DEBUG
+private extension PlanCard {
+    // Preview-only sample matching the .storekit test configuration.
+    static let previewAnnual = SubscriptionPlan(
+        id: .annual, displayName: "Plus Annual", pricePerMonth: 2.17, pricePerPeriod: 25.99,
+        period: .annual, savingsPercent: 56, isBestValue: true, subtitle: "Best value option",
+        productID: nil, displayPrice: "25,99 US$", billingSummary: "Billed annually",
+        hasIntroductoryOffer: true, introOfferPeriodUnit: "14-day", monthlyEquivalentDisplay: "2,17 US$"
+    )
+    static let previewMonthly = SubscriptionPlan(
+        id: .monthly, displayName: "Plus Monthly", pricePerMonth: 4.99, pricePerPeriod: 4.99,
+        period: .monthly, savingsPercent: nil, isBestValue: false, subtitle: nil,
+        productID: nil, displayPrice: "4,99 US$", billingSummary: "Billed monthly",
+        hasIntroductoryOffer: false, introOfferPeriodUnit: nil
+    )
+}
+#endif

@@ -14,6 +14,24 @@ enum PaywallReason: Hashable {
     /// server-side premium user never receives 402, so this reason presents
     /// regardless of local premium state — see `present(reason:)`.
     case outOfCredits
+    /// A blurred Plus chart was tapped.
+    case chart(PlusChartID)
+    /// Shown once to a new user at the end of onboarding.
+    case onboarding
+
+    /// Heading shown above the plans for reasons that need their own
+    /// context; nil keeps the default paywall.
+    var headline: String? {
+        switch self {
+        case .outOfCredits:
+            return "You've used all 20 free messages this month. Get Plus for unlimited chat."
+        case .chart:
+            return "See all your charts"
+        case .general, .trendsLongRange, .bioAgeDetail, .characters,
+             .breathingAdvanced, .feature, .onboarding:
+            return nil
+        }
+    }
 }
 
 /// Identifiable presentation envelope so `.fullScreenCover(item:)` can drive

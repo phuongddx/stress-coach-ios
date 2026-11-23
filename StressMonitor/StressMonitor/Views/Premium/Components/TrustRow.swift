@@ -1,13 +1,12 @@
 import SwiftUI
 
 /// Compact trust indicators shown beneath the plan grid on the paywall.
-/// Three rows: rating + user count, iOS version target, and Family Sharing.
+/// Only statements that are always true for a StoreKit subscription.
 struct TrustRow: View {
     var body: some View {
         VStack(spacing: 10) {
-            trustItem(icon: "star.fill", tint: Color.iapAmber, text: "4.8\u{2605} from 12K users")
-            trustItem(icon: "iphone", tint: Color.iapHeaderTeal, text: "Designed for iOS 17")
-            trustItem(icon: "house.fill", tint: Color.iapSavingsGreen, text: "Family Sharing enabled")
+            trustItem(icon: "xmark.circle.fill", tint: Color.iapHeaderTeal, text: "Cancel anytime in Settings")
+            trustItem(icon: "lock.fill", tint: Color.iapSavingsGreen, text: "Payment handled securely by Apple")
         }
         .padding(.horizontal, 15)
         .padding(.vertical, 14)
@@ -19,7 +18,7 @@ struct TrustRow: View {
                 .stroke(Color.iapIconBorder.opacity(0.12), lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Trusted by 12 thousand users. Designed for iOS 17. Family Sharing enabled.")
+        .accessibilityLabel("Cancel anytime in Settings. Payment handled securely by Apple.")
     }
 
     private func trustItem(icon: String, tint: Color, text: String) -> some View {

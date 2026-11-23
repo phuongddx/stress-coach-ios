@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct IAPCTAButton: View {
+    let title: String
     let isLoading: Bool
     let action: () -> Void
 
@@ -15,7 +16,7 @@ struct IAPCTAButton: View {
                         .tint(.white)
                 } else {
                     HStack(spacing: 8) {
-                        Text("Unlock Premium")
+                        Text(title)
                             .font(Typography.iapCTA)
                             .tracking(-0.02 * 16)
 
@@ -46,8 +47,9 @@ struct IAPCTAButton: View {
 
 #Preview {
     VStack(spacing: 24) {
-        IAPCTAButton(isLoading: false, action: {})
-        IAPCTAButton(isLoading: true, action: {})
+        IAPCTAButton(title: "Start 14-day free trial", isLoading: false, action: {})
+        IAPCTAButton(title: "Subscribe", isLoading: false, action: {})
+        IAPCTAButton(title: "Subscribe", isLoading: true, action: {})
     }
     .padding(.horizontal, 17)
     .background(Color.Wellness.adaptiveBackground)

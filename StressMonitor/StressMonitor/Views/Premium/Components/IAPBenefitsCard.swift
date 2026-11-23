@@ -4,7 +4,7 @@ struct IAPBenefitsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Section label
-            Text("WHAT PREMIUM UNLOCKS")
+            Text("WHAT PLUS UNLOCKS")
                 .font(Typography.iapSectionHeader)
                 .kerning(0.10 * 12)
                 .foregroundStyle(Color.iapHeaderTeal)
@@ -14,10 +14,10 @@ struct IAPBenefitsCard: View {
             // Benefits card
             VStack(spacing: 0) {
                 benefitRow(
-                    icon: "waveform.path.ecg",
-                    accentColor: Color.iapHeaderTeal,
-                    title: "Personal daily recovery plan",
-                    description: "Recommended breathing, walk, rest, and reflection actions based on today’s stress context."
+                    icon: "sparkles",
+                    accentColor: Color.iapPurple,
+                    title: "Unlimited AI chat",
+                    description: "Talk with Ripple as often as you like. Free accounts get 20 messages a month."
                 )
 
                 Divider()
@@ -25,10 +25,10 @@ struct IAPBenefitsCard: View {
                     .padding(.horizontal, 2)
 
                 benefitRow(
-                    icon: "sparkles",
-                    accentColor: Color.iapPurple,
-                    title: "Unlimited AI Wellness Coach",
-                    description: "Ask what to do next, understand your body signals, and get calmer guidance in the moment."
+                    icon: "chart.xyaxis.line",
+                    accentColor: Color.iapHeaderTeal,
+                    title: "All your charts",
+                    description: "See every chart in full: stress over time, HRV trends, monthly heatmap, biological age and breathing results."
                 )
 
                 Divider()
@@ -38,8 +38,19 @@ struct IAPBenefitsCard: View {
                 benefitRow(
                     icon: "chart.line.uptrend.xyaxis",
                     accentColor: Color.iapSavingsGreen,
-                    title: "Long-term patterns & insights",
-                    description: "See what actually affects your stress: sleep, activity, daylight, mindfulness, and noise."
+                    title: "30- and 90-day Trends",
+                    description: "Look past the last week and spot how your stress changes over months."
+                )
+
+                Divider()
+                    .background(Color.iapIconBorder.opacity(0.15))
+                    .padding(.horizontal, 2)
+
+                benefitRow(
+                    icon: "flame.fill",
+                    accentColor: Color.iapAmber,
+                    title: "Plus companions",
+                    description: "Unlock Ember, Zephyr and Lumi to join Ripple on your home screen."
                 )
             }
             .padding(15)
