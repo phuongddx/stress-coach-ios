@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// One row of the multi-factor stress breakdown: icon, factor name, normalized bar,
-/// raw value, and an optional confidence badge.
+/// One row of the multi-factor stress breakdown (UI V2), drawn with `V2FactorRow`:
+/// icon, factor name, the factor's share of the stress signal as a bar and percent,
+/// and a footnote with the raw reading and confidence when known.
 ///
-/// When `value` is nil the factor was unavailable for this measurement; the row renders
-/// a greyed-out bar and "—" value rather than dropping silently.
+/// When `value` is nil the factor was unavailable for this measurement; the row
+/// shows "No data" rather than dropping silently.
 struct FactorBreakdownRow: View {
     enum Factor: Hashable {
         case hrv, heartRate, sleep, activity, recovery
@@ -28,16 +29,6 @@ struct FactorBreakdownRow: View {
             case .recovery:   return "leaf.fill"
             }
         }
-
-        var tint: Color {
-            switch self {
-            case .hrv:        return .stressRelaxed
-            case .heartRate:  return .heartRateAccent
-            case .sleep:      return .settingsIconPurple
-            case .activity:   return .stressHigh
-            case .recovery:   return .primaryGreen
-            }
-        }
     }
 
     let factor: Factor
@@ -48,39 +39,14 @@ struct FactorBreakdownRow: View {
     var confidence: Double? = nil
 
     var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(factor.tint.opacity(value == nil ? 0.08 : 0.16))
-                Image(systemName: factor.icon)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(value == nil ? Color.Wellness.adaptiveSecondaryText : factor.tint)
-            }
-            .frame(width: 34, height: 34)
-
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text(factor.displayName)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-                    if let confidence {
-                        confidenceBadge(confidence)
-                    }
-
-                    Spacer()
-
-                    Text(valueText)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(value == nil
-                            ? Color.Wellness.adaptiveSecondaryText
-                            : Color.Wellness.adaptivePrimaryText)
-                }
-
-                progressBar
-            }
-        }
-        .padding(.vertical, 4)
+        V2FactorRow(
+            systemImage: factor.icon,
+            name: factor.displayName,
+            level: value.map { min(1, max(0.03, $0)) },
+            value: value.map { "\(Int(($0 * 100).rounded()))" },
+            unit: value == nil ? nil : "%",
+            sentence: sentence
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(factor.displayName). \(value == nil ? "Not available" : detailText ?? valueText)")
     }
@@ -92,44 +58,22 @@ struct FactorBreakdownRow: View {
         return "—"
     }
 
-    private var progressBar: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.14))
-                Capsule()
-                    .fill(barFill)
-                    .frame(width: proxy.size.width * barWidth)
+    /// "52 ms · high confidence" style footnote built from the existing inputs.
+    private var sentence: String? {
+        var parts: [String] = []
+        if let detailText, detailText != "—" {
+            parts.append("Measured \(detailText)")
+        }
+        if let confidence {
+            switch confidence {
+            case 0.8...:    parts.append("high confidence")
+            case 0.5..<0.8: parts.append("medium confidence")
+            default:        parts.append("low confidence")
             }
         }
-        .frame(height: 6)
-    }
-
-    private var barFill: Color {
-        value == nil
-            ? Color.Wellness.adaptiveSecondaryText.opacity(0.35)
-            : factor.tint.opacity(0.8)
-    }
-
-    private var barWidth: Double {
-        guard let value else { return 0.18 }
-        return min(1, max(0.03, value))
-    }
-
-    private func confidenceBadge(_ confidence: Double) -> some View {
-        let label: String
-        switch confidence {
-        case 0.8...:    label = "High"
-        case 0.5..<0.8: label = "Med"
-        default:        label = "Low"
-        }
-        return Text(label)
-            .font(.system(size: 9, weight: .heavy, design: .rounded))
-            .tracking(0.4)
-            .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Color.Wellness.adaptiveSecondaryText.opacity(0.12), in: Capsule())
+        guard !parts.isEmpty else { return nil }
+        let joined = parts.joined(separator: " · ")
+        return joined.prefix(1).uppercased() + joined.dropFirst()
     }
 }
 
@@ -142,5 +86,5 @@ struct FactorBreakdownRow: View {
         FactorBreakdownRow(factor: .recovery, value: nil)
     }
     .padding()
-    .background(Color.appBackground)
+    .background(Color.V2.bg)
 }

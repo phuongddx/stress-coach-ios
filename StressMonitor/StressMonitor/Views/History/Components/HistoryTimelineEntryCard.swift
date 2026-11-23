@@ -22,45 +22,36 @@ struct HistoryTimelineEntryCard: View {
         return parts.isEmpty ? "—" : parts.joined(separator: " · ")
     }
 
+    @ScaledMetric(relativeTo: .title2) private var scoreWidth: CGFloat = 44
+
+    /// One reading as a grouped-list row (UI V2): the score in its tier text
+    /// colour, the tier badge, time and vitals, and a chevron.
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(Color.stressColor(for: measurement.category))
-                .frame(width: 4)
-                .frame(maxHeight: .infinity)
-                .accessibilityHidden(true)
+            Text("\(score)")
+                .font(.v2Number(.title2))
+                .foregroundStyle(measurement.category.color)
+                .frame(minWidth: scoreWidth, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("\(score)")
-                        .font(.system(size: 21, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.stressColor(for: measurement.category))
-
-                    Text(measurement.category.displayName)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-                    Image(systemName: measurement.category.icon)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(Color.stressColor(for: measurement.category))
-                        .accessibilityHidden(true)
-                }
-
-                Text(subtitleText)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            VStack(alignment: .leading, spacing: 2) {
+                V2TierBadge(category: measurement.category, font: .body.weight(.semibold))
+                Text("\(timeText) · \(subtitleText)")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer(minLength: 8)
 
-            Text(timeText)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.V2.ink3)
+                .accessibilityHidden(true)
         }
-        .padding(14)
-        .frame(minHeight: 64, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.vertical, 10)
+        .frame(minHeight: 60, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(measurement.category.displayName), \(score), \(timeText)")
     }
@@ -75,6 +66,7 @@ struct HistoryTimelineEntryCard: View {
             restingHeartRate: 62
         )
     )
+    .v2CardBackground()
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

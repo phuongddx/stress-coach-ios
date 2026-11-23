@@ -1,21 +1,24 @@
 import SwiftUI
 
-/// Hero stress card for the Home tab.
+/// Hero stress card for the Home tab (UI V2).
 ///
-/// Semicircle half-arc gauge carries the progress burden (track + gradient fill +
-/// endpoint tick). Ripple sits INSIDE the arc opening — the character's
-/// expression IS the status. Below the gauge: the state label, substate, and
-/// confidence line.
+/// A `V2StressGauge` carries the score and tier; Ripple sits in the gauge's
+/// bottom opening so the companion's expression still mirrors the reading.
+/// Below the gauge: the substate line and small tags for time, confidence and
+/// factor count. At accessibility text sizes the companion moves below the
+/// gauge and the tags stack.
 ///
-/// Spec reference: design/screens/04-home.html — `.hero` + `.arc-stage`.
+/// Spec reference: ui-v2-design/screens.js `S.home` hero.
 struct StressHeroCard: View {
     let level: Double
     let category: StressCategory
     let confidence: Double?
     let measuredAt: Date?
     let substate: String
-    /// Number of factors that fed the score. Nil leaves the factor count off the confidence line.
+    /// Number of factors that fed the score. Nil leaves the factor tag off.
     let factorCount: Int?
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(
         level: Double,
@@ -34,132 +37,94 @@ struct StressHeroCard: View {
     }
 
     private var hasData: Bool { level > 0 }
+    private var isLargeText: Bool { dynamicTypeSize.isAccessibilitySize }
 
     var body: some View {
-        VStack(spacing: 0) {
-            eyebrowRow
-            arcStage
+        VStack(spacing: 12) {
+            Text("Stress now")
+                .v2Eyebrow()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                // Leaves room for the science info button the dashboard overlays.
+                .padding(.trailing, V2Metrics.minTouchTarget)
+
+            gaugeStage
+
+            if isLargeText {
+                companion(size: 64)
+            }
+
             stateRow
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-        .padding(.bottom, 16)
-        .background(
-            LinearGradient(
-                colors: [
-                    Color.Wellness.adaptiveCardBackground,
-                    HomeCharacterDesignTokens.Ripple.light.opacity(0.28)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.20), lineWidth: 1)
-        )
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.top, 20)
+        .padding(.bottom, V2Metrics.margin)
+        .frame(maxWidth: .infinity)
+        .v2CardBackground()
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
     }
 
-    // MARK: - Eyebrow
+    // MARK: - Gauge
 
-    private var eyebrowRow: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("CURRENT STRESS")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .tracking(1.0)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            Spacer()
-            if let measuredAt {
-                Text("measured \(measuredAt, format: .dateTime.hour().minute())")
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+    private var gaugeStage: some View {
+        V2StressGauge(score: hasData ? level : nil)
+            .frame(maxWidth: isLargeText ? 260 : 216)
+            .overlay(alignment: .bottom) {
+                if !isLargeText {
+                    companion(size: 52)
+                }
             }
-        }
+            .accessibilityHidden(true)
     }
 
-    // MARK: - Arc stage
-
-    private var arcStage: some View {
-        let stageWidth: CGFloat = 220
-        let stageHeight: CGFloat = 116
-        let characterSize: CGFloat = 111
-        return ZStack {
-            // Track
-            SemicircleArc(progress: 1.0)
-                .stroke(Color(hex: "#3C3C43").opacity(0.10), style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                .frame(width: stageWidth, height: stageHeight)
-
-            // Fill
-            SemicircleArc(progress: hasData ? min(1, level / 100.0) : 0)
-                .stroke(
-                    LinearGradient(
-                        colors: [fillColor.opacity(0.85), fillColor],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    ),
-                    style: StrokeStyle(lineWidth: 12, lineCap: .round)
-                )
-                .frame(width: stageWidth, height: stageHeight)
-
-            // Endpoint tick
-            TickMarker(progress: hasData ? min(1, level / 100.0) : 0, color: fillColor)
-                .frame(width: stageWidth, height: stageHeight)
-
-            // Ripple — anchored to the arc baseline, inside the bowl
-            StressBuddyIllustration(mood: mood, size: characterSize)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 2)
-                .accessibilityHidden(true)
-        }
-        .frame(width: stageWidth, height: stageHeight + characterSize * 0.45)
+    private func companion(size: CGFloat) -> some View {
+        StressBuddyIllustration(mood: mood, size: size)
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
     }
 
     // MARK: - State row
 
+    @ViewBuilder
     private var stateRow: some View {
-        VStack(spacing: 4) {
-            if hasData {
-                Text(category.displayName)
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .tracking(-0.8)
-                    .foregroundStyle(category.color)
-                    .stressDualCoding(category, showsCaption: false)
-            } else {
-                Text("No Data")
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .tracking(-0.8)
-                    .foregroundStyle(fillColor)
+        if hasData {
+            VStack(spacing: 12) {
+                Text(substate)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.V2.ink2)
+                    .multilineTextAlignment(.center)
+                tags
             }
-
-            Text(hasData ? substate : "Waiting for a reading")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-
-            if hasData, let confidence {
-                Text(confidenceLine(confidence))
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
-                    .tracking(0.5)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.85))
-                    .padding(.top, 4)
-            }
+        } else {
+            Text("Waiting for a reading. Wear your watch; HRV is recorded when you're still.")
+                .font(.subheadline)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.top, 12)
+    }
+
+    private var tags: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) { tagItems }
+            VStack(spacing: 6) { tagItems }
+        }
+    }
+
+    @ViewBuilder
+    private var tagItems: some View {
+        if let measuredAt {
+            HeroTag(systemImage: "clock", text: measuredAt.formatted(date: .omitted, time: .shortened))
+        }
+        if let confidence {
+            HeroTag(text: "\(Int((confidence * 100).rounded()))% confidence")
+        }
+        if let factorCount {
+            HeroTag(text: "\(factorCount) factors")
+        }
     }
 
     // MARK: - Helpers
-
-    private func confidenceLine(_ confidence: Double) -> String {
-        let percent = "\(Int((confidence * 100).rounded()))% confidence"
-        guard let factorCount else { return percent }
-        return "\(percent) · \(factorCount)-factor analysis"
-    }
-
-    private var fillColor: Color {
-        hasData ? Color.stressColor(for: category) : Color(hex: "#8E8E93")
-    }
 
     private var mood: RippleMood {
         hasData ? RippleMood.from(stressLevel: level) : .serene
@@ -167,81 +132,52 @@ struct StressHeroCard: View {
 
     private var accessibilityLabel: String {
         guard hasData else { return "Current stress: no data yet." }
-        return "Current stress, \(category.displayName). \(substate)."
+        var parts = ["Current stress \(Int(level.rounded())) of 100, \(category.displayName). \(substate)."]
+        if let confidence { parts.append("\(Int((confidence * 100).rounded()))% confidence.") }
+        return parts.joined(separator: " ")
     }
 }
 
-// MARK: - SemicircleArc
-
-/// Top-half semicircle arc drawn from the left baseline over the top to the
-/// right baseline. `progress` (0…1) draws a prefix of the arc from the left.
-/// Built as a sampled polyline so the fill direction and the tick position
-/// share one parametrization.
-struct SemicircleArc: Shape {
-    var progress: Double
-    var samples: Int = 64
-
-    func path(in rect: CGRect) -> Path {
-        let thickness: CGFloat = 12
-        let radius = (min(rect.width, rect.height * 2) - thickness) / 2
-        let cx = rect.midX
-        let cy = rect.maxY - thickness / 2
-        var path = Path()
-        let n = max(2, samples)
-        for i in 0...n {
-            let t = progress * Double(i) / Double(n)
-            let angle = Double.pi * (1 - t)
-            let x = cx + radius * cos(angle)
-            let y = cy - radius * sin(angle)
-            if i == 0 { path.move(to: CGPoint(x: x, y: y)) }
-            else { path.addLine(to: CGPoint(x: x, y: y)) }
-        }
-        return path
-    }
-}
-
-// MARK: - TickMarker
-
-/// Endpoint marker at the fill tip — small filled circle with a white ring,
-/// positioned at `progress` along the same arc parametrization.
-private struct TickMarker: View {
-    let progress: Double
-    let color: Color
+/// Small neutral tag used under the hero gauge.
+private struct HeroTag: View {
+    var systemImage: String? = nil
+    let text: String
 
     var body: some View {
-        GeometryReader { geo in
-            let thickness: CGFloat = 12
-            let radius = (min(geo.size.width, geo.size.height * 2) - thickness) / 2
-            let cx = geo.size.width / 2
-            let cy = geo.size.height - thickness / 2
-            let angle = Double.pi * (1 - progress)
-            let x = cx + radius * cos(angle)
-            let y = cy - radius * sin(angle)
-            Circle()
-                .fill(color)
-                .overlay(Circle().stroke(.white, lineWidth: 2))
-                .frame(width: 10, height: 10)
-                .position(x: x, y: y)
+        HStack(spacing: 4) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
+            }
+            Text(text)
         }
+        .font(.footnote.weight(.medium))
+        .foregroundStyle(Color.V2.ink2)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.V2.surface2))
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 
 // MARK: - Preview
 
 #Preview("StressHeroCard — Mild") {
-    StressHeroCard(level: 42, category: .mild, confidence: 0.96, measuredAt: Date(), substate: "Focused · steady morning", factorCount: 5)
+    StressHeroCard(level: 32, category: .mild, confidence: 0.92, measuredAt: Date(), substate: "Focused · steady", factorCount: 5)
         .padding()
-        .background(HomeCharacterDesignTokens.homeBackground)
+        .background(Color.V2.bg)
 }
 
 #Preview("StressHeroCard — High") {
-    StressHeroCard(level: 82, category: .high, confidence: 0.91, measuredAt: Date(), substate: "Racing · push back lunch")
+    StressHeroCard(level: 82, category: .high, confidence: 0.91, measuredAt: Date(), substate: "Wired · ease off")
         .padding()
-        .background(HomeCharacterDesignTokens.homeBackground)
+        .background(Color.V2.bg)
 }
 
 #Preview("StressHeroCard — No Data") {
     StressHeroCard(level: 0, category: .relaxed, confidence: nil, measuredAt: nil)
         .padding()
-        .background(HomeCharacterDesignTokens.homeBackground)
+        .background(Color.V2.bg)
 }

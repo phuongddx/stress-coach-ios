@@ -1,49 +1,38 @@
 import SwiftUI
 
-/// Mid-screen intervention cards — two-up grid of quick actions.
-///
-/// Per the 04-home spec, actions live mid-screen rather than buried at the
-/// bottom. Breathing (Ripple blue / calm focus) and Walk (green / reset) carry
-/// two distinct accents justified by meaning, not decoration.
+/// "Quick reset" row on Home (UI V2): two card tiles with an accent icon, a
+/// title and a duration line. Tiles stack at accessibility text sizes.
 ///
 /// Uses **value-based navigation** (`NavigationLink(value:)`); the parent
 /// `NavigationStack` resolves each `Route` via `.stressNavigationDestinations()`.
 ///
-/// Spec reference: design/screens/04-home.html — `.quick-actions`.
+/// Spec reference: ui-v2-design/screens.js `S.home` "Quick reset".
 struct QuickActionGrid: View {
     let first: QuickActionTile
     let second: QuickActionTile
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 10) {
-            first
-            second
+        VStack(alignment: .leading, spacing: 8) {
+            V2SectionHeader(title: "Quick reset")
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 8))
+                : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+            layout {
+                first
+                second
+            }
         }
     }
 }
 
-/// Single gradient-backed quick action tile with an icon bubble, title, and a
-/// mono meta line (duration + intent).
+/// Single quick action card tile.
 struct QuickActionTile: View {
+    /// Kept for API compatibility; both tiles share the V2 accent.
     enum Accent {
         case breathing
         case walk
-
-        var gradient: [Color] {
-            switch self {
-            case .breathing:
-                return [Color(hex: "#E1F5FE"), Color(hex: "#B3E5FC")]
-            case .walk:
-                return [Color(hex: "#E8F5E9"), Color(hex: "#C8E6C9")]
-            }
-        }
-
-        var foreground: Color {
-            switch self {
-            case .breathing: return Color(hex: "#01579B")
-            case .walk:      return Color(hex: "#1B5E20")
-            }
-        }
     }
 
     let accent: Accent
@@ -52,41 +41,28 @@ struct QuickActionTile: View {
     let meta: String
     let route: Route
 
+    /// Same box for every symbol so the titles line up across tiles.
+    @ScaledMetric(relativeTo: .title3) private var iconSize: CGFloat = 28
+
     var body: some View {
         NavigationLink(value: route) {
-            VStack(alignment: .leading, spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.55))
-                    Image(systemName: symbol)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(accent.foreground)
-                }
-                .frame(width: 30, height: 30)
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .tracking(-0.3)
-                        .foregroundStyle(accent.foreground)
-                    Text(meta)
-                        .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                        .tracking(1.0)
-                        .foregroundStyle(accent.foreground.opacity(0.75))
-                }
-                Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+                    .frame(width: iconSize, height: iconSize, alignment: .leading)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                Text(meta)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(minHeight: 108)
-            .background(
-                LinearGradient(
-                    colors: accent.gradient,
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .v2CardBackground()
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
@@ -102,8 +78,8 @@ extension QuickActionTile {
         QuickActionTile(
             accent: .breathing,
             symbol: "wind",
-            title: "Box Breathing",
-            meta: "2 MIN · CALM FOCUS",
+            title: "Box breathing",
+            meta: "2 min · calm focus",
             route: .boxBreathing
         )
     }
@@ -112,8 +88,8 @@ extension QuickActionTile {
         QuickActionTile(
             accent: .walk,
             symbol: "figure.walk",
-            title: "Mini Walk",
-            meta: "10 MIN · RESET",
+            title: "Mini walk",
+            meta: "10 min · reset",
             route: .miniWalk
         )
     }
@@ -125,7 +101,7 @@ extension QuickActionTile {
     NavigationStack {
         QuickActionGrid(first: .boxBreathing, second: .miniWalk)
             .padding()
-            .background(HomeCharacterDesignTokens.homeBackground)
+            .background(Color.V2.bg)
             .stressNavigationDestinations()
     }
 }

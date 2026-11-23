@@ -1,96 +1,100 @@
 import SwiftUI
 
-/// Subjective mood check-in row for the Home tab.
+/// Subjective mood check-in for the Home tab (UI V2).
 ///
-/// Renders five unicode mood chips (◌ ◎ ◐ ◑ ●) that the user taps to log how
-/// they feel right now. The active chip fills with the level's accent color and
-/// scales up; siblings stay neutral. The selected entry is reported via
-/// `onSelect` so the owning view model can store it.
+/// Five Ripple faces with the mood names. The selected face sits on an
+/// accent-tinted tile; the others stay neutral. The selected entry is reported
+/// via `onSelect` so the owning view model can store it. At accessibility text
+/// sizes the choices become full-width rows.
+///
+/// Spec reference: ui-v2-design/screens.js `S.home` "How do you feel?".
 struct MoodCheckInView: View {
     let selected: MoodLevel?
     let onSelect: (MoodLevel) -> Void
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            header
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-            HStack(spacing: 10) {
-                ForEach(MoodLevel.allCases) { level in
-                    chip(for: level)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            V2SectionHeader(title: "How do you feel?")
+
+            V2Card(padding: 8) {
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(spacing: 4) {
+                        ForEach(MoodLevel.allCases) { level in
+                            chip(for: level, stacked: true)
+                        }
+                    }
+                } else {
+                    HStack(spacing: 4) {
+                        ForEach(MoodLevel.allCases) { level in
+                            chip(for: level, stacked: false)
+                        }
+                    }
                 }
             }
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.16), lineWidth: 1)
-        )
-        .shadow(color: HomeCharacterDesignTokens.Ripple.deep.opacity(0.08), radius: 12, x: 0, y: 8)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Mood check-in")
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("Ripple asks")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .tracking(0.8)
-                .textCase(.uppercase)
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
-            Text("How are you feeling right now?")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func chip(for level: MoodLevel) -> some View {
+    @ViewBuilder
+    private func chip(for level: MoodLevel, stacked: Bool) -> some View {
         let isActive = selected == level
-        let accent = accentColor(for: level)
-
-        return Button {
+        Button {
             HapticManager.shared.buttonPress()
             onSelect(level)
         } label: {
-            VStack(spacing: 6) {
-                Text(level.glyph)
-                    .font(.system(size: 22, weight: .heavy))
-                    .foregroundStyle(isActive ? Color.white : accent)
-                Text(level.displayName)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isActive ? Color.white : Color.Wellness.adaptiveSecondaryText)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7) // dated exception 2026-09-05: 5-across chip label cannot wrap; fixed font
+            Group {
+                if stacked {
+                    HStack(spacing: 12) {
+                        face(for: level)
+                        Text(level.displayName)
+                            .font(.body.weight(isActive ? .semibold : .regular))
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, 12)
+                } else {
+                    VStack(spacing: 4) {
+                        face(for: level)
+                        Text(level.displayName)
+                            .font(.caption.weight(isActive ? .semibold : .regular))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 64)
+            .foregroundStyle(isActive ? Color.V2.ink : Color.V2.ink2)
+            .frame(maxWidth: .infinity, minHeight: 60)
+            .padding(.vertical, 4)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(isActive ? accent : accent.opacity(0.10))
+                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                    .fill(isActive ? Color.V2.accentSoft : Color.clear)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isActive ? Color.clear : accent.opacity(0.22), lineWidth: 1)
+                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                    .strokeBorder(isActive ? Color.V2.accent : Color.clear, lineWidth: 1.5)
             )
-            .scaleEffect(isActive ? 1.04 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isActive)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Mood: \(level.displayName)")
         .accessibilityAddTraits(isActive ? .isSelected : [])
     }
 
-    private func accentColor(for level: MoodLevel) -> Color {
-        // Color-coded by stress tier per the 04-home spec (◌ ◎ ◐ ◑ ●).
+    private func face(for level: MoodLevel) -> some View {
+        StressBuddyIllustration(mood: rippleMood(for: level), size: 32)
+            .frame(width: 32, height: 32)
+            .accessibilityHidden(true)
+    }
+
+    private func rippleMood(for level: MoodLevel) -> RippleMood {
         switch level {
-        case .veryCalm:  return Color.stressRelaxed
-        case .calm:      return Color.stressMild
-        case .neutral:   return Color.stressModerate
-        case .tense:     return Color.stressHigh
-        case .veryTense: return Color.stressSevere
+        case .veryCalm:  return .happy
+        case .calm:      return .relaxed
+        case .neutral:   return .focused
+        case .tense:     return .worried
+        case .veryTense: return .tired
         }
     }
 }
@@ -102,5 +106,5 @@ struct MoodCheckInView: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

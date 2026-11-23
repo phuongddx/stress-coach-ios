@@ -1,11 +1,9 @@
 import SwiftUI
 
-/// Compact Home header — date stamp on the left, bio-age + streak chips on the
-/// right. Drops the decorative greeting per the 04-home spec: the date stamp and
-/// the two information chips carry the header, freeing the hero to be the stress
-/// indicator.
+/// Home header (UI V2): the date on the left, bio-age and streak tags on the
+/// right, then a large time-of-day greeting.
 ///
-/// Spec reference: design/screens/04-home.html — `.date-row`.
+/// Spec reference: ui-v2-design/screens.js `S.home` head.
 struct HomeHeaderBar: View {
     let date: Date
     let bioAge: Int?
@@ -18,32 +16,36 @@ struct HomeHeaderBar: View {
     }
 
     var body: some View {
-        HStack {
-            dateStamp
-            Spacer(minLength: 8)
-            chipRow
+        VStack(alignment: .leading, spacing: 4) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    dateStamp
+                    Spacer(minLength: 8)
+                    chipRow
+                }
+                VStack(alignment: .leading, spacing: 8) {
+                    dateStamp
+                    chipRow
+                }
+            }
+            .frame(minHeight: V2Metrics.minTouchTarget)
+
+            Text(greeting)
+                .font(.largeTitle.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(dateStampVoiceover). \(bioAccessibility) \(streakAccessibility)")
+        .accessibilityLabel("\(greeting). \(dateStampVoiceover). \(bioAccessibility) \(streakAccessibility)")
     }
 
     // MARK: - Date stamp
 
     private var dateStamp: some View {
-        Text(dateStampText)
-            .font(.system(size: 11, weight: .regular, design: .monospaced))
-            .tracking(0.8)
-            .textCase(.uppercase)
-            .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-    }
-
-    private var dateStampText: String {
-        let f = DateFormatter()
-        f.amSymbol = "AM"
-        f.pmSymbol = "PM"
-        f.dateFormat = "EEE · MMM d · h:mm a"
-        return f.string(from: date).uppercased()
+        Text(date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day()))
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.V2.ink3)
     }
 
     private var dateStampVoiceover: String {
@@ -53,35 +55,35 @@ struct HomeHeaderBar: View {
         return f.string(from: date)
     }
 
+    private var greeting: String {
+        switch Calendar.current.component(.hour, from: date) {
+        case 5..<12: return "Good morning"
+        case 12..<17: return "Good afternoon"
+        default: return "Good evening"
+        }
+    }
+
     // MARK: - Chips
 
     private var chipRow: some View {
         HStack(spacing: 6) {
             if let bioAge {
-                bioChip(value: bioAge)
+                HeaderTag(
+                    symbol: AppIconSystem.Setting.biologicalAge.sfSymbol,
+                    text: "Bio age \(bioAge)",
+                    foreground: Color.V2.plus,
+                    background: Color.V2.plusBg
+                )
+                .accessibilityLabel("Biological age \(bioAge) years")
             }
-            streakChip(days: streakDays)
+            HeaderTag(
+                symbol: AppIconSystem.Metric.streak.sfSymbol,
+                text: "\(streakDays)-day streak",
+                foreground: Color.V2.accent,
+                background: Color.V2.accentSoft
+            )
+            .accessibilityLabel("\(streakDays) day streak")
         }
-    }
-
-    private func bioChip(value: Int) -> some View {
-        HeaderChip(
-            symbol: AppIconSystem.Setting.biologicalAge.sfSymbol,
-            numberText: "\(value)",
-            suffix: "BIO",
-            accent: Color(hex: "#8B5CF6")
-        )
-        .accessibilityLabel("Biological age \(value) years")
-    }
-
-    private func streakChip(days: Int) -> some View {
-        HeaderChip(
-            symbol: AppIconSystem.Metric.streak.sfSymbol,
-            numberText: "\(days)",
-            suffix: "D",
-            accent: Color.stressRelaxed
-        )
-        .accessibilityLabel("\(days) day streak")
     }
 
     private var bioAccessibility: String {
@@ -93,35 +95,28 @@ struct HomeHeaderBar: View {
     }
 }
 
-// MARK: - HeaderChip
+// MARK: - HeaderTag
 
-private struct HeaderChip: View {
+private struct HeaderTag: View {
     let symbol: String
-    let numberText: String
-    let suffix: String
-    let accent: Color
+    let text: String
+    let foreground: Color
+    let background: Color
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 4) {
             Image(systemName: symbol)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(accent)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(numberText)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .tracking(-0.3)
-                Text(suffix)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(0.4)
-            }
-            .foregroundStyle(accent)
+                .imageScale(.small)
+                .accessibilityHidden(true)
+            Text(text)
         }
-        .padding(.leading, 6)
-        .padding(.trailing, 10)
-        .padding(.vertical, 5)
-        .background(accent.opacity(0.12))
-        .overlay(Capsule().stroke(accent.opacity(0.24), lineWidth: 1))
-        .clipShape(Capsule())
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(foreground)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(background))
+        .lineLimit(1)
+        .fixedSize()
     }
 }
 
@@ -135,5 +130,5 @@ private struct HeaderChip: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

@@ -79,11 +79,13 @@ private struct MeasurementDetailDestination: View {
         if let measurement = resolved {
             MeasurementDetailView(measurement: measurement)
         } else {
-            ContentUnavailableView(
-                "Measurement unavailable",
+            V2StateView(
                 systemImage: "tray",
-                description: Text("This measurement may have been deleted.")
+                title: "Measurement unavailable",
+                message: "This measurement may have been deleted or is no longer on this iPhone."
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.V2.bg.ignoresSafeArea())
         }
     }
 

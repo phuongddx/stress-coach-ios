@@ -1,14 +1,13 @@
 import SwiftUI
 
-/// 7-day stress bar chart.
+/// 7-day stress bar chart (UI V2).
 ///
-/// Each bar's height encodes the peak stress for that day; the bar's color
+/// Each bar's height encodes the peak stress for that day; the bar's fill
 /// encodes the stress tier. Subtle gridlines at 25 / 50 / 75 imply the 0–100
-/// scale without needing axis labels. Today's bar gets a thin outline. Days
-/// without a reading stay empty. A tier legend summarizes the distribution
-/// across the days that have readings.
+/// scale. Today's bar gets a thin outline. Days without a reading stay empty.
+/// A tier legend summarizes the distribution across the days with readings.
 ///
-/// Spec reference: design/screens/04-home.html — `.stress-chart`.
+/// Spec reference: ui-v2-design/screens.js `S.home` "Stress over time".
 struct StressOverTimeChart: View {
     let data: [StressDataPoint]
     var onOpenHistory: (() -> Void)?
@@ -22,16 +21,13 @@ struct StressOverTimeChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            header
-
-            chartArea
-
-            legend
+        V2Card {
+            VStack(alignment: .leading, spacing: 16) {
+                header
+                chartArea
+                legend
+            }
         }
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Stress over time, last 7 days. \(legendVoiceover)")
     }
@@ -40,29 +36,28 @@ struct StressOverTimeChart: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Stress over time")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            Spacer()
-            HStack(spacing: 4) {
-                Text("LAST 7 DAYS")
-                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                    .tracking(1.0)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-
-                if let onOpenHistory {
-                    Button {
-                        HapticManager.shared.buttonPress()
-                        onOpenHistory()
-                    } label: {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Color.primaryBlue)
-                    }
-                    .buttonStyle(.plain)
-                    .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
-                    .accessibilityLabel("All history")
+            Text("This week")
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+            Spacer(minLength: 8)
+            if let averageSummary {
+                Text(averageSummary)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+            }
+            if let onOpenHistory {
+                Button {
+                    HapticManager.shared.buttonPress()
+                    onOpenHistory()
+                } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
+                        .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("All history")
             }
         }
     }
@@ -70,60 +65,54 @@ struct StressOverTimeChart: View {
     // MARK: - Bars
 
     private var chartArea: some View {
-        ZStack(alignment: .bottom) {
+        ZStack(alignment: .top) {
             gridlines
-            HStack(alignment: .bottom, spacing: 7) {
+            HStack(alignment: .bottom, spacing: 8) {
                 ForEach(displayData, id: \.date) { point in
                     barColumn(for: point)
                 }
             }
         }
-        .frame(height: 116)
+        .accessibilityHidden(true)
     }
 
     private var gridlines: some View {
-        VStack {
-            Spacer()
-            gridline(at: 0.75)
-            gridline(at: 0.50)
-            gridline(at: 0.25)
-            Rectangle()
-                .fill(Color(hex: "#3C3C43").opacity(0.12))
-                .frame(height: 1)
+        VStack(spacing: 0) {
+            ForEach([0.75, 0.5, 0.25, 0.0], id: \.self) { _ in
+                Spacer(minLength: 0)
+                Rectangle()
+                    .fill(Color.V2.line)
+                    .frame(height: 0.5)
+            }
         }
+        .frame(height: barHeight)
     }
 
-    private func gridline(at fraction: CGFloat) -> some View {
-        Rectangle()
-            .fill(Color(hex: "#3C3C43").opacity(0.10))
-            .frame(height: 1)
-            .padding(.leading, 2)
-            .offset(y: -fraction * 104)
-            .frame(maxWidth: .infinity, alignment: .leading)
-    }
+    private let barHeight: CGFloat = 100
 
     private func barColumn(for point: StressDataPoint) -> some View {
         let isToday = Calendar.current.isDateInToday(point.date)
         return VStack(spacing: 6) {
             GeometryReader { geo in
                 if let value = point.value, let category = point.category {
-                    let height = max(2, CGFloat(value) / 100.0 * geo.size.height)
+                    let height = max(3, CGFloat(value) / 100.0 * geo.size.height)
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.stressColor(for: category))
+                        .fill(category.fillColor)
                         .overlay(
                             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(Color.Wellness.adaptivePrimaryText, lineWidth: isToday ? 1.5 : 0)
+                                .strokeBorder(Color.V2.ink, lineWidth: isToday ? 1.5 : 0)
                         )
                         .frame(height: height)
                         .frame(maxHeight: .infinity, alignment: .bottom)
                 }
             }
-            .frame(height: 100)
+            .frame(height: barHeight)
 
             Text(dayLabel(for: point.date, isToday: isToday))
-                .font(.system(size: 9, weight: isToday ? .bold : .regular, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(isToday ? Color.Wellness.adaptivePrimaryText : Color.Wellness.adaptiveSecondaryText)
+                .font(.caption2.weight(isToday ? .bold : .regular))
+                .foregroundStyle(isToday ? Color.V2.ink : Color.V2.ink3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
     }
@@ -135,8 +124,8 @@ struct StressOverTimeChart: View {
         return Group {
             if distribution.isEmpty {
                 Text("No readings in the last 7 days")
-                    .font(.system(size: 10.5, weight: .regular))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             } else {
                 FlowLayout(spacing: 12, lineSpacing: 6) {
                     ForEach(StressCategory.allCases, id: \.self) { tier in
@@ -148,17 +137,25 @@ struct StressOverTimeChart: View {
     }
 
     private func legendPill(tier: StressCategory, percent: Int) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(Color.stressColor(for: tier))
+                .fill(tier.fillColor)
                 .frame(width: 8, height: 8)
             Text(tier.displayName)
-                .font(.system(size: 10.5, weight: .regular))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink2)
             Text("\(percent)%")
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.v2Number(.caption))
+                .foregroundStyle(Color.V2.ink)
         }
+    }
+
+    /// "avg 40 · Mild" across the days with a reading; nil when none.
+    private var averageSummary: String? {
+        let values = displayData.compactMap(\.value)
+        guard !values.isEmpty else { return nil }
+        let average = Double(values.reduce(0, +)) / Double(values.count)
+        return "avg \(Int(average.rounded())) · \(StressCategory(from: average).displayName)"
     }
 
     // MARK: - Data shaping
@@ -168,7 +165,7 @@ struct StressOverTimeChart: View {
     }
 
     private func dayLabel(for date: Date, isToday: Bool) -> String {
-        guard !isToday else { return "TODAY" }
+        guard !isToday else { return "Today" }
         let calendar = Calendar.current
         return calendar.veryShortWeekdaySymbols[calendar.component(.weekday, from: date) - 1]
     }
@@ -270,5 +267,5 @@ private struct FlowLayout: Layout {
             .padding()
         Spacer()
     }
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

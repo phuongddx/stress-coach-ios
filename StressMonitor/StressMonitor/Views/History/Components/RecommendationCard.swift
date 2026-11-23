@@ -1,31 +1,38 @@
 import SwiftUI
 
+/// One "What could help" row (UI V2): accent icon tile, title and a short
+/// description. Rows sit inside a single grouped card on the detail screen.
+///
+/// Spec reference: ui-v2-design/screens.js `S.detail` "What could help".
 struct RecommendationCard: View {
     let recommendation: Recommendation
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: recommendation.icon)
-                .font(.title2)
-                .foregroundColor(.primaryBlue)
-                .frame(width: 44, height: 44)
-                .background(Color.primaryBlue.opacity(0.1))
-                .cornerRadius(10)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .frame(width: 36, height: 36)
+                .background(
+                    RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous)
+                        .fill(Color.V2.accentSoft)
+                )
+                .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(recommendation.title)
-                    .font(Typography.subheadline)
-                    .fontWeight(.semibold)
-
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
                 Text(recommendation.description)
-                    .font(Typography.caption1)
-                    .foregroundColor(.secondary)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(12)
-        .background(Color.secondary.opacity(0.05))
-        .cornerRadius(12)
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.vertical, 12)
+        .frame(minHeight: V2Metrics.minTouchTarget)
+        .accessibilityElement(children: .combine)
     }
 }
