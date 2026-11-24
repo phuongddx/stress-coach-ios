@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Plus paywall body (UI V2 `S.paywall`).
 ///
-/// Layout: a pinned nav row (Restore, Close), then the companion hero, the
+/// Layout: a pinned nav row (Restore, Close), then the Ripple hero, the
 /// caller's `header` (reason headline and credit balance), what Plus unlocks
 /// and the plans. The CTA, the auto-renew sentence and the legal links sit in
 /// a footer pinned above the home indicator (inside the safe area). At
@@ -100,9 +100,6 @@ struct IAPPremiumView<Header: View>: View {
         }
     }
 
-    // MARK: - Hero
-
-    /// Ripple with the two Plus companions, then the Plus pill.
     // MARK: - Layout
 
     /// One column on phones and the Duo outer display. On the Duo inner
@@ -217,9 +214,13 @@ struct IAPPremiumView<Header: View>: View {
     private var hero: some View {
         VStack(spacing: 10) {
             HStack(alignment: .bottom, spacing: 0) {
-                CharacterAssetResolver.characterView(for: "zephyr", mood: .serene, size: 52)
-                CharacterAssetResolver.characterView(for: "ripple", mood: .happy, size: 76)
-                CharacterAssetResolver.characterView(for: "ember", mood: .serene, size: 52)
+                ForEach(CharactersAvailability.current.paywallHeroCharacterIds, id: \.self) { id in
+                    CharacterAssetResolver.characterView(
+                        for: id,
+                        mood: id == "ripple" ? .happy : .serene,
+                        size: id == "ripple" ? 76 : 52
+                    )
+                }
             }
             .accessibilityHidden(true)
 

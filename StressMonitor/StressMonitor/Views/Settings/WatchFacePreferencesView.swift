@@ -23,7 +23,9 @@ struct WatchFacePreferencesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 syncStatusSection
-                companionSection
+                if CharactersAvailability.isEnabled {
+                    companionSection
+                }
                 backgroundSection
                 installHintSection
             }
