@@ -471,7 +471,7 @@ struct SettingsView: View {
                 tint: Color.V2.Companion.ember,
                 glyph: Color.V2.onAccent,
                 title: "Haptics",
-                isOn: $hapticsEnabled
+                isOn: hapticsEnabled
             )
             ActionRowDivider()
             navRow(
@@ -774,7 +774,12 @@ struct SettingsView: View {
     @State private var healthAuthStatus: HKAuthorizationStatus = .notDetermined
     @State private var isRequestingHealthPermission = false
     @State private var showPermissionDeniedAlert = false
-    @State private var hapticsEnabled: Bool = !UserDefaults.standard.bool(forKey: "appearance.hapticsDisabled")
+    @AppStorage(HapticPreference.disabledKey) private var hapticsDisabled = false
+
+    /// The Haptics row reads "on", the stored flag is "disabled".
+    private var hapticsEnabled: Binding<Bool> {
+        Binding(get: { !hapticsDisabled }, set: { hapticsDisabled = !$0 })
+    }
 
     // MARK: - Health data sync (server-side consent)
 

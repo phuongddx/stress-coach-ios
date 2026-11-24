@@ -36,6 +36,8 @@
 		F1A1B2C3D4E500000000B009 /* SSEParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A009 /* SSEParserTests.swift */; };
 		61B559B45CF24F418A4472AE /* TrendsWeekComparisonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */; };
 		EF3B08E86D944802AD7BFE77 /* HabitViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472477EDAA6840068745933E /* HabitViewModelTests.swift */; };
+		39ADB906D77D39D8D61F9702 /* HapticPreferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */; };
+		CE6153BA6628BD9CDC61828F /* BreathingSessionCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */; };
 		F1A1B2C3D4E500000000B010 /* LLMServiceErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */; };
 		F1A1B2C3D4E500000000B012 /* DataDeletionConsolidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */; };
 		F1A1B2C3D4E500000000B013 /* StoreKitProductCatalogLiveTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A013 /* StoreKitProductCatalogLiveTests.swift */; };
@@ -150,6 +152,8 @@
 		F1A1B2C3D4E500000000A009 /* SSEParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SSEParserTests.swift; path = StressMonitorTests/SSEParserTests.swift; sourceTree = "<group>"; };
 		70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendsWeekComparisonTests.swift; path = StressMonitorTests/TrendsWeekComparisonTests.swift; sourceTree = "<group>"; };
 		472477EDAA6840068745933E /* HabitViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HabitViewModelTests.swift; path = StressMonitorTests/HabitViewModelTests.swift; sourceTree = "<group>"; };
+		6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HapticPreferenceTests.swift; path = StressMonitorTests/HapticPreferenceTests.swift; sourceTree = "<group>"; };
+		DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BreathingSessionCompletionTests.swift; path = StressMonitorTests/BreathingSessionCompletionTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMServiceErrorTests.swift; path = StressMonitorTests/LLMServiceErrorTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataDeletionConsolidationTests.swift; path = StressMonitorTests/DataDeletionConsolidationTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A013 /* StoreKitProductCatalogLiveTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoreKitProductCatalogLiveTests.swift; path = StressMonitorTests/StoreKitProductCatalogLiveTests.swift; sourceTree = "<group>"; };
@@ -347,6 +351,8 @@
 				F1A1B2C3D4E500000000A009 /* SSEParserTests.swift */,
 				70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */,
 				472477EDAA6840068745933E /* HabitViewModelTests.swift */,
+				6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */,
+				DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */,
 				F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */,
 				F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */,
 				F1A1B2C3D4E500000000A013 /* StoreKitProductCatalogLiveTests.swift */,
@@ -595,6 +601,8 @@
 				F1A1B2C3D4E500000000B009 /* SSEParserTests.swift in Sources */,
 				61B559B45CF24F418A4472AE /* TrendsWeekComparisonTests.swift in Sources */,
 				EF3B08E86D944802AD7BFE77 /* HabitViewModelTests.swift in Sources */,
+				39ADB906D77D39D8D61F9702 /* HapticPreferenceTests.swift in Sources */,
+				CE6153BA6628BD9CDC61828F /* BreathingSessionCompletionTests.swift in Sources */,
 				F1A1B2C3D4E500000000B010 /* LLMServiceErrorTests.swift in Sources */,
 				F1A1B2C3D4E500000000B012 /* DataDeletionConsolidationTests.swift in Sources */,
 				F1A1B2C3D4E500000000B013 /* StoreKitProductCatalogLiveTests.swift in Sources */,
@@ -920,6 +928,7 @@
 		"INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthUpdateUsageDescription" = "We need to update your health data with stress measurements.";
+		"INFOPLIST_KEY_NSMotionUsageDescription" = "Mini Walk counts your steps while you walk so you can see your progress. Your step count stays on this iPhone.";
 		"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = YES;
 		"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = YES;
 		"INFOPLIST_KEY_UIBackgroundModes" = "fetch processing";
@@ -968,6 +977,7 @@
 		"INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthUpdateUsageDescription" = "We need to update your health data with stress measurements.";
+		"INFOPLIST_KEY_NSMotionUsageDescription" = "Mini Walk counts your steps while you walk so you can see your progress. Your step count stays on this iPhone.";
 		"INFOPLIST_KEY_UIApplicationSceneManifest_Generation" = YES;
 		"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents" = YES;
 		"INFOPLIST_KEY_UIBackgroundModes" = "fetch processing";

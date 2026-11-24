@@ -93,24 +93,51 @@ class BreathingSessionViewModel {
         startCountdown()
     }
 
+    /// Set once a session runs to its end (countdown or Skip cycle), after the
+    /// post-session HRV read finishes. The session screen opens the summary on
+    /// this, so it never sees a half-built result. Ending early leaves it nil.
+    var completedResult: BreathingSessionResult?
+
+    /// The post-session HRV read and result write started by `endSession`.
+    /// Tests await it.
+    private(set) var finishTask: Task<Void, Never>?
+
+    /// Ends the session early (the user left the screen).
     func endSession() {
+        endSession(completed: false)
+    }
+
+    private func endSession(completed: Bool) {
+        guard isActive else { return }
         isActive = false
         timer?.invalidate()
+        timer = nil
         phaseTickTimer?.invalidate()
         phaseTickTimer = nil
 
-        Task {
-            if let hrv = try? await healthKit.fetchLatestHRV() {
-                postSessionHRV = hrv.value
-            }
-
-            sessionResult = BreathingSessionResult(
-                preSessionHRV: preSessionHRV,
-                postSessionHRV: postSessionHRV,
-                duration: sessionDuration - remainingTime,
-                cyclesCompleted: cyclesCompleted
-            )
+        let duration = sessionDuration - remainingTime
+        let cycles = cyclesCompleted
+        finishTask = Task {
+            await finish(duration: duration, cyclesCompleted: cycles, completed: completed)
         }
+    }
+
+    private func finish(duration: TimeInterval, cyclesCompleted cycles: Int, completed: Bool) async {
+        if let hrv = try? await healthKit.fetchLatestHRV() {
+            postSessionHRV = hrv.value
+        }
+
+        let result = BreathingSessionResult(
+            preSessionHRV: preSessionHRV,
+            postSessionHRV: postSessionHRV,
+            duration: duration,
+            cyclesCompleted: cycles
+        )
+        sessionResult = result
+
+        guard completed else { return }
+        completedResult = result
+        NotificationCenter.default.post(name: .breathingSessionComplete, object: result)
     }
 
     /// Steps the 4-4-4-4 box-breathing phase every second, advancing through
@@ -161,8 +188,7 @@ class BreathingSessionViewModel {
                 self.remainingTime -= 1
 
                 if self.remainingTime <= 0 {
-                    self.endSession()
-                    NotificationCenter.default.post(name: .breathingSessionComplete, object: self.sessionResult)
+                    self.endSession(completed: true)
                 }
             }
         }
@@ -192,8 +218,7 @@ class BreathingSessionViewModel {
         remainingTime = max(0, remainingTime - Double(secondsToSkip))
 
         if remainingTime <= 0 {
-            endSession()
-            NotificationCenter.default.post(name: .breathingSessionComplete, object: sessionResult)
+            endSession(completed: true)
         }
     }
 }
