@@ -315,4 +315,5 @@ struct CharacterCollectionView: View {
         CharacterCollectionView()
     }
     .modelContainer(for: CharacterUnlock.self, inMemory: true)
+    .environment(PaywallController())
 }

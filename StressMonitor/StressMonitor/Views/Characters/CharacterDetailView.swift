@@ -13,6 +13,7 @@ struct CharacterDetailView: View {
     var onSelect: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(PaywallController.self) private var paywall
     @State private var previewMood: RippleMood = .serene
 
     private var isUnlocked: Bool { unlock?.isUnlocked ?? false }
@@ -198,26 +199,33 @@ struct CharacterDetailView: View {
 
     @ViewBuilder
     private var unlockCTA: some View {
-        // Premium creatures are filtered out of the collection while
-        // purchases are postponed; the guard keeps the upgrade copy
-        // unreachable even via a stale deep link.
+        // The `PurchaseAvailability.isEnabled` guard keeps the upgrade copy
+        // and buy path unreachable if purchases are ever postponed again,
+        // including via a stale deep link.
         if creature.unlockType == .premium, PurchaseAvailability.isEnabled {
-            V2Card(style: .flat) {
-                VStack(alignment: .leading, spacing: 8) {
-                    V2PlusPill(showsLock: true)
-                    Text("Plus companion")
-                        .font(.headline)
-                        .foregroundStyle(Color.V2.ink)
-                    Text("Unlock with StressMonitor Plus")
-                        .font(.callout)
-                        .foregroundStyle(Color.V2.ink2)
-                    Text("Ember and Zephyr come with Plus. Lumi unlocks with a 30-day streak.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.V2.ink3)
-                        .fixedSize(horizontal: false, vertical: true)
+            Button {
+                paywall.present(reason: .characters)
+            } label: {
+                V2Card(style: .flat) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        V2PlusPill(showsLock: true)
+                        Text("Plus companion")
+                            .font(.headline)
+                            .foregroundStyle(Color.V2.ink)
+                        Text("Unlock with StressMonitor Plus")
+                            .font(.callout)
+                            .foregroundStyle(Color.V2.ink2)
+                        Text("Ember and Zephyr come with Plus. Lumi unlocks with a 30-day streak.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.V2.ink3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Opens StressMonitor Plus")
         } else if creature.unlockType == .streakGated {
             let current = unlock?.streakDays ?? 0
             let progress = min(Double(current) / Double(max(creature.streakRequired, 1)), 1)
