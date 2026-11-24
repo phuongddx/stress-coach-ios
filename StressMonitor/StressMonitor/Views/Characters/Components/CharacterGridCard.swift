@@ -27,11 +27,14 @@ struct CharacterGridCard: View {
                     .fill(creature.element.v2Tint.opacity(0.22))
                     .frame(width: 88, height: 88)
 
+                // Collection tiles show Ripple's base pose (other companions
+                // ignore `pose`); `mood` still drives the ambient animation.
                 StressBuddyIllustration(
                     characterId: creature.id,
                     evolution: isUnlocked ? currentStage : .droplet,
                     mood: mood,
-                    size: 72
+                    size: 72,
+                    pose: .base
                 )
                 .opacity(isUnlocked ? 1.0 : 0.65)
                 .saturation(isUnlocked ? 1.0 : 0.5)

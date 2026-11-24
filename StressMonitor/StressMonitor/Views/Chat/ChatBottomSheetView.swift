@@ -143,9 +143,14 @@ struct ChatBottomSheetView: View {
     }
 
     private var headerAvatar: some View {
+        // Head crop on the teal chip in light mode; the soft disc shows
+        // behind it in dark mode, where the chip is clear.
         StressBuddyIllustration(
             mood: viewModel.companionMood,
-            size: 32
+            size: 40,
+            pose: .base,
+            crop: .head,
+            lightChip: true
         )
         .frame(width: 40, height: 40)
         .background(Circle().fill(Color.V2.Companion.ripple.opacity(0.18)))
@@ -269,7 +274,7 @@ struct ChatBottomSheetView: View {
                     if showsTypingDots {
                         ChatBubbleRow(isUser: false) {
                             ChatBubble(isUser: false) {
-                                ChatTypingDots(accessibilityLabel: "Ripple is typing")
+                                ChatTypingDots(accessibilityLabel: "Ripple is thinking", showsThinkingHead: true)
                             }
                         }
                     }
@@ -387,7 +392,8 @@ struct ChatBottomSheetView: View {
     private var unavailableView: some View {
         ScrollView {
             VStack(spacing: 14) {
-                StressBuddyIllustration(mood: .tired, size: 80)
+                // "Ripple is resting" below says the state.
+                StressBuddyIllustration(mood: .tired, size: 80, pose: .sleeping)
                     .frame(width: 112, height: 112)
                     .background(Circle().fill(Color.V2.Companion.ripple.opacity(0.18)))
                     .accessibilityHidden(true)

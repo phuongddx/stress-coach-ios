@@ -35,6 +35,22 @@ public enum RippleMood: String, CaseIterable, Sendable {
         }
     }
 
+    // MARK: - Ripple v2 Pose
+
+    /// The Ripple v2 drawing for this mood (spec §4.1 table).
+    var pose: RipplePose {
+        switch self {
+        case .serene:       return .base
+        case .relaxed:      return .relaxed
+        case .focused:      return .mild
+        case .happy:        return .mild
+        case .celebrating:  return .celebrating
+        case .worried:      return .elevated
+        case .determined:   return .high
+        case .tired:        return .sleeping
+        }
+    }
+
     /// VoiceOver-friendly description of the character's state.
     var accessibilityLabel: String {
         switch self {

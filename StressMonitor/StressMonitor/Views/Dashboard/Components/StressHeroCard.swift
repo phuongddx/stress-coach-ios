@@ -78,7 +78,8 @@ struct StressHeroCard: View {
     }
 
     private func companion(size: CGFloat) -> some View {
-        StressBuddyIllustration(mood: mood, size: size)
+        // Adjacent text already says the level, so the drawing stays hidden.
+        StressBuddyIllustration(mood: ambientMood, size: size, pose: pose, crop: .full)
             .frame(width: size, height: size)
             .accessibilityHidden(true)
     }
@@ -126,8 +127,22 @@ struct StressHeroCard: View {
 
     // MARK: - Helpers
 
-    private var mood: RippleMood {
-        hasData ? RippleMood.from(stressLevel: level) : .serene
+    /// Ripple v2 drawing: level pose from the category, `.base` with no data.
+    private var pose: RipplePose {
+        hasData ? RipplePose.from(category: category) : .base
+    }
+
+    /// Ambient animation only (breathe / fidget / shake / dizzy), keyed off the
+    /// same category so it follows the drawing. Reduce Motion holds it still.
+    private var ambientMood: RippleMood {
+        guard hasData else { return .serene }
+        switch category {
+        case .relaxed:  return .relaxed
+        case .mild:     return .focused
+        case .moderate: return .worried
+        case .high:     return .tired
+        case .severe:   return .determined
+        }
     }
 
     private var accessibilityLabel: String {

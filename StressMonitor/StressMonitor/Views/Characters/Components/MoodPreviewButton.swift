@@ -128,4 +128,14 @@ enum StressMoodCell: String, CaseIterable {
     }
 
     var label: String { category.displayName }
+
+    /// Ripple v2 pose previewed for this tier (the level table, not the
+    /// animation mood, so "Severe" shows the severe drawing).
+    var ripplePose: RipplePose { RipplePose.from(category: category) }
+
+    /// Ripple pose for a previewed mood: the tier cell's level pose when the
+    /// mood comes from the grid, else the mood's own pose.
+    static func ripplePose(for mood: RippleMood) -> RipplePose {
+        allCases.first { $0.mood == mood }?.ripplePose ?? mood.pose
+    }
 }

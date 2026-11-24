@@ -43,6 +43,10 @@ extension Color {
             static let zephyr = Color("V2Zephyr")
             static let lumi = Color("V2Lumi")
         }
+
+        /// Teal chip behind small Ripple v2 heads in light mode (#206A5D).
+        /// Clear in dark mode, where the suit already reads (12.3:1).
+        static let rippleChip = Color("V2RippleChip")
     }
 }
 

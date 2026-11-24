@@ -106,16 +106,31 @@ struct WidgetTierLabel: View {
 
 // MARK: - Companion
 
-/// The widget's companion face on a soft companion-tint disc. Decorative: the
-/// score and tier carry the meaning, so it is hidden from VoiceOver.
+/// The widget's Ripple v2 head on the companion disc. `nil` (no reading yet)
+/// shows the base pose. Decorative: the score and tier carry the meaning, so
+/// it is hidden from VoiceOver.
+///
+/// Light mode puts the head on a solid teal `#206A5D` chip, because the suit
+/// outline is too faint on the light surface (spec §4.3). Dark mode keeps the
+/// soft companion-tint disc.
 struct WidgetCompanionBadge: View {
-    let tier: WidgetStressTier
+    let category: StressCategory?
     var size: CGFloat = 44
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private static let lightChip = Color(hex: "206A5D")
+
+    private var discColor: Color {
+        if colorScheme == .light { return Self.lightChip }
+        let tier = category.map { WidgetStressTier.from(category: $0) } ?? .resting
+        return tier.accent.opacity(0.22)
+    }
+
     var body: some View {
-        WidgetCharacterFace(tier: tier, size: size * 0.86, showsRing: false)
+        WidgetCharacterFace(category: category, size: size * 0.86, showsRing: false)
             .frame(width: size, height: size)
-            .background(Circle().fill(tier.accent.opacity(0.22)))
+            .background(Circle().fill(discColor))
             .accessibilityHidden(true)
     }
 }

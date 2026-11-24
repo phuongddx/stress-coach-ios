@@ -4,8 +4,9 @@ import SwiftUI
 
 /// The five elemental companions from iOS Design System §11.
 ///
-/// Each companion is rendered as an inline SVG (drawn with SwiftUI shapes),
-/// never as an emoji.  Ripple (Water Otter) is the default and appears on
+/// Ripple is drawn from the Ripple v2 head assets (`Assets.xcassets/RippleV2`,
+/// picked by ``RipplePose``); the other companions are drawn with SwiftUI
+/// shapes. Never an emoji.  Ripple (Water Otter) is the default and appears on
 /// Home and in complications; the others are selectable as watch-face
 /// themes.  Hex values are the canonical DS character palette.
 enum CharacterCreature: String, CaseIterable, Codable, Sendable, Identifiable {
@@ -77,16 +78,17 @@ extension CharacterCreature {
 
 // MARK: - CharacterFaceView
 
-/// Renders one of the five elemental companions as an inline vector
-/// illustration.  Replaces the previous emoji-based face entirely.
+/// Renders one of the five elemental companions.
 ///
-/// The character's expression adapts to the current stress category:
-/// smile for `.relaxed` / `.mild`, neutral for `.moderate`, frown for
-/// `.high` / `.severe`.  An optional accent-coloured ring and radial halo
-/// can be drawn behind the character.
+/// Ripple shows the Ripple v2 head for the level
+/// (``RipplePose/from(category:)``; `nil` → asleep). The other companions
+/// adapt their expression to the stress category: smile for `.relaxed` /
+/// `.mild`, neutral for `.moderate`, frown for `.high` / `.severe`.  An
+/// optional accent-coloured ring and radial halo can be drawn behind the
+/// character.
 struct CharacterFaceView: View {
     let creature: CharacterCreature
-    /// `nil` renders a neutral face with no tier colour, for when there is no reading.
+    /// `nil` means no reading: Ripple sleeps, the others show a neutral face with no tier colour.
     var category: StressCategory? = .relaxed
     var size: CGFloat = 80
     var showsRing: Bool = false
@@ -138,6 +140,7 @@ struct CharacterFaceView: View {
     }
 
     private var accessibilityLabel: String {
+        if creature == .ripple { return RipplePose.from(category: category).accessibilityLabel }
         guard let category else { return "\(creature.displayName), no reading yet" }
         let mood: String
         switch category {
@@ -158,7 +161,10 @@ struct CharacterFaceView: View {
     @ViewBuilder
     private var characterBody: some View {
         switch creature {
-        case .ripple:  RippleOtter(size: size, category: category)
+        case .ripple:
+            Image(RipplePose.from(category: category).headAssetName)
+                .resizable()
+                .scaledToFit()
         case .blossom: BlossomSprite(size: size, category: category)
         case .ember:   EmberFox(size: size, category: category)
         case .zephyr:  ZephyrWisp(size: size, category: category)
@@ -190,55 +196,6 @@ private extension StressCategory {
 private extension Optional where Wrapped == StressCategory {
     var isFrowning: Bool { self?.isFrowning ?? false }
     var isSmiling: Bool { self?.isSmiling ?? false }
-}
-
-// MARK: - Ripple · Water Otter
-
-/// Inline vector otter — exact shapes from iOS Design System §11.
-/// Slate ink (#0A1929) features on a light muzzle (#E1F5FE).
-struct RippleOtter: View {
-    let size: CGFloat
-    let category: StressCategory?
-
-    private let fur    = Color(hex: "#4FC3F7")
-    private let deep   = Color(hex: "#0288D1")
-    private let muzzle = Color(hex: "#E1F5FE")
-    private let ink    = Color(hex: "#0A1929")
-
-    var body: some View {
-        let s = size / 100
-        return ZStack {
-            // Shadow ellipse under feet
-            Ellipse()
-                .fill(deep.opacity(0.18))
-                .frame(width: 64*s, height: 6*s)
-                .offset(y: 34*s)
-            // Feet
-            Ellipse().fill(fur).frame(width: 12*s, height: 6*s).offset(x: -12*s, y: 28*s)
-            Ellipse().fill(fur).frame(width: 12*s, height: 6*s).offset(x:  12*s, y: 28*s)
-            // Body
-            Ellipse().fill(fur).frame(width: 44*s, height: 40*s).offset(y: 0)
-            // Head
-            Ellipse().fill(fur).frame(width: 36*s, height: 32*s).offset(y: -24*s)
-            // Ears
-            Ellipse().fill(fur).frame(width: 12*s, height: 16*s).offset(x: -12*s, y: -32*s)
-            Ellipse().fill(fur).frame(width: 12*s, height: 16*s).offset(x:  12*s, y: -32*s)
-            Ellipse().fill(deep.opacity(0.4)).frame(width: 6*s, height: 8*s).offset(x: -12*s, y: -30*s)
-            Ellipse().fill(deep.opacity(0.4)).frame(width: 6*s, height: 8*s).offset(x:  12*s, y: -30*s)
-            // Muzzle
-            Ellipse().fill(muzzle).frame(width: 24*s, height: 18*s).offset(y: -20*s)
-            // Eyes
-            Circle().fill(ink).frame(width: 4.4*s, height: 4.4*s).offset(x: -6*s, y: -24*s)
-            Circle().fill(ink).frame(width: 4.4*s, height: 4.4*s).offset(x:  6*s, y: -24*s)
-            // Nose
-            Ellipse().fill(ink).frame(width: 3*s, height: 2*s).offset(y: -18*s)
-            // Mouth
-            MouthShape(smile: category.isSmiling, frown: category.isFrowning)
-                .stroke(ink, style: StrokeStyle(lineWidth: 1.2*s, lineCap: .round))
-                .frame(width: 12*s, height: 6*s)
-                .offset(y: -15*s)
-        }
-    }
 }
 
 // MARK: - Blossom · Forest Sprite

@@ -79,13 +79,15 @@ struct PurchaseSuccessView: View {
         return HStack(alignment: .bottom, spacing: 0) {
             if let first = ids.first {
                 CharacterAssetResolver.characterView(for: first, mood: .happy, size: 64)
+                    .accessibilityHidden(true)
             }
-            CharacterAssetResolver.characterView(for: "ripple", mood: .happy, size: 88)
+            // Ripple keeps its pose label ("Ripple, celebrating").
+            RippleV2Image(pose: .celebrating, crop: .full, size: 88)
             ForEach(ids.dropFirst(), id: \.self) { id in
                 CharacterAssetResolver.characterView(for: id, mood: .happy, size: 64)
+                    .accessibilityHidden(true)
             }
         }
-        .accessibilityHidden(true)
     }
 
     // MARK: - Header (Credit pack)

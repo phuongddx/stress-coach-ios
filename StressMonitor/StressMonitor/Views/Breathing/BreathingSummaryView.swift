@@ -77,9 +77,9 @@ struct BreathingSummaryView: View {
 
     private var hero: some View {
         VStack(spacing: 8) {
-            StressBuddyIllustration(mood: .happy, size: 96)
+            // Labelled by the pose ("Ripple, breathing slowly").
+            StressBuddyIllustration(mood: .happy, size: 96, pose: .breathing)
                 .frame(width: 96, height: 96)
-                .accessibilityHidden(true)
 
             Text("Nice and steady")
                 .font(.title.weight(.bold))
@@ -184,7 +184,7 @@ struct BreathingSummaryView: View {
     private var rippleNote: some View {
         V2Card(style: .tint) {
             HStack(alignment: .top, spacing: 12) {
-                StressBuddyIllustration(mood: .serene, size: 36)
+                StressBuddyIllustration(mood: .serene, size: 36, pose: .relaxed, crop: .head, lightChip: true)
                     .frame(width: 36, height: 36)
                     .accessibilityHidden(true)
 

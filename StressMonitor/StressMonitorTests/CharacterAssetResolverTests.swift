@@ -1,4 +1,5 @@
 import Testing
+import UIKit
 @testable import StressMonitor
 
 struct CharacterAssetResolverTests {
@@ -56,4 +57,29 @@ struct CharacterAssetResolverTests {
             }
         }
     }
+
+    @Test("Ripple and unknown ids render the Ripple v2 base pose")
+    func rippleResolvesToV2() {
+        #expect(CharacterAssetResolver.assetName(for: "ripple") == "ripple-v2-base")
+        #expect(CharacterAssetResolver.assetName(for: "unknown-id") == "ripple-v2-base")
+        #expect(CharacterAssetResolver.assetName(for: "ember") == "ember")
+    }
+
+    @Test("Legacy Ripple artwork is no longer in the bundle")
+    func legacyRippleAssetsRemoved() {
+        for name in ["ripple", "ripple-hero", "ripple_droplet_calm"] {
+            #expect(UIImage(named: name) == nil, "\(name) should be removed")
+        }
+    }
+
+    @Test("Ripple's droplet fallback skips the removed placeholder")
+    func rippleFallbackSkipsRemovedPlaceholder() {
+        let name = CharacterAssetResolver.resolvedAssetName(
+            characterId: "ripple",
+            evolution: .tidal,
+            mood: .worried
+        )
+        #expect(name != "ripple_droplet_calm")
+    }
 }
+

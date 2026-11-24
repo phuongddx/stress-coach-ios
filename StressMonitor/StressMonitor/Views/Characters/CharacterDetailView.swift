@@ -90,11 +90,14 @@ struct CharacterDetailView: View {
                     .fill(creature.element.v2Tint.opacity(0.22))
                     .frame(width: 180, height: 180)
 
+                // Ripple draws the previewed tier's level pose; other
+                // companions ignore `pose`.
                 StressBuddyIllustration(
                     characterId: creature.id,
                     evolution: unlock?.evolutionStage ?? .droplet,
                     mood: isUnlocked ? previewMood : .serene,
-                    size: 140
+                    size: 140,
+                    pose: isUnlocked ? StressMoodCell.ripplePose(for: previewMood) : .base
                 )
                 .opacity(isUnlocked ? 1 : 0.65)
                 .saturation(isUnlocked ? 1 : 0.5)

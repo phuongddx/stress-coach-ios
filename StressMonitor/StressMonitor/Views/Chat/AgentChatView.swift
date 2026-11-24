@@ -59,10 +59,10 @@ struct AgentChatView: View {
     private var emptyState: some View {
         ScrollView {
             VStack(spacing: 14) {
-                StressBuddyIllustration(mood: .happy, size: 80)
+                // Labelled by the pose ("Ripple, waving").
+                StressBuddyIllustration(mood: .happy, size: 80, pose: .mild)
                     .frame(width: 112, height: 112)
                     .background(Circle().fill(Color.V2.accentSoft))
-                    .accessibilityHidden(true)
 
                 Text("Ask the Health Coach")
                     .font(.title3.weight(.semibold))
@@ -127,8 +127,8 @@ struct AgentChatView: View {
 // MARK: - Message Bubble
 
 /// Single coach-chat bubble: user on `accent` to the right, assistant on
-/// `surface` to the left. An in-flight empty assistant reply shows the
-/// typing dots.
+/// `surface` to the left. An in-flight empty assistant reply shows Ripple's
+/// thinking head and the typing dots.
 private struct MessageBubble: View {
     let message: AgentMessage
     let isStreaming: Bool
@@ -139,7 +139,7 @@ private struct MessageBubble: View {
         ChatBubbleRow(isUser: isUser) {
             ChatBubble(isUser: isUser) {
                 if !isUser && message.text.isEmpty && isStreaming {
-                    ChatTypingDots(accessibilityLabel: "Coach is typing")
+                    ChatTypingDots(accessibilityLabel: "Ripple is thinking", showsThinkingHead: true)
                 } else {
                     Text(message.text)
                 }
