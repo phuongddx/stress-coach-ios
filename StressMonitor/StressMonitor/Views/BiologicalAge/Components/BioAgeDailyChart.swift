@@ -8,7 +8,7 @@ struct BioAgeDailyChart: View {
     let estimates: [DailyBioAgeEstimate]
     let chronologicalAge: Int
 
-    private let chartHeight: CGFloat = 120
+    @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 120
     private let barSpacing: CGFloat = 8
 
     var body: some View {
@@ -68,7 +68,7 @@ struct BioAgeDailyChart: View {
             path.addLine(to: CGPoint(x: size.width, y: y))
         }
         .stroke(
-            Color.Wellness.adaptiveSecondaryText.opacity(0.4),
+            Color.V2.ink3,
             style: StrokeStyle(lineWidth: 1, dash: [3, 3])
         )
         .allowsHitTesting(false)
@@ -76,8 +76,8 @@ struct BioAgeDailyChart: View {
 
     private func barTint(for estimatedAge: Int) -> Color {
         estimatedAge <= chronologicalAge
-            ? Color.primaryGreen.opacity(0.85)
-            : Color.stressColor(for: .high).opacity(0.85)
+            ? StressCategory.relaxed.fillColor
+            : StressCategory.high.fillColor
     }
 
     private func barHeight(for age: Int, in chartHeight: CGFloat) -> CGFloat {
@@ -115,7 +115,7 @@ struct BioAgeDailyChart: View {
                     path.addLine(to: CGPoint(x: 14, y: 0.5))
                 }
                 .stroke(
-                    Color.Wellness.adaptiveSecondaryText.opacity(0.4),
+                    Color.V2.ink3,
                     style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                 )
                 .frame(width: 14, height: 1)
@@ -124,9 +124,8 @@ struct BioAgeDailyChart: View {
                 Text("chronological \(chronologicalAge)")
             }
         }
-        .font(.system(size: 10, weight: .medium, design: .monospaced))
-        .tracking(0.4)
-        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+        .font(.v2Number(.caption2, weight: .medium))
+        .foregroundStyle(Color.V2.ink3)
     }
 
     private var middleEstimate: DailyBioAgeEstimate? {
@@ -161,5 +160,5 @@ struct BioAgeDailyChart: View {
     }
     return BioAgeDailyChart(estimates: estimates, chronologicalAge: 28)
         .padding()
-        .background(Color.Wellness.adaptiveBackground)
+        .background(Color.V2.bg)
 }
