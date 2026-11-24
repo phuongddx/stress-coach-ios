@@ -18,7 +18,8 @@
   <a href="https://apps.apple.com/app/id6778478266"><img src="https://img.shields.io/itunes/v/6778478266?label=App%20Store" alt="App Store version"></a>
 </p>
 
-> **Privacy by default.** HealthKit access is read-only and health data stays on your devices, with optional iCloud sync.
+> **Privacy by default.** HealthKit access is read-only and raw health samples stay on your devices, with optional iCloud sync.
+> If you consent to Health Sync, the app uploads one daily summary (average HRV, average heart rate and resting heart rate) to the Stress AI Coach server.
 > The AI coach receives only the derived stress context with each message, never raw HealthKit samples.
 
 **Status:** version 1.0.1 is live on the App Store; 1.1.0 is being prepared for submission. Stress AI Coach is a wellness app, not a medical device.
