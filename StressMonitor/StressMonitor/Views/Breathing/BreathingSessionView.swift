@@ -7,28 +7,67 @@ import SwiftUI
 ///   is off (Reduce Motion by default, or the in-session toggle), a ring that
 ///   fills one quarter per phase, with a note explaining why
 /// - Phase strip (In 4 / Hold 4 / Out 4 / Hold 4), "Cycle N of M", progress
-/// - End early / Skip cycle, the animation toggle and the haptics note
+/// - End early / Pause / Skip cycle, the animation toggle and the haptics note
+/// - iPhone Duo inner display: the guide and the controls on either side of
+///   the fold (see `FoldAwareSplit`)
 ///
 /// Spec reference: ui-v2-design/screens.js `S.session` (default and
 /// Reduce Motion). Timing, haptics and HRV capture live in
-/// `BreathingSessionViewModel` and are unchanged.
+/// `BreathingSessionViewModel`; the running session is kept by
+/// `SceneContinuity`.
 struct BreathingSessionView: View {
     @State private var viewModel: BreathingSessionViewModel?
     @State private var motionReduced = false
     @Environment(\.dismiss) private var dismiss
     @Environment(AppRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SceneContinuity.self) private var injectedContinuity: SceneContinuity?
+    /// Used only where no scene injects one (previews).
+    @State private var fallbackContinuity = SceneContinuity(liveActivity: nil)
+
+    /// The session lives in `SceneContinuity`, not in this view, so the
+    /// timer keeps running when the iPhone Duo folds or unfolds and this
+    /// screen is rebuilt for the other display.
+    private var continuity: SceneContinuity {
+        injectedContinuity ?? fallbackContinuity
+    }
 
     var body: some View {
-        GeometryReader { proxy in
-            ScrollView {
-                if let vm = viewModel {
-                    content(vm: vm)
-                        .frame(minHeight: proxy.size.height)
+        // Never empty: `onAppear` on an empty container does not fire, and
+        // the session is attached from there.
+        ZStack {
+            Color.V2.bg.ignoresSafeArea()
+            if let vm = viewModel {
+                switch DuoLayout.mode(for: horizontalSizeClass) {
+                case .singleColumn:
+                    GeometryReader { proxy in
+                        ScrollView {
+                            content(vm: vm)
+                                .frame(minHeight: proxy.size.height)
+                        }
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(DuoLayoutID.singleColumn)
+                case .twoColumns:
+                    // Duo inner display: the guide on one side of the fold,
+                    // everything to read and tap on the other. Along the
+                    // longer side, so the laptop pose puts the ring on the
+                    // top half and the controls on the bottom half.
+                    FoldAwareSplit(axis: nil) {
+                        arenaPane(vm: vm)
+                    } trailing: {
+                        ScrollView {
+                            controlPane(vm: vm)
+                        }
+                        .defaultScrollAnchor(.center, for: .alignment)
+                        .scrollBounceBehavior(.basedOnSize)
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier(DuoLayoutID.twoColumns)
                 }
             }
-            .scrollBounceBehavior(.basedOnSize)
         }
-        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationBarHidden(true)
         .onMotionDecision { decision in
@@ -36,19 +75,37 @@ struct BreathingSessionView: View {
             viewModel?.configureAnimation(motionReduced: decision)
         }
         .onAppear {
-            let vm = BreathingSessionViewModel()
-            vm.configureAnimation(motionReduced: motionReduced)
-            vm.startSession()
-            viewModel = vm
+            let reduced = motionReduced
+            viewModel = continuity.attachBreathing(configure: { vm in
+                vm.configureAnimation(motionReduced: reduced)
+            })
         }
         .onDisappear {
-            viewModel?.endSession()
+            continuity.detachBreathing()
+        }
+        .onChange(of: viewModel?.boxPhase) {
+            continuity.breathingDidChange()
+        }
+        .onChange(of: viewModel?.isPaused) {
+            continuity.breathingDidChange()
         }
         .onChange(of: viewModel?.completedResult) { _, result in
             if let result {
                 router.actionPath.append(Route.breathingSummary(result))
+                continuity.endBreathing()
             }
         }
+        .onChange(of: continuity.breathingSession == nil) { _, ended in
+            // Ended from the Live Activity: leave the screen too.
+            if ended, viewModel?.completedResult == nil {
+                dismiss()
+            }
+        }
+    }
+
+    private func endEarly() {
+        HapticManager.shared.buttonPress()
+        continuity.endBreathing()
     }
 
     // MARK: - Layout
@@ -78,6 +135,36 @@ struct BreathingSessionView: View {
                 .padding(.bottom, 16)
         }
         .padding(.horizontal, V2Metrics.margin)
+    }
+
+    /// Two columns: the guide, centred in its half.
+    private func arenaPane(vm: BreathingSessionViewModel) -> some View {
+        VStack(spacing: 16) {
+            arena(vm: vm)
+            if !vm.isAnimationEnabled {
+                ringNote
+                    .frame(maxWidth: 360)
+            }
+        }
+        .padding(.horizontal, V2Metrics.margin)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// Two columns: title, time, phase, progress and the controls.
+    private func controlPane(vm: BreathingSessionViewModel) -> some View {
+        VStack(spacing: 16) {
+            topRow(vm: vm)
+            VStack(spacing: 12) {
+                phaseStrip(vm: vm)
+                cycleLine(vm: vm)
+                progressBar(fraction: vm.sessionProgressFraction, animated: vm.isAnimationEnabled)
+            }
+            controls(vm: vm)
+        }
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.vertical, 16)
+        .frame(maxWidth: 520)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Top Row
@@ -227,17 +314,22 @@ struct BreathingSessionView: View {
 
     @ViewBuilder
     private func controlButtons(vm: BreathingSessionViewModel) -> some View {
-        Button(action: {
-            HapticManager.shared.buttonPress()
-            dismiss()
-        }) {
+        Button(action: endEarly) {
             Text("End early")
         }
         .buttonStyle(.v2(.secondary))
 
         Button(action: {
             HapticManager.shared.buttonPress()
-            vm.skipCycle()
+            vm.togglePause()
+        }) {
+            Label(vm.isPaused ? "Resume" : "Pause", systemImage: vm.isPaused ? "play.fill" : "pause.fill")
+        }
+        .buttonStyle(.v2(.secondary))
+
+        Button(action: {
+            HapticManager.shared.buttonPress()
+            continuity.skipBreathingCycle()
         }) {
             Text("Skip cycle")
         }

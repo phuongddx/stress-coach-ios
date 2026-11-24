@@ -121,6 +121,7 @@ Run on simulator with `-demo-mode` launch argument to cycle stress levels throug
 - **UI:** dual-code stress levels (color + icon/text), 44pt touch targets, `.accessibleDynamicType()`, `HapticManager` (`Views/Components/`), `Color.stressColor(for:)` (`Theme/Color+Extensions.swift`). Design system: `docs/design-guidelines*.md`.
 - **Float assertions:** use `accuracy:` (XCTest) / explicit tolerance comparisons.
 - **Comments:** none unless non-obvious business rules, external-library workarounds, or critical constraints.
+- **iPhone Duo (iOS 27.1 SDK):** layout follows `DuoLayout.mode(for: horizontalSizeClass)` — one column in compact width (any iPhone, the Duo outer display, a Split View half), two in regular width (Duo inner display). Never branch on device model, idiom or orientation. `FoldAwareSplit` (`Views/Shared/Duo/DuoLayout.swift`) puts the column gap on the fold via `reservedRegions(kind: .division, options: .includeInactive)`. Every 27.1 API sits behind both `#if canImport(SwiftUI, _version: 8.0.85)` (CI builds with Xcode 26.3, whose SDK lacks them) and `#available(iOS 27.1, *)` (deployment target 18.6). State that must survive fold/unfold (chat conversation + draft, the running breathing session) lives in `Navigation/SceneContinuity.swift`, not in views. The breathing Live Activity (`LiveActivity/`; `BreathingActivityShared.swift` is compiled into the widget too) is driven from `SceneContinuity`. Tests: `DuoLayoutTests`, `SceneContinuityTests`.
 
 ## Important Files
 

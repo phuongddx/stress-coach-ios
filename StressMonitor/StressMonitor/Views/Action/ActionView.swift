@@ -11,11 +11,27 @@ import SwiftData
 //   4. Move → MiniWalkView
 //   5. Reflect → Chat sheet ("Coming in the next update" when Chat is off)
 //   6. Today's habits: Hydration / Sunlight (Apple Health), Caffeine (stepper)
+//
+// iPhone Duo inner display (regular width): the list sits left of the fold
+// and Ripple chat sits inline on the right, replacing the sheet. With Chat
+// off, the list itself splits in two at the fold. The conversation and the
+// unsent draft live in `SceneContinuity`, so they survive folding.
 
 struct ActionView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(SceneContinuity.self) private var injectedContinuity: SceneContinuity?
     @State private var habitViewModel: HabitViewModel?
-    @State private var isChatPresented = false
+    /// Used only where no scene injects one (previews).
+    @State private var fallbackContinuity = SceneContinuity(liveActivity: nil)
+
+    private var continuity: SceneContinuity {
+        injectedContinuity ?? fallbackContinuity
+    }
+
+    private var layoutMode: DuoLayout.Mode {
+        DuoLayout.mode(for: horizontalSizeClass)
+    }
 
     /// Latest real reading from the shared Home-tab view model. Defaults to
     /// nil (no data) — the header, recommendation card, and chat context all
@@ -37,44 +53,119 @@ struct ActionView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                nowLine
-                RippleRecommendationCard(
-                    stressLevel: stressLevel,
-                    isChatAvailable: isChatAvailable,
-                    onTalkToRipple: { presentChat() }
+        content
+            .background(Color.V2.bg.ignoresSafeArea())
+            .accessibleDynamicType()
+            .navigationTitle("Action")
+            .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: chatSheetBinding) {
+                ChatSheetContainer(
+                    continuity: continuity,
+                    stressResult: stressResult,
+                    baseline: baseline,
+                    presentation: .sheet
                 )
-                breatheGroup
-                moveGroup
-                reflectGroup
-                habitsSection
             }
-            .padding(.horizontal, V2Metrics.margin)
-            .padding(.top, 4)
-            .padding(.bottom, 24)
-        }
-        .background(Color.V2.bg.ignoresSafeArea())
-        .accessibleDynamicType()
-        .navigationTitle("Action")
-        .navigationBarTitleDisplayMode(.large)
-        .sheet(isPresented: $isChatPresented) {
-            ChatBottomSheetView(stressResult: stressResult, baseline: baseline)
-        }
-        .onAppear {
-            if habitViewModel == nil {
-                habitViewModel = HabitViewModel(modelContext: modelContext)
-            } else {
-                habitViewModel?.loadToday()
+            .onChange(of: layoutMode) { _, mode in
+                // Folding shut mid-sentence: bring the chat back as a sheet
+                // so the draft is still in front of the person.
+                if mode == .singleColumn, isChatAvailable, !continuity.chatDraft.isEmpty {
+                    continuity.isChatRequested = true
+                }
             }
+            .onAppear {
+                if habitViewModel == nil {
+                    habitViewModel = HabitViewModel(modelContext: modelContext)
+                } else {
+                    habitViewModel?.loadToday()
+                }
+            }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch layoutMode {
+        case .singleColumn:
+            ScrollView {
+                column { primaryGroups; secondaryGroups }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.singleColumn)
+        case .twoColumns:
+            FoldAwareSplit {
+                ScrollView {
+                    column {
+                        primaryGroups
+                        if isChatAvailable { secondaryGroups }
+                    }
+                }
+            } trailing: {
+                if isChatAvailable {
+                    ChatSheetContainer(
+                        continuity: continuity,
+                        stressResult: stressResult,
+                        baseline: baseline,
+                        presentation: .pane
+                    )
+                } else {
+                    ScrollView {
+                        column { secondaryGroups }
+                    }
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.twoColumns)
         }
     }
 
+    private func column<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            content()
+        }
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.top, 4)
+        .padding(.bottom, 24)
+    }
+
+    @ViewBuilder
+    private var primaryGroups: some View {
+        nowLine
+        RippleRecommendationCard(
+            stressLevel: stressLevel,
+            isChatAvailable: isChatAvailable,
+            onTalkToRipple: { presentChat() }
+        )
+        breatheGroup
+        moveGroup
+    }
+
+    @ViewBuilder
+    private var secondaryGroups: some View {
+        reflectGroup
+        habitsSection
+    }
+
+    /// The sheet shows only in one column; in two columns the chat is
+    /// already on screen. Unfolding while the sheet is up hands the same
+    /// conversation to the pane without closing it.
+    private var chatSheetBinding: Binding<Bool> {
+        Binding(
+            get: { continuity.isChatRequested && layoutMode == .singleColumn },
+            set: { isPresented in
+                // Swipe to dismiss in one column means "close". A dismissal
+                // caused by unfolding is not.
+                if !isPresented, layoutMode == .singleColumn, continuity.isChatRequested {
+                    continuity.closeChat()
+                }
+            }
+        )
+    }
+
     /// Opens the Chat sheet only when Chat is available in this build;
-    /// otherwise no-op.
+    /// otherwise no-op. In two columns the chat is already beside the list.
     private func presentChat() {
         guard isChatAvailable else { return }
-        isChatPresented = true
+        continuity.isChatRequested = true
     }
 
     // MARK: - 1. Header
@@ -229,6 +320,38 @@ struct ActionView: View {
                 }
             }
             ActionGroupFooter(text: "Habits help Ripple spot what moves your score.")
+        }
+    }
+}
+
+// MARK: - Chat container
+
+/// Hosts the Action tab's chat as a sheet or as the inline pane, on the
+/// conversation kept by `SceneContinuity`. The view model is created on
+/// first appear rather than during a body update.
+private struct ChatSheetContainer: View {
+    let continuity: SceneContinuity
+    let stressResult: StressResult?
+    let baseline: PersonalBaseline?
+    let presentation: ChatBottomSheetView.Presentation
+
+    var body: some View {
+        @Bindable var continuity = continuity
+        Group {
+            if let viewModel = continuity.chatViewModel {
+                ChatBottomSheetView(
+                    viewModel: viewModel,
+                    draft: $continuity.chatDraft,
+                    presentation: presentation,
+                    onClose: { continuity.closeChat() }
+                )
+                .id(ObjectIdentifier(viewModel))
+            } else {
+                Color.V2.bg
+                    .onAppear {
+                        _ = continuity.chat(stressResult: stressResult, baseline: baseline)
+                    }
+            }
         }
     }
 }

@@ -16,6 +16,9 @@ struct MainTabView: View {
     // the whole tab hierarchy, like the paywall.
     @StateObject private var healthSync = HealthSyncService.shared
     @State private var showConsentSheet = false
+    /// State that has to survive the iPhone Duo folding and unfolding: the
+    /// chat conversation and draft, and the running breathing session.
+    @State private var continuity = SceneContinuity()
 
     // Per-tab navigation restoration (Axiom nav.md Pattern 6). `Route` is
     // Codable, so each path round-trips through `NavigationPath.CodableRepresentation`.
@@ -25,6 +28,7 @@ struct MainTabView: View {
     @SceneStorage("nav.trends")   private var trendsData: Data?
     @SceneStorage("nav.settings") private var settingsData: Data?
     @SceneStorage("nav.selectedTab") private var selectedTabData: Int?
+    @SceneStorage("chat.draft") private var chatDraftData = ""
     @State private var didRestore = false
 
     var body: some View {
@@ -89,6 +93,10 @@ struct MainTabView: View {
         }
         // UI V2: selected tab and system controls use the forest-green accent.
         .tint(Color.V2.accent)
+        .environment(continuity)
+        .onChange(of: continuity.chatDraft) { _, draft in
+            chatDraftData = draft
+        }
         .onChange(of: router.selectedTab) {
             HapticManager.shared.buttonPress()
             selectedTabData = router.selectedTab.rawValue
@@ -199,6 +207,7 @@ struct MainTabView: View {
         if let raw = selectedTabData, let tab = TabItem(rawValue: raw) {
             router.selectedTab = tab
         }
+        continuity.chatDraft = chatDraftData
     }
 }
 

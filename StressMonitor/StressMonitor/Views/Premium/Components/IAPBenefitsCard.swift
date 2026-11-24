@@ -29,7 +29,7 @@ struct IAPBenefitsCard: View {
         Benefit(
             icon: "face.smiling",
             title: "Plus companions",
-            description: "Unlock Ember, Zephyr and Lumi to join Ripple on your home screen."
+            description: "Unlock Ember and Zephyr to join Ripple on your home screen. Lumi unlocks with a 30-day streak."
         )
     ]
 
