@@ -20,6 +20,7 @@
 		A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */; };
 		39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */; };
 		4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */; };
+		A1B2C3D4E5F600000000F202 /* RipplePoseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F600000000F201 /* RipplePoseTests.swift */; };
 		DA29F198ABEE6D0043473586 /* HardcodedPricingGuardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */; };
 		C718B688EAA88E421EDDAA4A /* StoreKitConfigFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */; };
 		E21535775B493D041FBC5E94 /* CharacterCollectionViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C3984665BFD5D2C50B51BC /* CharacterCollectionViewModelTests.swift */; };
@@ -136,6 +137,7 @@
 		2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingPaywallGateTests.swift; path = StressMonitorTests/OnboardingPaywallGateTests.swift; sourceTree = "<group>"; };
 		0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendsRangeLockTests.swift; path = StressMonitorTests/TrendsRangeLockTests.swift; sourceTree = "<group>"; };
 		6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusLockedModifierTests.swift; path = StressMonitorTests/PlusLockedModifierTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F600000000F201 /* RipplePoseTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RipplePoseTests.swift; path = StressMonitorTests/RipplePoseTests.swift; sourceTree = "<group>"; };
 		EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusAccessTests.swift; path = StressMonitorTests/PlusAccessTests.swift; sourceTree = "<group>"; };
 		F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HardcodedPricingGuardTests.swift; path = StressMonitorTests/HardcodedPricingGuardTests.swift; sourceTree = "<group>"; };
 		EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoreKitConfigFileTests.swift; path = StressMonitorTests/StoreKitConfigFileTests.swift; sourceTree = "<group>"; };
@@ -339,6 +341,7 @@
 				0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */,
 				6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */,
 				EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */,
+				A1B2C3D4E5F600000000F201 /* RipplePoseTests.swift */,
 				F8D6C1AF5621B4E66B9F4594 /* HardcodedPricingGuardTests.swift */,
 				EE7D934F0E7B63DDC743E090 /* StoreKitConfigFileTests.swift */,
 				FF19921F5E82175704921949 /* StressContextPayloadTests.swift */,
@@ -585,6 +588,7 @@
 				A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */,
 				39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */,
 				4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */,
+				A1B2C3D4E5F600000000F202 /* RipplePoseTests.swift in Sources */,
 				DA29F198ABEE6D0043473586 /* HardcodedPricingGuardTests.swift in Sources */,
 				C718B688EAA88E421EDDAA4A /* StoreKitConfigFileTests.swift in Sources */,
 				19FF7CDE8F20585FB3F027EC /* StressContextPayloadTests.swift in Sources */,

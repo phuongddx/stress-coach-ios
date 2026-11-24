@@ -12,9 +12,9 @@ import SwiftUI
 ///
 /// ## Asset Catalog Structure
 /// ```
+/// Assets.xcassets/RippleV2/
+///   ripple-v2-<pose>.imageset, ripple-v2-<pose>-head.imageset (512 artboard)
 /// Assets.xcassets/Characters/
-///   ripple.imageset        (ripple.svg, 100×100 viewBox)
-///   ripple-hero.imageset   (ripple-hero.svg, 220×220 viewBox)
 ///   blossom.imageset       (blossom.svg, 100×100)
 ///   ember.imageset         (ember.svg, 100×100)
 ///   zephyr.imageset        (zephyr.svg, 100×100)
@@ -27,16 +27,20 @@ enum CharacterAssetCatalog {
 
     // MARK: - Asset Names
 
-    /// Character asset name in the Asset Catalog.
+    /// Character asset name in the Asset Catalog. Ripple (and the legacy
+    /// `ripple-hero` id) resolve to the Ripple v2 base pose.
     static func assetName(for characterId: String) -> String {
-        characterId.lowercased()
+        let id = characterId.lowercased()
+        switch id {
+        case "ripple", "ripple-hero": return RipplePose.base.assetName
+        default: return id
+        }
     }
 
-    /// Hero-size asset name (only Ripple has a dedicated 220×220 hero SVG;
-    /// other characters use the standard 100×100 at larger display sizes).
+    /// Hero-size asset name. Ripple v2 is a single 512 artboard, so the hero
+    /// and the standard asset are the same drawing.
     static func heroAssetName(for characterId: String) -> String {
-        let id = characterId.lowercased()
-        return id == "ripple" ? "ripple-hero" : id
+        assetName(for: characterId)
     }
 
     // MARK: - SwiftUI Image
@@ -48,7 +52,7 @@ enum CharacterAssetCatalog {
         Image(assetName(for: characterId))
     }
 
-    /// Hero-size character image (220×220 viewBox, only Ripple currently).
+    /// Hero-size character image.
     static func heroImage(for characterId: String) -> Image {
         Image(heroAssetName(for: characterId))
     }
