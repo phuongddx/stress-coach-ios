@@ -9,19 +9,15 @@ public enum StressCategory: String, CaseIterable, Codable, Sendable {
 
     // MARK: - Dual Coding: Color
 
-    /// Primary color for this stress category (WCAG AA compliant)
+    /// Tier text colour (UI V2): passes 4.5:1 on the V2 canvas and surfaces in
+    /// both appearances. Shapes, arcs and bars use `fillColor`.
     public var color: Color {
         switch self {
-        case .relaxed:
-            return Color(light: Color(hex: "#00A000"), dark: Color(hex: "#30D158"))
-        case .mild:
-            return Color(light: Color(hex: "#007AFF"), dark: Color(hex: "#0A84FF"))
-        case .moderate:
-            return Color(light: Color(hex: "#8A5A00"), dark: Color(hex: "#FFD60A"))
-        case .high:
-            return Color(light: Color(hex: "#B25400"), dark: Color(hex: "#FF9F0A"))
-        case .severe:
-            return Color(light: Color(hex: "#FF3B30"), dark: Color(hex: "#FF453A"))
+        case .relaxed: return Color("V2TierRelaxed")
+        case .mild: return Color("V2TierMild")
+        case .moderate: return Color("V2TierElevated")
+        case .high: return Color("V2TierHigh")
+        case .severe: return Color("V2TierSevere")
         }
     }
 
@@ -34,7 +30,7 @@ public enum StressCategory: String, CaseIterable, Codable, Sendable {
         case .mild: return "circle.fill"
         case .moderate: return "triangle.fill"
         case .high: return "square.fill"
-        case .severe: return "exclamationmark.octagon.fill"
+        case .severe: return "octagon.fill"
         }
     }
 

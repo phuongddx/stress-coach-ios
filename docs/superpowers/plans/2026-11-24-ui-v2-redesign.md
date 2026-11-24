@@ -33,7 +33,7 @@ All 38 rows are covered exactly once across phases 2–9.
 
 ## Tests
 
-- `ContrastComplianceTests`: V2 text tokens on `bg`/`surface` ≥ 4.5:1, tier text colours on `surface` ≥ 4.5:1, tier fills and `accent` on `surface` ≥ 3:1, `onAccent` on `accent` ≥ 4.5:1, both appearances (phase 1).
+- `ContrastComplianceTests` (phase 1, both appearances): V2 text tokens (`ink`, `ink2`, `ink3`, `accent`, `danger`) on `bg`/`surface`/`surface2` ≥ 4.5:1; tier text colours on `bg`/`surface` ≥ 4.5:1; `onFillColor` on each tier `fillColor` ≥ 4.5:1; `onAccent` on `accent`, `onLime` on `lime`, `plus` on `plusBg` ≥ 4.5:1. Tier fills are not asserted against `surface`: the light Relaxed and Elevated fills sit below 3:1 there by design, so a fill is never the only cue (shape and name always accompany it).
 - `StressCategoryAccessibilityTests`: every tier has a shape symbol and a distinct fill (phase 1).
 - `PlusLockedModifierTests`, `HardcodedPricingGuardTests`, `PaywallPriceMathTests`, `TrendsRangeLockTests` must stay green unchanged; they pin the logic this redesign must not move.
 - The repo has no snapshot or UI test target; screenshots are attached to PRs instead of adding a snapshot dependency.

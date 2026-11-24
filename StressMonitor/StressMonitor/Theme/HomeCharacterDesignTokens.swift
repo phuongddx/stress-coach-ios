@@ -36,27 +36,12 @@ enum HomeCharacterDesignTokens {
     static let darkCanvas = Color(hex: "#0A0A0F")
     static let darkCard = Color(hex: "#1A1A2E")
 
+    /// UI V2: flat paper canvas. Kept as a gradient type so call sites compile unchanged.
     static var homeBackground: LinearGradient {
-        LinearGradient(
-            colors: [
-                Ripple.light.opacity(0.32),
-                Color.Wellness.adaptiveBackground,
-                Blossom.primary.opacity(0.16)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        LinearGradient(colors: [Color.V2.bg, Color.V2.bg], startPoint: .top, endPoint: .bottom)
     }
 
     static var heroGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Ripple.primary.opacity(0.24),
-                Ripple.light.opacity(0.18),
-                Color.Wellness.adaptiveCardBackground
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        LinearGradient(colors: [Color.V2.surface, Color.V2.surface], startPoint: .top, endPoint: .bottom)
     }
 }
