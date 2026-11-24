@@ -8,14 +8,15 @@
 # Env:   GH_REPO (owner/name), GH_TOKEN, DRY_RUN=1 to only print the decision,
 #        MAX_ATTEMPT (default 3: the first run plus at most 2 re-runs).
 #
-# A job counts as "not run" when:
-#   - its annotations say "not acquired by Runner", or
-#   - it failed or was cancelled with no runner_name and was NOT cancelled by
-#     concurrency ("higher priority waiting request"), or
-#   - it is a result shim (_test.yml) that reported "upstream-not-run" because
-#     the macOS job it mirrors never ran.
-# Any other failed or cancelled job (it had a runner: a real build or test
-# failure, or a run cancelled by hand) blocks the re-run.
+# A job counts as "not run" (re-runnable) only when its annotations say
+# "not acquired by Runner". Two kinds of failed/cancelled jobs are neutral:
+#   - a result shim (_test.yml) that reported "upstream-not-run" because the
+#     macOS job it mirrors never ran, and
+#   - a job cancelled by concurrency ("higher priority waiting request").
+# Every other failed or cancelled job blocks the re-run: a real build or test
+# failure, or a run cancelled by hand. A job cancelled by hand while still
+# queued has no runner_name and no annotation, so a missing runner alone never
+# makes a job re-runnable.
 set -euo pipefail
 
 run_id=${1:?run id}
@@ -52,17 +53,17 @@ while IFS=$'\t' read -r id name conclusion runner; do
     say "- $name: no runner acquired"; not_run=$((not_run + 1))
   elif grep -q "^upstream-not-run|" <<<"$notes"; then
     say "- $name: mirrors a job that never ran"
-  elif [ -z "$runner" ] && [ "$conclusion" != "timed_out" ] && ! grep -q "higher priority waiting request" <<<"$notes"; then
-    say "- $name: $conclusion with no runner"; not_run=$((not_run + 1))
-  elif [ -z "$runner" ] && [ "$conclusion" = "cancelled" ]; then
+  elif [ "$conclusion" = "cancelled" ] && grep -q "higher priority waiting request" <<<"$notes"; then
     say "- $name: cancelled by concurrency"
+  elif [ -z "$runner" ]; then
+    say "- $name: $conclusion before getting a runner, without a runner-acquire note (cancelled by hand?)"; genuine=$((genuine + 1))
   else
     say "- $name: ran and ended $conclusion"; genuine=$((genuine + 1))
   fi
 done < <(jq -r '.[] | [.id, .name, (.conclusion // ""), (.runner_name // "")] | @tsv' <<<"$jobs")
 
 if [ "$genuine" -gt 0 ]; then
-  say "Run $run_id has $genuine job(s) that ran and failed or were cancelled: not re-running."
+  say "Run $run_id has $genuine job(s) that failed or were cancelled on purpose: not re-running."
   exit 0
 fi
 if [ "$not_run" -eq 0 ]; then
