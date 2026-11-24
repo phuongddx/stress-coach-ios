@@ -142,8 +142,8 @@ struct BreathingSessionView: View {
         .onDisappear {
             viewModel?.endSession()
         }
-        .onChange(of: viewModel?.sessionComplete ?? false) { _, completed in
-            if completed, let result = viewModel?.sessionResult {
+        .onChange(of: viewModel?.completedResult) { _, result in
+            if let result {
                 router.actionPath.append(Route.breathingSummary(result))
             }
         }
@@ -284,10 +284,6 @@ extension BreathingSessionViewModel {
     var sessionProgressFraction: Double {
         guard sessionDuration > 0 else { return 0 }
         return 1.0 - (remainingTime / sessionDuration)
-    }
-
-    var sessionComplete: Bool {
-        remainingTime <= 0
     }
 }
 

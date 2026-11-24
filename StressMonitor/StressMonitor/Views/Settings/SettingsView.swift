@@ -413,7 +413,7 @@ struct SettingsView: View {
                     setting: .haptics,
                     tint: .orange,
                     title: "Haptics",
-                    isOn: $hapticsEnabled
+                    isOn: hapticsEnabled
                 )
                 hairlineDivider
                 navRow(
@@ -791,7 +791,12 @@ struct SettingsView: View {
     @State private var healthAuthStatus: HKAuthorizationStatus = .notDetermined
     @State private var isRequestingHealthPermission = false
     @State private var showPermissionDeniedAlert = false
-    @State private var hapticsEnabled: Bool = !UserDefaults.standard.bool(forKey: "appearance.hapticsDisabled")
+    @AppStorage(HapticPreference.disabledKey) private var hapticsDisabled = false
+
+    /// The Haptics row reads "on", the stored flag is "disabled".
+    private var hapticsEnabled: Binding<Bool> {
+        Binding(get: { !hapticsDisabled }, set: { hapticsDisabled = !$0 })
+    }
 
     // MARK: - Health data sync (server-side consent)
 

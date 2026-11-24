@@ -6,7 +6,7 @@ import SwiftUI
 struct AppearanceSettingsView: View {
     @State private var appearance = AppearanceManager.shared
     @State private var largerText: Bool = UserDefaults.standard.bool(forKey: "appearance.largerText")
-    @State private var hapticsEnabled: Bool = !UserDefaults.standard.bool(forKey: "appearance.hapticsDisabled")
+    @State private var hapticsEnabled: Bool = HapticPreference.isEnabled()
 
     var body: some View {
         Form {
@@ -84,7 +84,7 @@ struct AppearanceSettingsView: View {
             }
             .tint(Color.primaryGreen)
             .onChange(of: hapticsEnabled) { _, newValue in
-                UserDefaults.standard.set(!newValue, forKey: "appearance.hapticsDisabled")
+                HapticPreference.setEnabled(newValue)
             }
         } header: {
             Text("Feedback")
