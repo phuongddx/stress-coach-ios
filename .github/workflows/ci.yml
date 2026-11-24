@@ -96,9 +96,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select Xcode ${{ env.XCODE_VERSION }}
+      - name: Select Xcode 27.x (prefer ${{ env.XCODE_VERSION }})
         run: |
-          sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+          # Prefer Xcode_${XCODE_VERSION}, else the newest stable 27.x. Runner
+          # images rotate Xcode builds and may ship only a beta (Xcode_27.3.app
+          # can be a symlink to Xcode_27.3_beta.app), so resolve links and skip
+          # beta names and beta build numbers (they end in a letter).
+          pick=""
+          for app in /Applications/Xcode_${XCODE_VERSION}.app $(ls -d /Applications/Xcode_27.*.app 2>/dev/null | sort -rV); do
+            real=$(cd "$app" 2>/dev/null && pwd -P) || continue
+            build=$(/usr/libexec/PlistBuddy -c "Print :ProductBuildVersion" "$real/Contents/version.plist" 2>/dev/null) || continue
+            case "$real$build" in *[Bb]eta*|*[a-z]) continue ;; esac
+            pick=$real; break
+          done
+          if [ -z "$pick" ]; then
+            echo "::error::No stable Xcode 27.x on this runner image"; ls -d /Applications/Xcode*; exit 1
+          fi
+          echo "Selected $pick (build $build)"
+          sudo xcode-select -s "$pick/Contents/Developer"
           xcodebuild -version
           ls /Applications | grep Xcode
           xcodebuild -showsdks | grep -E "iphoneos|watchos"
