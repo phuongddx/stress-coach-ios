@@ -17,12 +17,18 @@ struct DataManageView: View {
     @State private var snapshotCount = 0
 
     var body: some View {
-        Form {
-            recordsSection
-            exportSection
-            deleteSection
-            resetSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                recordsSection
+                exportSection
+                deleteSection
+                resetSection
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationTitle("Manage Data")
         .navigationBarTitleDisplayMode(.inline)
         .accessibleDynamicType()
@@ -58,14 +64,17 @@ struct DataManageView: View {
 
     // MARK: - Records
 
-    @ViewBuilder
     private var recordsSection: some View {
-        Section("Your data") {
-            HStack {
-                Text("Stress snapshots")
-                Spacer()
+        group("Your data") {
+            SettingsRowLabel(
+                icon: "waveform.path.ecg",
+                tint: Color.V2.accentSoft,
+                glyph: Color.V2.accent,
+                title: "Stress snapshots"
+            ) {
                 Text("\(snapshotCount)")
-                    .foregroundStyle(.secondary)
+                    .font(.v2Number(.body))
+                    .foregroundStyle(Color.V2.ink2)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(snapshotCount) stress snapshots stored")
@@ -75,85 +84,125 @@ struct DataManageView: View {
     // MARK: - Export
 
     private var exportSection: some View {
-        Section {
+        group("Export", footer: "Share a file via the iOS share sheet. Habits export is coming soon.") {
             Button {
                 router.settingsPath.append(Route.dataExport)
             } label: {
-                rowLabel(icon: "square.and.arrow.up", tint: Color.primaryBlue, title: "Export data", subtitle: "CSV or JSON, with date range")
+                rowLabel(
+                    icon: "square.and.arrow.up",
+                    tint: StressCategory.relaxed.fillColor,
+                    glyph: StressCategory.relaxed.onFillColor,
+                    title: "Export data",
+                    subtitle: "CSV or JSON, with date range"
+                )
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Export data. CSV or JSON, with date range")
-        } header: {
-            Text("Export")
-        } footer: {
-            Text("Share a file via the iOS share sheet. Habits export is coming soon.")
         }
     }
 
     // MARK: - Delete
 
     private var deleteSection: some View {
-        Section {
+        group("Danger zone", footer: "Deletions are permanent and cannot be undone. Export first if you want a copy.") {
             Button {
                 router.settingsPath.append(Route.dataDelete)
             } label: {
-                rowLabel(icon: "calendar.badge.minus", tint: .orange, title: "Delete by range", subtitle: "Remove snapshots from a window of time")
+                rowLabel(
+                    icon: "calendar.badge.minus",
+                    tint: Color.V2.dangerSoft,
+                    glyph: Color.V2.danger,
+                    title: "Delete by range",
+                    subtitle: "Remove snapshots from a window of time"
+                )
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Delete by range. Remove snapshots from a window of time")
+            ActionRowDivider()
             Button {
                 showingDeleteAll = true
             } label: {
-                rowLabel(icon: "trash", tint: Color.error, title: "Delete all snapshots", subtitle: "Removes every locally stored measurement")
+                rowLabel(
+                    icon: "trash.fill",
+                    tint: Color.V2.dangerSoft,
+                    glyph: Color.V2.danger,
+                    title: "Delete all snapshots",
+                    titleColor: Color.V2.danger,
+                    subtitle: "Removes every locally stored measurement"
+                )
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Delete all snapshots. Removes every locally stored measurement")
-        } header: {
-            Text("Delete")
-        } footer: {
-            Text("Deletions are permanent and cannot be undone.")
         }
     }
 
     // MARK: - Reset
 
     private var resetSection: some View {
-        Section {
+        group(nil, footer: "Factory reset also clears character unlocks and preferences.") {
             Button {
                 showingFactoryReset = true
             } label: {
-                rowLabel(icon: "arrow.counterclockwise.circle", tint: Color.error, title: "Factory reset", subtitle: "Wipe all data and return the app to first launch")
+                rowLabel(
+                    icon: "arrow.counterclockwise",
+                    tint: Color.V2.danger,
+                    glyph: Color.V2.onAccent,
+                    title: "Factory reset",
+                    titleColor: Color.V2.danger,
+                    subtitle: "Wipe all data and return the app to first launch"
+                )
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Factory reset. Wipe all data and return the app to first launch")
-        } footer: {
-            Text("Factory reset also clears character unlocks and preferences.")
         }
     }
 
-    // MARK: - Row helper
+    // MARK: - Layout helpers
 
-    private func rowLabel(icon: String, tint: Color, title: String, subtitle: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(tint)
-                .frame(width: 26)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                Text(subtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+    /// Header + inset grouped card + optional footnote (UI V2 `group()`).
+    private func group<Content: View>(
+        _ title: String?,
+        footer: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let rows = content()
+        return VStack(alignment: .leading, spacing: 6) {
+            if let title {
+                ActionGroupHeader(title: title)
             }
-            Spacer()
-            Image(systemName: AppIconSystem.Nav.forward.sfSymbol)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.5))
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    rows
+                }
+            }
+            if let footer {
+                ActionGroupFooter(text: footer)
+            }
         }
-        .contentShape(Rectangle())
-        .padding(.vertical, 4)
+    }
+
+    private func rowLabel(
+        icon: String,
+        tint: Color,
+        glyph: Color,
+        title: String,
+        titleColor: Color = Color.V2.ink,
+        subtitle: String
+    ) -> some View {
+        SettingsRowLabel(
+            icon: icon,
+            tint: tint,
+            glyph: glyph,
+            title: title,
+            titleColor: titleColor,
+            subtitle: subtitle
+        ) {
+            ActionRowChevron()
+        }
     }
 
     // MARK: - Actions

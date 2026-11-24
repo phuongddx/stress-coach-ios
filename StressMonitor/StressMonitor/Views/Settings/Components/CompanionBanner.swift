@@ -1,54 +1,47 @@
 import SwiftUI
 
-/// Active-companion banner showing the currently selected Ripple character with a "Switch" link
-/// to the character collection.
+/// Active-companion card (UI V2): the selected Ripple character on a soft
+/// tile, an "Active companion" eyebrow, the name, and a "Switch" link to the
+/// character collection. Character art is unchanged.
 struct CompanionBanner: View {
     var companionName: String
     var companionSubtitle: String
     var mood: RippleMood = .serene
     var onSwitch: (() -> Void)? = nil
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        SettingsCard {
-            HStack(spacing: 14) {
+        SettingsCard(padding: 14) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+                : AnyLayout(HStackLayout(spacing: 14))
+            layout {
                 ZStack {
-                    Circle()
-                        .fill(HomeCharacterDesignTokens.Ripple.primary.opacity(0.14))
+                    RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                        .fill(Color.V2.accentSoft)
                     StressBuddyIllustration(mood: mood, size: 44)
                 }
                 .frame(width: 60, height: 60)
                 .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("ACTIVE COMPANION")
-                        .font(.system(size: 10, weight: .heavy, design: .rounded))
-                        .tracking(0.8)
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                    Text("Active companion")
+                        .v2Eyebrow()
 
-                    HStack(spacing: 6) {
-                        Text(companionName)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-                        if !companionSubtitle.isEmpty {
-                            Text("· \(companionSubtitle)")
-                                .font(.system(size: 13, weight: .regular))
-                                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                        }
-                    }
+                    Text(companionSubtitle.isEmpty ? companionName : "\(companionName) · \(companionSubtitle)")
+                        .font(.headline)
+                        .foregroundStyle(Color.V2.ink)
                 }
-
-                Spacer(minLength: 8)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
                     HapticManager.shared.buttonPress()
                     onSwitch?()
                 } label: {
                     Text("Switch")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
                 }
-                .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+                .buttonStyle(.v2(.secondary, compact: true, fullWidth: false))
                 .accessibilityLabel("Switch active companion")
             }
             .accessibilityElement(children: .combine)
@@ -59,5 +52,5 @@ struct CompanionBanner: View {
 #Preview {
     CompanionBanner(companionName: "Ripple", companionSubtitle: "Water Otter")
         .padding()
-        .background(Color.appBackground)
+        .background(Color.V2.bg)
 }

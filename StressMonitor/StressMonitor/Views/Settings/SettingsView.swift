@@ -33,33 +33,32 @@ struct SettingsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 22) {
-                meHeroSection
-                companionBannerSection
-                sectionLabel("Companion")
-                companionGroupSection
-                sectionLabel("Sync & devices")
-                syncDevicesSection
-                sectionLabel("Habits & tracking")
-                habitsSection
-                sectionLabel("Notifications")
+            VStack(alignment: .leading, spacing: 20) {
+                VStack(spacing: 12) {
+                    meHeroSection
+                    companionBannerSection
+                    if isHealthOff {
+                        healthOffBanner
+                    }
+                }
+                plusSection
+                healthDevicesSection
+                accountSection
+                coachSection
                 notificationsSection
-                sectionLabel("Preferences")
+                habitsSection
                 preferencesSection
-                sectionLabel("AI Coach")
-                aiCoachSection
-                sectionLabel("Data & support")
                 dataSupportSection
                 versionFooter
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, V2Metrics.margin)
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .background(Color.Wellness.adaptiveBackground)
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationTitle("Settings")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
         .alert("Delete your account?", isPresented: $showDeleteAccountConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("Delete Account", role: .destructive) {
@@ -142,16 +141,6 @@ struct SettingsView: View {
         }
     }
 
-    private func sectionLabel(_ title: String) -> some View {
-        Text(title.uppercased())
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .tracking(0.8)
-            .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.7))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, -8)
-            .accessibilityAddTraits(.isHeader)
-    }
-
     // MARK: - 1. Me-hero
 
     /// Nil while purchases are postponed so `MeHeroCard` drops the PLUS pill.
@@ -192,284 +181,219 @@ struct SettingsView: View {
         )
     }
 
-    // MARK: - 3. Companion group
+    // MARK: - 2b. Health-off banner
 
-    private var companionGroupSection: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                navRow(
-                    icon: AppIconSystem.Setting.characters.sfSymbol,
-                    setting: .characters,
-                    tint: HomeCharacterDesignTokens.Ripple.deep,
-                    title: "Characters",
-                    value: "\(unlockedCharacters.count) of \(CharacterCreature.offeredCharacters.count)",
-                    destination: .characters
-                )
-                hairlineDivider
-                navRow(
-                    icon: AppIconSystem.Setting.rippleCoach.sfSymbol,
-                    setting: .rippleCoach,
-                    tint: .settingsIconPurple,
-                    title: "Ripple Coach",
-                    value: CreditBalanceFormatter.chatRowValue(
-                        available: ChatAvailability.current.isAvailable,
-                        balance: creditService.balance
-                    ),
-                    action: {
-                        guard ChatAvailability.current.isAvailable else { return }
-                        showChatSheet = true
-                    }
-                )
-            }
-        }
+    /// The only "Health is off" signal the screen already has: HealthKit
+    /// reports sharing denied for HRV (the Apple Health row reads "Enable"
+    /// and a re-request raises the "Health Access Needed" alert).
+    private var isHealthOff: Bool {
+        healthAuthStatus == .sharingDenied
     }
 
-    // MARK: - 4. Sync & devices
-
-    private var syncDevicesSection: some View {
-        // Card split out so the wrapper can add the consent-failure
-        // footnote — same optimistic-then-revert shape as aiCoachSection.
-        VStack(spacing: 6) {
-            syncDevicesCard
-            if let healthSyncError {
-                Text(healthSyncError)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.error)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-
-    private var syncDevicesCard: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                navRow(
-                    icon: AppIconSystem.Setting.appleHealth.sfSymbol,
-                    setting: .appleHealth,
-                    tint: .primaryGreen,
-                    title: "Apple Health",
-                    value: healthStatusText,
-                    action: healthAuthStatus == .sharingAuthorized ? nil : { requestHealthPermission() }
-                )
-                hairlineDivider
-                toggleRow(
-                    icon: AppIconSystem.Setting.dailySummary.sfSymbol,
-                    setting: .dailySummary,
-                    tint: .primaryGreen,
-                    title: "Health Data Sync",
-                    isOn: healthSyncToggleBinding
-                )
-                if FeatureFlags.agentChatEnabled {
-                    hairlineDivider
-                    navRow(
-                        icon: AppIconSystem.Setting.rippleCoach.sfSymbol,
-                        setting: .rippleCoach,
-                        tint: .settingsIconPurple,
-                        title: "Health Coach",
-                        value: "New",
-                        destination: .agentChat
-                    )
+    private var healthOffBanner: some View {
+        HStack(alignment: .top, spacing: 12) {
+            SettingsIconView(
+                systemName: "heart.slash.fill",
+                color: Color.V2.dangerSoft,
+                foreground: Color.V2.danger
+            )
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Health access is off")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                Text("Your score can't update without HRV and heart rate.")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Turn on in Health") {
+                    HapticManager.shared.buttonPress()
+                    requestHealthPermission()
                 }
-                hairlineDivider
+                .buttonStyle(.v2(.secondary, compact: true, fullWidth: false))
+                .padding(.top, 4)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(V2Metrics.margin)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
+                .fill(Color.V2.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
+                .strokeBorder(Color.V2.danger.opacity(0.35), lineWidth: 1)
+        )
+    }
+
+    // MARK: - 3. Plus
+
+    /// Same row, same logic as before: shown only while purchases are on;
+    /// Plus members open Apple's manage-subscription sheet, everyone else
+    /// the paywall (`plusTapped`).
+    @ViewBuilder
+    private var plusSection: some View {
+        if PurchaseAvailability.isEnabled {
+            let isPremium = PremiumState.shared.isPremiumUser
+            group("Plus") {
                 navRow(
-                    icon: "apple.logo",
-                    tint: .settingsRippleBlue,
-                    title: "Sign in with Apple",
-                    value: accountViewModel.linkedEmail ?? "Link account",
-                    action: signInWithAppleTapped
-                )
-                hairlineDivider
-                navRow(
-                    icon: "g.circle",
-                    tint: .settingsRippleBlue,
-                    title: "Sign in with Google",
-                    value: accountViewModel.linkedEmail ?? "Link account",
-                    action: signInWithGoogleTapped
-                )
-                hairlineDivider
-                navRow(
-                    icon: "person.crop.circle.badge.xmark",
-                    tint: Color.error,
-                    title: "Delete Account",
-                    value: accountViewModel.isDeletingAccount ? "Deleting…" : nil,
-                    valueTint: Color.error,
-                    action: { showDeleteAccountConfirm = true }
-                )
-                hairlineDivider
-                navRow(
-                    icon: AppIconSystem.Setting.appleWatch.sfSymbol,
-                    setting: .appleWatch,
-                    tint: .settingsRippleBlue,
-                    title: "Apple Watch",
-                    value: watchStatusText,
-                    destination: .watchFace
-                )
-                hairlineDivider
-                navRow(
-                    icon: AppIconSystem.Setting.biologicalAge.sfSymbol,
-                    setting: .biologicalAge,
-                    tint: .primaryGreen,
-                    title: "Biological Age",
-                    value: bioAgeText,
-                    destination: .bioAge
+                    icon: AppIconSystem.Setting.stressMonitorPlus.sfSymbol,
+                    setting: .stressMonitorPlus,
+                    tint: Color.V2.plusBg,
+                    glyph: Color.V2.plus,
+                    title: isPremium ? "Manage subscription" : "StressMonitor Plus",
+                    value: isPremium
+                        ? "Active"
+                        : CreditBalanceFormatter.plusRowValue(creditService.balance),
+                    valueTint: Color.V2.plus,
+                    action: plusTapped
                 )
             }
         }
     }
 
-    // MARK: - 5. Habits & tracking
+    // MARK: - 4. Health & devices
 
-    private var habitsSection: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                if let habitVM = habitViewModel {
-                    ForEach(Array(HabitType.allCases.enumerated()), id: \.element.id) { index, type in
-                        if let habit = habitVM.habit(for: type) {
-                            HabitLogRow(habit: habit) {
-                                habitVM.logManual(type)
-                            }
-                            if index < HabitType.allCases.count - 1 {
-                                hairlineDivider
-                            }
-                        }
-                    }
-                } else {
-                    ForEach(Array(HabitType.allCases.enumerated()), id: \.element.id) { index, _ in
-                        HabitLogRow(habit: Habit(type: HabitType.allCases[index]))
-                        if index < HabitType.allCases.count - 1 {
-                            hairlineDivider
-                        }
-                    }
-                }
-            }
+    private var healthDevicesSection: some View {
+        group("Health & devices", footer: healthSyncError, footerIsError: true) {
+            navRow(
+                icon: AppIconSystem.Setting.appleHealth.sfSymbol,
+                setting: .appleHealth,
+                tint: StressCategory.high.fillColor,
+                glyph: StressCategory.high.onFillColor,
+                title: "Apple Health",
+                value: healthStatusText,
+                action: healthAuthStatus == .sharingAuthorized ? nil : { requestHealthPermission() }
+            )
+            ActionRowDivider()
+            toggleRow(
+                icon: "checkmark.shield.fill",
+                tint: StressCategory.relaxed.fillColor,
+                glyph: StressCategory.relaxed.onFillColor,
+                title: "Health Data Sync",
+                isOn: healthSyncToggleBinding
+            )
+            ActionRowDivider()
+            navRow(
+                icon: AppIconSystem.Setting.appleWatch.sfSymbol,
+                setting: .appleWatch,
+                tint: Color.V2.ink2,
+                glyph: Color.V2.surface,
+                title: "Apple Watch",
+                value: watchStatusText,
+                destination: .watchFace
+            )
+            ActionRowDivider()
+            navRow(
+                icon: AppIconSystem.Setting.biologicalAge.sfSymbol,
+                setting: .biologicalAge,
+                tint: Color.V2.Companion.lumi,
+                glyph: Color.V2.onAccent,
+                title: "Biological Age",
+                value: bioAgeText,
+                destination: .bioAge
+            )
         }
     }
 
-    // MARK: - 6. Notifications
+    // MARK: - 5. Account
 
-    private var notificationsSection: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                toggleRow(
-                    icon: AppIconSystem.Setting.stressAlerts.sfSymbol,
-                    setting: .stressAlerts,
-                    tint: .settingsIconPurple,
-                    title: "Stress alerts",
-                    isOn: $viewModel.notificationSettings.stressAlertsEnabled
-                )
-                hairlineDivider
-                toggleRow(
-                    icon: AppIconSystem.Setting.waterReminder.sfSymbol,
-                    setting: .waterReminder,
-                    tint: .settingsRippleBlue,
-                    title: "Water reminder",
-                    isOn: $viewModel.notificationSettings.waterReminderEnabled
-                )
-                hairlineDivider
-                toggleRow(
-                    icon: AppIconSystem.Setting.dailySummary.sfSymbol,
-                    setting: .dailySummary,
-                    tint: Color(hex: "#FE9901"),
-                    title: "Daily summary",
-                    isOn: $viewModel.notificationSettings.dailySummaryEnabled
-                )
-            }
-        }
-        .onChange(of: viewModel.notificationSettings.stressAlertsEnabled) { _, _ in viewModel.notificationSettings.persist() }
-        .onChange(of: viewModel.notificationSettings.waterReminderEnabled) { _, _ in viewModel.notificationSettings.persist() }
-        .onChange(of: viewModel.notificationSettings.dailySummaryEnabled) { _, _ in viewModel.notificationSettings.persist() }
-    }
-
-    // MARK: - 7. Preferences
-
-    private var preferencesSection: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                if PurchaseAvailability.isEnabled {
-                    navRow(
-                        icon: AppIconSystem.Setting.stressMonitorPlus.sfSymbol,
-                        setting: .stressMonitorPlus,
-                        tint: .premiumGold,
-                        title: "StressMonitor Plus",
-                        value: PremiumState.shared.isPremiumUser
-                            ? "Active"
-                            : CreditBalanceFormatter.plusRowValue(creditService.balance),
-                        valueTint: .premiumGold,
-                        action: plusTapped
-                    )
-                    hairlineDivider
-                }
-                navRow(
-                    icon: AppIconSystem.Setting.appearance.sfSymbol,
-                    setting: .appearance,
-                    tint: Color.Wellness.adaptiveSecondaryText,
-                    title: "Appearance",
-                    value: appearanceLabel,
-                    destination: .appearance
-                )
-                hairlineDivider
-                toggleRow(
-                    icon: AppIconSystem.Setting.haptics.sfSymbol,
-                    setting: .haptics,
-                    tint: .orange,
-                    title: "Haptics",
-                    isOn: $hapticsEnabled
-                )
-                hairlineDivider
-                navRow(
-                    icon: "rectangle.3.group.fill",
-                    tint: .settingsIconPurple,
-                    title: "Home screen widgets",
-                    value: "3 sizes",
-                    destination: .about
-                )
-            }
+    private var accountSection: some View {
+        group("Account") {
+            navRow(
+                icon: "apple.logo",
+                tint: Color.V2.ink,
+                glyph: Color.V2.surface,
+                title: "Sign in with Apple",
+                value: accountViewModel.linkedEmail ?? "Link account",
+                action: signInWithAppleTapped
+            )
+            ActionRowDivider()
+            navRow(
+                icon: "g.circle",
+                tint: Color.V2.surface3,
+                glyph: Color.V2.ink,
+                title: "Sign in with Google",
+                value: accountViewModel.linkedEmail ?? "Link account",
+                action: signInWithGoogleTapped
+            )
+            ActionRowDivider()
+            navRow(
+                icon: "person.crop.circle.badge.xmark",
+                tint: Color.V2.dangerSoft,
+                glyph: Color.V2.danger,
+                title: "Delete Account",
+                titleColor: Color.V2.danger,
+                value: accountViewModel.isDeletingAccount ? "Deleting…" : nil,
+                valueTint: Color.V2.danger,
+                action: { showDeleteAccountConfirm = true }
+            )
         }
     }
 
-    // MARK: - 7b. AI Coach (server-synced preference pair)
+    // MARK: - 6. Coach (Ripple Coach, Health Coach, AI Coach preferences)
 
     /// Language + coaching-style pickers riding `PreferencesService`. The
     /// closed option sets mirror the backend's accepted vocabulary; a current
     /// value outside the set still displays (the row text comes from state,
     /// not the option list). A failed PUT reverts inside the service — the
     /// footnote under the card is the user-facing signal.
-    private var aiCoachSection: some View {
-        VStack(spacing: 6) {
-            SettingsCard {
-                VStack(spacing: 0) {
-                    aiCoachPickerRow(
-                        icon: "globe",
-                        tint: .settingsRippleBlue,
-                        title: "Language",
-                        currentValue: preferencesService.language,
-                        options: [("en", "English"), ("vi", "Tiếng Việt")],
-                        pickerLabel: "AI Coach language"
-                    ) { newValue in
-                        Task { await preferencesService.update(language: newValue) }
-                    }
-                    hairlineDivider
-                    aiCoachPickerRow(
-                        icon: "text.bubble.fill",
-                        tint: .settingsIconPurple,
-                        title: "Coaching Style",
-                        currentValue: preferencesService.coachingStyle,
-                        options: [
-                            ("supportive", "Supportive"),
-                            ("direct", "Direct"),
-                            ("educational", "Educational")
-                        ],
-                        pickerLabel: "AI Coach coaching style"
-                    ) { newValue in
-                        Task { await preferencesService.update(coachingStyle: newValue) }
-                    }
+    private var coachSection: some View {
+        group("Coach", footer: preferencesService.errorMessage, footerIsError: true) {
+            navRow(
+                icon: AppIconSystem.Setting.rippleCoach.sfSymbol,
+                setting: .rippleCoach,
+                tint: Color.V2.Companion.ripple,
+                glyph: Color.V2.onAccent,
+                title: "Ripple Coach",
+                value: CreditBalanceFormatter.chatRowValue(
+                    available: ChatAvailability.current.isAvailable,
+                    balance: creditService.balance
+                ),
+                action: {
+                    guard ChatAvailability.current.isAvailable else { return }
+                    showChatSheet = true
                 }
+            )
+            if FeatureFlags.agentChatEnabled {
+                ActionRowDivider()
+                navRow(
+                    icon: AppIconSystem.Setting.rippleCoach.sfSymbol,
+                    setting: .rippleCoach,
+                    tint: Color.V2.Companion.zephyr,
+                    glyph: Color.V2.onAccent,
+                    title: "Health Coach",
+                    value: "New",
+                    destination: .agentChat
+                )
             }
-            if let message = preferencesService.errorMessage {
-                Text(message)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.error)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ActionRowDivider()
+            aiCoachPickerRow(
+                icon: "globe",
+                tint: Color.V2.accentSoft,
+                glyph: Color.V2.accent,
+                title: "Language",
+                currentValue: preferencesService.language,
+                options: [("en", "English"), ("vi", "Tiếng Việt")],
+                pickerLabel: "AI Coach language"
+            ) { newValue in
+                Task { await preferencesService.update(language: newValue) }
+            }
+            ActionRowDivider()
+            aiCoachPickerRow(
+                icon: "text.bubble.fill",
+                tint: Color.V2.accentSoft,
+                glyph: Color.V2.accent,
+                title: "Coaching Style",
+                currentValue: preferencesService.coachingStyle,
+                options: [
+                    ("supportive", "Supportive"),
+                    ("direct", "Direct"),
+                    ("educational", "Educational")
+                ],
+                pickerLabel: "AI Coach coaching style"
+            ) { newValue in
+                Task { await preferencesService.update(coachingStyle: newValue) }
             }
         }
     }
@@ -477,24 +401,20 @@ struct SettingsView: View {
     private func aiCoachPickerRow(
         icon: String,
         tint: Color,
+        glyph: Color,
         title: String,
         currentValue: String,
         options: [(raw: String, label: String)],
         pickerLabel: String,
         onChange: @escaping (String) -> Void
     ) -> some View {
-        HStack(spacing: 12) {
-            iconBadge(systemName: icon, tint: tint)
-            Text(title)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            if !options.contains(where: { $0.raw == currentValue }) {
-                Text(currentValue.capitalized)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            }
+        SettingsRowLabel(
+            icon: icon,
+            tint: tint,
+            glyph: glyph,
+            title: title,
+            value: options.contains(where: { $0.raw == currentValue }) ? nil : currentValue.capitalized
+        ) {
             Picker(title, selection: Binding(
                 get: { currentValue },
                 set: { onChange($0) }
@@ -505,58 +425,166 @@ struct SettingsView: View {
             }
             .pickerStyle(.menu)
             .labelsHidden()
-            .tint(Color.Wellness.adaptiveSecondaryText)
-            .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+            .tint(Color.V2.ink2)
+            .frame(minHeight: V2Metrics.minTouchTarget)
             .accessibilityLabel(pickerLabel)
         }
-        .padding(.vertical, 10)
     }
 
-    // MARK: - 8. Data & support
+    // MARK: - 7. Notifications
 
-    private var dataSupportSection: some View {
-        SettingsCard {
-            VStack(spacing: 0) {
-                navRow(
-                    icon: AppIconSystem.Setting.exportData.sfSymbol,
-                    setting: .exportData,
-                    tint: .primaryGreen,
-                    title: "Export data",
-                    destination: .dataExport
-                )
-                hairlineDivider
-                navRow(
-                    icon: AppIconSystem.Setting.manageData.sfSymbol,
-                    setting: .manageData,
-                    tint: Color.error,
-                    title: "Manage data",
-                    destination: .dataManage
-                )
-                hairlineDivider
-                navRow(
-                    icon: AppIconSystem.Setting.helpPrivacy.sfSymbol,
-                    setting: .helpPrivacy,
-                    tint: Color.Wellness.adaptiveSecondaryText,
-                    title: "Help & privacy",
-                    destination: .about
-                )
-                hairlineDivider
-                navRow(
-                    icon: "books.vertical",
-                    tint: HomeCharacterDesignTokens.Ripple.deep,
-                    title: "Science & sources",
-                    destination: .scienceSources(topic: nil)
-                )
+    private var notificationsSection: some View {
+        group("Notifications") {
+            toggleRow(
+                icon: AppIconSystem.Setting.stressAlerts.sfSymbol,
+                setting: .stressAlerts,
+                tint: StressCategory.moderate.fillColor,
+                glyph: StressCategory.moderate.onFillColor,
+                title: "Stress alerts",
+                isOn: $viewModel.notificationSettings.stressAlertsEnabled
+            )
+            ActionRowDivider()
+            toggleRow(
+                icon: AppIconSystem.Setting.waterReminder.sfSymbol,
+                setting: .waterReminder,
+                tint: Color.V2.Companion.ripple,
+                glyph: Color.V2.onAccent,
+                title: "Water reminder",
+                isOn: $viewModel.notificationSettings.waterReminderEnabled
+            )
+            ActionRowDivider()
+            toggleRow(
+                icon: AppIconSystem.Setting.dailySummary.sfSymbol,
+                setting: .dailySummary,
+                tint: StressCategory.mild.fillColor,
+                glyph: StressCategory.mild.onFillColor,
+                title: "Daily summary",
+                isOn: $viewModel.notificationSettings.dailySummaryEnabled
+            )
+        }
+        .onChange(of: viewModel.notificationSettings.stressAlertsEnabled) { _, _ in viewModel.notificationSettings.persist() }
+        .onChange(of: viewModel.notificationSettings.waterReminderEnabled) { _, _ in viewModel.notificationSettings.persist() }
+        .onChange(of: viewModel.notificationSettings.dailySummaryEnabled) { _, _ in viewModel.notificationSettings.persist() }
+    }
+
+    // MARK: - 8. Habits & tracking
+
+    private var habitsSection: some View {
+        group("Habits & tracking") {
+            if let habitVM = habitViewModel {
+                ForEach(Array(HabitType.allCases.enumerated()), id: \.element.id) { index, type in
+                    if let habit = habitVM.habit(for: type) {
+                        if index > 0 { ActionRowDivider() }
+                        HabitLogRow(habit: habit) {
+                            habitVM.logManual(type)
+                        }
+                    }
+                }
+            } else {
+                ForEach(Array(HabitType.allCases.enumerated()), id: \.element.id) { index, type in
+                    if index > 0 { ActionRowDivider() }
+                    HabitLogRow(habit: Habit(type: type))
+                }
             }
         }
     }
 
+    // MARK: - 9. Preferences
+
+    private var preferencesSection: some View {
+        group("Preferences") {
+            navRow(
+                icon: AppIconSystem.Setting.appearance.sfSymbol,
+                setting: .appearance,
+                tint: Color.V2.ink2,
+                glyph: Color.V2.surface,
+                title: "Appearance",
+                value: appearanceLabel,
+                destination: .appearance
+            )
+            ActionRowDivider()
+            navRow(
+                icon: AppIconSystem.Setting.characters.sfSymbol,
+                setting: .characters,
+                tint: Color.V2.Companion.blossom,
+                glyph: Color.V2.onAccent,
+                title: "Characters",
+                value: "\(unlockedCharacters.count) of \(CharacterCreature.offeredCharacters.count)",
+                destination: .characters
+            )
+            ActionRowDivider()
+            toggleRow(
+                icon: AppIconSystem.Setting.haptics.sfSymbol,
+                setting: .haptics,
+                tint: Color.V2.Companion.ember,
+                glyph: Color.V2.onAccent,
+                title: "Haptics",
+                isOn: $hapticsEnabled
+            )
+            ActionRowDivider()
+            navRow(
+                icon: "rectangle.3.group.fill",
+                tint: Color.V2.accent,
+                glyph: Color.V2.onAccent,
+                title: "Home screen widgets",
+                value: "3 sizes",
+                destination: .about
+            )
+        }
+    }
+
+    // MARK: - 10. Data & support
+
+    private var dataSupportSection: some View {
+        group("Data & support") {
+            navRow(
+                icon: AppIconSystem.Setting.exportData.sfSymbol,
+                setting: .exportData,
+                tint: StressCategory.relaxed.fillColor,
+                glyph: StressCategory.relaxed.onFillColor,
+                title: "Export data",
+                destination: .dataExport
+            )
+            ActionRowDivider()
+            navRow(
+                icon: AppIconSystem.Setting.manageData.sfSymbol,
+                setting: .manageData,
+                tint: Color.V2.surface3,
+                glyph: Color.V2.ink2,
+                title: "Manage data",
+                destination: .dataManage
+            )
+            ActionRowDivider()
+            navRow(
+                icon: "books.vertical",
+                tint: StressCategory.mild.fillColor,
+                glyph: StressCategory.mild.onFillColor,
+                title: "Science & sources",
+                destination: .scienceSources(topic: nil)
+            )
+            ActionRowDivider()
+            navRow(
+                icon: AppIconSystem.Setting.helpPrivacy.sfSymbol,
+                setting: .helpPrivacy,
+                tint: Color.V2.surface3,
+                glyph: Color.V2.ink2,
+                title: "Help & privacy",
+                destination: .about
+            )
+        }
+    }
+
     private var versionFooter: some View {
-        Text("Version \(versionText) · Build \(buildText)")
-            .font(.system(size: 12, weight: .regular, design: .rounded))
-            .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
-            .frame(maxWidth: .infinity)
-            .padding(.top, 4)
+        VStack(spacing: 2) {
+            Text("Version \(versionText) · Build \(buildText)")
+                .monospacedDigit()
+            Text("Wellness app, not a medical device.")
+        }
+        .font(.footnote)
+        .foregroundStyle(Color.V2.ink3)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
     }
 
     private func signInWithAppleTapped() {
@@ -658,36 +686,57 @@ struct SettingsView: View {
 
     // MARK: - Row builders
 
+    /// Header + inset grouped card + optional footnote (UI V2 `group()`).
+    private func group<Content: View>(
+        _ title: String,
+        footer: String? = nil,
+        footerIsError: Bool = false,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        let rows = content()
+        return VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: title)
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    rows
+                }
+            }
+            if let footer {
+                Text(footer)
+                    .font(.footnote)
+                    .foregroundStyle(footerIsError ? Color.V2.danger : Color.V2.ink3)
+                    .padding(.horizontal, V2Metrics.margin)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
     private func navRow(
         icon: String,
         setting: AppIconSystem.Setting? = nil,
         tint: Color,
+        glyph: Color,
         title: String,
+        titleColor: Color = Color.V2.ink,
         value: String? = nil,
         valueTint: Color? = nil,
         destination: Route? = nil,
         action: (() -> Void)? = nil
     ) -> some View {
-        let row = HStack(spacing: 12) {
-            iconBadge(systemName: icon, setting: setting, tint: tint)
-            Text(title)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                .lineLimit(1)
-            Spacer(minLength: 8)
-            if let value {
-                Text(value)
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(valueTint ?? Color.Wellness.adaptiveSecondaryText)
-            }
+        let row = SettingsRowLabel(
+            icon: icon,
+            setting: setting,
+            tint: tint,
+            glyph: glyph,
+            title: title,
+            titleColor: titleColor,
+            value: value,
+            valueColor: valueTint ?? Color.V2.ink3
+        ) {
             if action != nil || destination != nil {
-                Image(systemName: AppIconSystem.Nav.forward.sfSymbol)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.5))
+                ActionRowChevron()
             }
         }
-        .contentShape(Rectangle())
-        .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title + (value.map { ", \($0)" } ?? ""))
 
@@ -716,42 +765,24 @@ struct SettingsView: View {
         icon: String,
         setting: AppIconSystem.Setting? = nil,
         tint: Color,
+        glyph: Color,
         title: String,
         isOn: Binding<Bool>
     ) -> some View {
-        HStack(spacing: 12) {
-            iconBadge(systemName: icon, setting: setting, tint: tint)
-            Text(title)
-                .font(.system(size: 15, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            Spacer()
+        SettingsRowLabel(
+            icon: icon,
+            setting: setting,
+            tint: tint,
+            glyph: glyph,
+            title: title
+        ) {
             Toggle("", isOn: isOn)
                 .labelsHidden()
-                .tint(.primaryGreen)
-                .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+                .tint(Color.V2.accent)
+                .frame(minHeight: V2Metrics.minTouchTarget)
         }
-        .padding(.vertical, 10)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
-    }
-
-    private func iconBadge(systemName: String, setting: AppIconSystem.Setting? = nil, tint: Color) -> some View {
-        Group {
-            if let setting {
-                SettingsIconView(setting, color: tint)
-            } else {
-                SettingsIconView(systemName: systemName, color: tint)
-            }
-        }
-        .accessibilityHidden(true)
-    }
-
-    private var hairlineDivider: some View {
-        Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.14))
-            .frame(height: 0.5)
-            .padding(.leading, 40)
-            .accessibilityHidden(true)
     }
 
     // MARK: - Derived
