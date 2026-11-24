@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// Animated breathing arena with three concentric rings matching the
-/// `.breath-arena` from `08-breathing-active.html`.
+/// Animated breathing arena (UI V2 `.breath`): two `accentSoft` aura rings
+/// and an accent core with a soft `accentTint` highlight.
 ///
-/// - r1: outer aura (100% width, radial gradient, scale 0.85 ↔ 1.05)
-/// - r2: mid aura (70% width, radial gradient, scale 0.85 ↔ 1.10)
-/// - r3: solid core (42% width, linear gradient #4FC3F7 → #0288D1, scale 0.85 ↔ 1.15)
+/// - r1: outer aura (100% width, scale 0.85 ↔ 1.05)
+/// - r2: mid aura (78% width, scale 0.85 ↔ 1.10)
+/// - r3: core (56% width, accent with a radial highlight, scale 0.85 ↔ 1.15)
 ///
 /// All rings scale over a 4-second easeInOut per phase, synced to the
 /// 4-4-4-4 box-breathing cycle. When the caller disables animation (the
@@ -17,11 +17,6 @@ struct BreathingCircle: View {
     var isAnimated: Bool = true
 
     @State private var animate = false
-
-    // Design tokens from HTML
-    private let auraColor = Color(hex: "#4FC3F7")
-    private let coreGradientTop = Color(hex: "#4FC3F7")
-    private let coreGradientBottom = Color(hex: "#0288D1")
 
     /// Target scale for the core (r3) per phase — 0.85 (contracted) ↔ 1.15 (expanded)
     private var coreScale: CGFloat {
@@ -58,43 +53,32 @@ struct BreathingCircle: View {
 
     var body: some View {
         ZStack {
-            // r1 — outer aura (100% width, radial gradient)
+            // r1 — outer aura
             Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [auraColor.opacity(0.18), Color.clear],
-                        center: .center,
-                        startRadius: size * 0.1,
-                        endRadius: size * 0.5
-                    )
-                )
+                .fill(Color.V2.accentSoft.opacity(0.55))
                 .frame(width: size, height: size)
                 .scaleEffect(outerScale)
 
-            // r2 — mid aura (70% width)
+            // r2 — mid aura
             Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [auraColor.opacity(0.30), Color.clear],
-                        center: .center,
-                        startRadius: size * 0.05,
-                        endRadius: size * 0.35
-                    )
-                )
-                .frame(width: size * 0.7, height: size * 0.7)
+                .fill(Color.V2.accentSoft)
+                .frame(width: size * 0.78, height: size * 0.78)
                 .scaleEffect(midScale)
 
-            // r3 — solid core (42% width, linear gradient, shadow)
+            // r3 — core: accent with a soft top-left highlight
             Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [coreGradientTop, coreGradientBottom],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                .fill(Color.V2.accent)
+                .overlay(
+                    Circle().fill(
+                        RadialGradient(
+                            colors: [Color.V2.accentTint.opacity(0.55), Color.V2.accent.opacity(0)],
+                            center: UnitPoint(x: 0.32, y: 0.28),
+                            startRadius: 0,
+                            endRadius: size * 0.3
+                        )
                     )
                 )
-                .frame(width: size * 0.42, height: size * 0.42)
-                .shadow(color: auraColor.opacity(0.5), radius: 25, x: 0, y: 10)
+                .frame(width: size * 0.56, height: size * 0.56)
                 .scaleEffect(coreScale)
         }
         .frame(width: size, height: size)
@@ -141,8 +125,8 @@ enum BoxBreathingPhase: String, CaseIterable, Sendable {
 #Preview {
     VStack(spacing: 24) {
         BreathingCircle(phase: .inhale, size: 280)
-        BreathingCircle(phase: .exhale, size: 200)
+        BreathingCircle(phase: .exhale, size: 200, isAnimated: false)
     }
     .padding()
-    .background(Color(hex: "#ECF8FE"))
+    .background(Color.V2.bg)
 }

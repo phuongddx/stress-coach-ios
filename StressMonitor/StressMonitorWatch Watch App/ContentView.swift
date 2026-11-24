@@ -8,7 +8,7 @@ import SwiftUI
 /// the Digital Crown scrolls naturally; and users always know where
 /// they are.
 ///
-/// The canvas is the iOS light grouped background (`--bg #F2F2F7`); each
+/// The canvas is the V2 true-black watch background; each
 /// screen composes its own background on top of this base.
 struct ContentView: View {
     @State private var viewModel = WatchStressViewModel()

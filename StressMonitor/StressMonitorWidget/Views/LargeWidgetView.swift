@@ -2,7 +2,10 @@ import SwiftUI
 import Charts
 import WidgetKit
 
-/// Large widget — **character face + trend chart + stress-tier descriptor, no numeric score**.
+/// Large widget (UI V2): companion, score, tier and substate, one Ripple line,
+/// and recent readings as tier-coloured bars. Fewer than two readings shows
+/// "Gathering data…"; stale readings dim and say when they were last updated;
+/// no reading shows "—".
 @available(iOS 17.0, *)
 public struct LargeWidgetView: View {
 
@@ -12,192 +15,115 @@ public struct LargeWidgetView: View {
         self.entry = entry
     }
 
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
-    @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .largeTitle) private var largeTitleScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .title3) private var title3Scale: CGFloat = 1
     public var body: some View {
-        VStack(spacing: 0) {
-            if entry.isPlaceholder {
-                placeholderView
-            } else if let stress = entry.latestStress {
-                stressContent(stress: stress, isStale: entry.dataState == .stale)
+        VStack(alignment: .leading, spacing: 12) {
+            header
+            if let stress = entry.latestStress {
+                readingContent(stress)
             } else {
-                emptyStateView
+                emptyContent
             }
         }
-        .containerBackground(.fill.tertiary, for: .widget)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WidgetReadingText.accessibilitySummary(entry.latestStress, state: entry.dataState))
+        .widgetV2HomeContainer(isPlaceholder: entry.isPlaceholder)
     }
 
-    // MARK: - Character-Reactive Content
-
-    @ViewBuilder
-    private func stressContent(stress: StressData, isStale: Bool) -> some View {
-        let tier = WidgetStressTier.from(level: stress.level)
-
-        VStack(spacing: 0) {
-            headerSection(tier: tier, stress: stress, isStale: isStale)
-
-            Divider().opacity(0.3)
-
-            if entry.history.count >= 2 {
-                historyChartSection(tier: tier)
-            } else {
-                gatheringDataSection
-            }
-
-            Divider().opacity(0.3)
-
-            moodDescriptorsSection(tier: tier)
-        }
-        .opacity(isStale ? 0.6 : 1.0)
-    }
+    private var isStale: Bool { entry.dataState == .stale }
 
     // MARK: - Header
 
-    @ViewBuilder
-    private func headerSection(tier: WidgetStressTier, stress: StressData, isStale: Bool) -> some View {
-        HStack(spacing: 14) {
-            WidgetCharacterFace(tier: tier, size: 72, showsRing: true, glow: true)
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text("Stress AI Coach")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+            Spacer(minLength: 4)
+            if let stress = entry.latestStress {
+                Text(WidgetReadingText.updated(stress, state: entry.dataState))
+                    .font(.caption2)
+                    .foregroundStyle(isStale ? Color.V2.ink2 : Color.V2.ink3)
+            }
+        }
+        .lineLimit(1)
+    }
 
+    // MARK: - Reading
+
+    @ViewBuilder
+    private func readingContent(_ stress: StressData) -> some View {
+        let category = stress.stressCategory
+
+        HStack(alignment: .center, spacing: 12) {
+            WidgetCompanionBadge(tier: WidgetStressTier.from(category: category), size: 64)
             VStack(alignment: .leading, spacing: 2) {
-                Text(tier.label)
-                    .font(.system(size: 20 * title3Scale, weight: .bold, design: .rounded))
-                    .foregroundColor(tier.accent)
-                    .contentTransition(.opacity)
-
-                Text((isStale ? "Stale · " : "") + stress.timestamp.formatted(.relative(presentation: .named)))
-                    .font(.system(size: 10 * caption2Scale))
-                    .foregroundColor(.secondary)
-            }
-
-            Spacer()
-        }
-        .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
-    }
-
-    // MARK: - Gathering Data Placeholder (history not yet published)
-
-    private var gatheringDataSection: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "waveform.path.ecg")
-                .font(.system(size: 20 * title3Scale))
-                .foregroundColor(.secondary.opacity(0.6))
-            Text("Gathering data…")
-                .font(.system(size: 9 * caption2Scale))
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 80)
-        .padding(.vertical, 8)
-    }
-
-    // MARK: - History Chart (no axis labels)
-
-    @ViewBuilder
-    private func historyChartSection(tier: WidgetStressTier) -> some View {
-        Chart(entry.history.suffix(24)) { item in
-            let pTier = WidgetStressTier.from(level: item.level)
-            LineMark(
-                x: .value("Time", item.timestamp),
-                y: .value("Stress", item.level)
-            )
-            .foregroundStyle(pTier.accent)
-            .interpolationMethod(.catmullRom)
-            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round))
-
-            AreaMark(
-                x: .value("Time", item.timestamp),
-                y: .value("Stress", item.level)
-            )
-            .foregroundStyle(
-                .linearGradient(
-                    colors: [tier.accent.opacity(0.3), tier.accent.opacity(0.02)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
-            .interpolationMethod(.catmullRom)
-        }
-        .chartYScale(domain: 0...100)
-        .chartYAxis(.hidden)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
-                AxisGridLine().foregroundStyle(Color.secondary.opacity(0.15))
+                WidgetScoreText(level: stress.level)
+                WidgetTierLabel(category: category, font: .headline)
+                Text(isStale ? "Not updated recently" : category.v2Substate)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
         }
-        .frame(height: 80)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .opacity(isStale ? 0.6 : 1)
+
+        let ripple = Text("Ripple:").fontWeight(.semibold).foregroundStyle(Color.V2.ink)
+        Text("\(ripple) \(isStale ? "Open the app for a fresh reading." : category.widgetTip)")
+            .font(.footnote)
+            .foregroundStyle(Color.V2.ink2)
+            .lineLimit(2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(Color.V2.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+        let readings = widgetRecentReadings(entry.history, limit: 12)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Recent readings")
+                .font(.caption2)
+                .foregroundStyle(Color.V2.ink3)
+            if readings.count >= 2 {
+                WidgetHistoryBars(readings: readings)
+                    .opacity(isStale ? 0.6 : 1)
+            } else {
+                WidgetGatheringView()
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 80, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    // MARK: - Mood Descriptors (no numbers)
+    // MARK: - Empty
 
     @ViewBuilder
-    private func moodDescriptorsSection(tier: WidgetStressTier) -> some View {
-        HStack(spacing: 8) {
-            moodPill(icon: "heart.fill", label: moodDescriptor(tier: tier), color: tier.accent)
+    private var emptyContent: some View {
+        HStack(alignment: .center, spacing: 12) {
+            WidgetCompanionBadge(tier: .resting, size: 64)
+            VStack(alignment: .leading, spacing: 2) {
+                WidgetScoreText(level: nil)
+                Text("No reading yet")
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-    }
 
-    @ViewBuilder
-    private func moodPill(icon: String, label: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 9 * caption2Scale))
-                .foregroundColor(color)
-            Text(label)
-                .font(.system(size: 10 * caption2Scale, weight: .medium))
-                .foregroundColor(.primary)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color.opacity(0.12))
-        .clipShape(Capsule())
-    }
+        Text("Open Stress AI Coach and take a measurement to see your stress here.")
+            .font(.footnote)
+            .foregroundStyle(Color.V2.ink2)
+            .fixedSize(horizontal: false, vertical: true)
 
-    private func moodDescriptor(tier: WidgetStressTier) -> String {
-        switch tier {
-        case .resting:     return "Very low stress"
-        case .calm:        return "Low stress"
-        case .balanced:    return "Moderate stress"
-        case .tense:       return "Elevated stress"
-        case .overwhelmed: return "High stress"
-        }
-    }
-
-    // MARK: - Placeholder
-
-    private var placeholderView: some View {
-        VStack(spacing: 8) {
-            WidgetCharacterFace(tier: .balanced, size: 60, showsRing: true)
-                .opacity(0.5)
-            Text("StressMonitor")
-                .font(.system(size: 12 * footnoteScale, weight: .medium))
-                .foregroundColor(.secondary)
-        }
-        .padding()
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Text("💧")
-                .font(.system(size: 36 * largeTitleScale))
-            Text("No Data Yet")
-                .font(.system(size: 13 * footnoteScale, weight: .medium))
-                .foregroundColor(.primary)
-            Text("Open StressMonitor and take a measurement to see your character here.")
-                .font(.system(size: 10 * caption2Scale))
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Recent readings")
+                .font(.caption2)
+                .foregroundStyle(Color.V2.ink3)
+            Text("Readings appear here after your first measurement.")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .multilineTextAlignment(.center)
+                .background(Color.V2.surface2, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
-        .padding()
+        .frame(maxWidth: .infinity, minHeight: 80, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

@@ -1,9 +1,9 @@
 import SwiftUI
 import WidgetKit
 
-/// Small widget view — **character-reactive face only, no numeric score**.
-///
-/// The Ripple 💧 character's expression and accent ring *are* the stress indicator.
+/// Small widget (UI V2): score, tier shape + name, companion face, and when the
+/// reading was taken. Stale readings dim and say when they were last updated;
+/// no reading shows "—".
 @available(iOS 17.0, *)
 public struct SmallWidgetView: View {
 
@@ -13,76 +13,85 @@ public struct SmallWidgetView: View {
         self.entry = entry
     }
 
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
-    @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .largeTitle) private var largeTitleScale: CGFloat = 1
     public var body: some View {
-        VStack(spacing: 0) {
-            if entry.isPlaceholder {
-                placeholderView
-            } else if let stress = entry.latestStress {
-                stressContent(stress: stress, isStale: entry.dataState == .stale)
+        Group {
+            if let stress = entry.latestStress {
+                readingContent(stress)
             } else {
-                emptyStateView
+                emptyContent
             }
         }
-        .containerBackground(.fill.tertiary, for: .widget)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WidgetReadingText.accessibilitySummary(entry.latestStress, state: entry.dataState))
+        .widgetV2HomeContainer(isPlaceholder: entry.isPlaceholder)
     }
 
-    // MARK: - Character-Reactive Content
+    // MARK: - Reading
 
     @ViewBuilder
-    private func stressContent(stress: StressData, isStale: Bool) -> some View {
-        let tier = WidgetStressTier.from(level: stress.level)
+    private func readingContent(_ stress: StressData) -> some View {
+        let category = stress.stressCategory
+        let isStale = entry.dataState == .stale
 
-        VStack(spacing: 6) {
-            WidgetCharacterFace(tier: tier, size: 68, showsRing: true, glow: true)
-
-            if isStale {
-                Text(stress.timestamp, format: .relative(presentation: .named))
-                    .font(.system(size: 12 * footnoteScale, weight: .medium))
-                    .foregroundColor(.secondary)
-                    .contentTransition(.opacity)
-            } else {
-                Text(tier.label)
-                    .font(.system(size: 12 * footnoteScale, weight: .semibold, design: .rounded))
-                    .foregroundColor(tier.accent)
-                    .contentTransition(.opacity)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text("Stress")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+                Spacer(minLength: 4)
+                if !isStale {
+                    Text(WidgetReadingText.time(stress.timestamp))
+                        .font(.caption2)
+                        .foregroundStyle(Color.V2.ink3)
+                }
             }
+            .lineLimit(1)
+
+            Spacer(minLength: 0)
+
+            HStack(alignment: .center, spacing: 6) {
+                WidgetScoreText(level: stress.level)
+                Spacer(minLength: 0)
+                WidgetCompanionBadge(tier: WidgetStressTier.from(category: stress.stressCategory), size: 44)
+            }
+            .opacity(isStale ? 0.6 : 1)
+
+            WidgetTierLabel(category: category)
+                .opacity(isStale ? 0.6 : 1)
+
+            Text(isStale ? WidgetReadingText.updated(stress, state: entry.dataState) : category.v2Substate)
+                .font(.caption2)
+                .foregroundStyle(isStale ? Color.V2.ink2 : Color.V2.ink3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .opacity(isStale ? 0.6 : 1.0)
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Placeholder
+    // MARK: - Empty
 
-    private var placeholderView: some View {
-        VStack(spacing: 6) {
-            WidgetCharacterFace(tier: .balanced, size: 60, showsRing: true)
-                .opacity(0.5)
-            Text("StressMonitor")
-                .font(.system(size: 10 * caption2Scale, weight: .medium))
-                .foregroundColor(.secondary)
+    private var emptyContent: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Stress")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+
+            Spacer(minLength: 0)
+
+            HStack(alignment: .center, spacing: 6) {
+                WidgetScoreText(level: nil)
+                Spacer(minLength: 0)
+                WidgetCompanionBadge(tier: .resting, size: 44)
+            }
+
+            Text("No reading yet")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.V2.ink)
+                .lineLimit(1)
+            Text("Open the app to measure")
+                .font(.caption2)
+                .foregroundStyle(Color.V2.ink3)
+                .lineLimit(2)
         }
-        .padding(12)
-    }
-
-    // MARK: - Empty State
-
-    private var emptyStateView: some View {
-        VStack(spacing: 8) {
-            Text("💧")
-                .font(.system(size: 32 * largeTitleScale))
-            Text("No Data")
-                .font(.system(size: 12 * footnoteScale, weight: .medium))
-                .foregroundColor(.primary)
-            Text("Open app to measure")
-                .font(.system(size: 9 * caption2Scale))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(12)
     }
 }
 

@@ -7,7 +7,8 @@ import SwiftUI
 /// and a small delta context line. Daylight is the novel signal that gives the
 /// app character.
 ///
-/// Spec reference: design/screens/04-home.html — `.health-data`.
+/// Spec reference: ui-v2-design/screens.js `S.home` (V2 card, tiles stack at
+/// accessibility text sizes).
 struct HealthDataSection: View {
     let exerciseMinutes: Int?
     let exerciseDelta: String?
@@ -34,36 +35,40 @@ struct HealthDataSection: View {
         self.daylightDelta = daylightDelta
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            item(
-                symbol: "figure.run",
-                value: exerciseMinutes.map { "\($0)" } ?? "—",
-                unit: "min",
-                label: "Last workout",
-                delta: exerciseDelta,
-                deltaGood: false
-            )
-            item(
-                symbol: "moon.stars",
-                value: sleepHours.map { sleepParts($0).value } ?? "—",
-                unit: sleepHours.map { sleepParts($0).unit } ?? "",
-                label: "Sleep",
-                delta: sleepDelta,
-                deltaGood: sleepDelta != nil
-            )
-            item(
-                symbol: "sun.max",
-                value: daylightMinutes.map { "\($0)" } ?? "—",
-                unit: "min",
-                label: "Daylight",
-                delta: daylightDelta,
-                deltaGood: daylightDelta != nil
-            )
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        V2Card {
+            layout {
+                item(
+                    symbol: "figure.run",
+                    value: exerciseMinutes.map { "\($0)" } ?? "—",
+                    unit: "min",
+                    label: "Last workout",
+                    delta: exerciseDelta,
+                    deltaGood: false
+                )
+                item(
+                    symbol: "moon.stars",
+                    value: sleepHours.map { sleepParts($0).value } ?? "—",
+                    unit: sleepHours.map { sleepParts($0).unit } ?? "",
+                    label: "Sleep",
+                    delta: sleepDelta,
+                    deltaGood: sleepDelta != nil
+                )
+                item(
+                    symbol: "sun.max",
+                    value: daylightMinutes.map { "\($0)" } ?? "—",
+                    unit: "min",
+                    label: "Daylight",
+                    delta: daylightDelta,
+                    deltaGood: daylightDelta != nil
+                )
+            }
         }
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Health behaviors. Last workout \(exerciseMinutes.map { "\($0) minutes" } ?? "unknown"). Sleep \(sleepHours.map { sleepSpoken($0) } ?? "unknown"). Daylight \(daylightMinutes.map { "\($0) minutes" } ?? "unknown").")
     }
@@ -76,33 +81,30 @@ struct HealthDataSection: View {
         delta: String?,
         deltaGood: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Image(systemName: symbol)
-                .font(.system(size: 16, weight: .regular))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .padding(.bottom, 2)
-
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
+                .font(.body)
+                .foregroundStyle(Color.V2.accent)
+                .accessibilityHidden(true)
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .tracking(-0.3)
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                    .font(.v2Number(.headline))
+                    .foregroundStyle(value == "—" ? Color.V2.ink3 : Color.V2.ink)
                 if !unit.isEmpty {
                     Text(unit)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                        .font(.caption)
+                        .foregroundStyle(Color.V2.ink2)
                 }
             }
-
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
             Text(label)
-                .font(.system(size: 11, weight: .regular))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
             if let delta {
                 Text(delta)
-                    .font(.system(size: 10, weight: .regular, design: .monospaced))
-                    .tracking(0.2)
-                    .foregroundStyle(deltaGood ? Color.stressRelaxed : Color.Wellness.adaptiveSecondaryText)
+                    .font(.caption)
+                    .foregroundStyle(deltaGood ? StressCategory.relaxed.color : Color.V2.ink3)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -138,7 +140,7 @@ struct HealthDataSection: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }
 
 #Preview("HealthDataSection — No Data") {
@@ -147,5 +149,5 @@ struct HealthDataSection: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

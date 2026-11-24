@@ -1,8 +1,8 @@
 import SwiftUI
 
 // MARK: - Inline Stress View
-/// SwiftUI view component for inline stress display
-/// Provides a compact, text-only view for minimal space requirements
+/// Compact single-line stress display (UI V2): tier shape + score in the
+/// tier colour, "—" when there is no reading.
 struct InlineStressView: View {
     let stressLevel: Double
     let category: StressCategory
@@ -23,41 +23,23 @@ struct InlineStressView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            // Optional category icon
-            if showIcon {
+            if showIcon && hasData {
                 Image(systemName: category.icon)
-                    .font(.system(size: 12)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                    .foregroundColor(category.color)
+                    .foregroundStyle(category.color)
             }
 
-            // Stress display text
-            if hasData {
-                if showLabel {
-                    Text("Mood: ")
-                        .font(.system(size: 14, weight: .medium)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                        .foregroundColor(.secondary) +
-                    Text(stressLevelText)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                        .foregroundColor(category.color)
-                } else {
-                    Text(stressLevelText)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                        .foregroundColor(category.color)
-                }
-            } else {
-                if showLabel {
-                    Text("Mood: —")
-                        .font(.system(size: 14, weight: .medium)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                        .foregroundColor(.secondary)
-                } else {
-                    Text("--")
-                        .font(.system(size: 14, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                        .foregroundColor(.secondary)
-                }
+            if showLabel {
+                Text("Stress")
+                    .foregroundStyle(WatchV2.ink2)
             }
+
+            Text(hasData ? stressLevelText : "—")
+                .font(.v2Number(.footnote, weight: .semibold))
+                .foregroundStyle(hasData ? category.color : WatchV2.ink3)
         }
+        .font(.footnote.weight(.medium))
         .lineLimit(1)
-        .minimumScaleFactor(0.7) // dated exception 2026-09-05: accessory inline slot — single line, cannot accommodate the ramp
+        .minimumScaleFactor(0.7)
     }
 
     // MARK: - Computed Properties
@@ -71,7 +53,7 @@ struct InlineStressView: View {
 }
 
 // MARK: - Stress Label Component
-/// Alternative component showing category instead of number
+/// Alternative component showing the tier (shape + name) instead of a number.
 struct StressLabelInlineView: View {
     let category: StressCategory
     let showIcon: Bool
@@ -85,14 +67,11 @@ struct StressLabelInlineView: View {
         HStack(spacing: 4) {
             if showIcon {
                 Image(systemName: category.icon)
-                    .font(.system(size: 12)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                    .foregroundColor(category.color)
             }
-
             Text(category.label)
-                .font(.system(size: 14, weight: .semibold)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                .foregroundColor(category.color)
         }
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(category.color)
         .lineLimit(1)
     }
 }

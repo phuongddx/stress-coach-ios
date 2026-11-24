@@ -1,109 +1,69 @@
 import SwiftUI
 
+/// What Plus unlocks (UI V2): one card, an accent icon per row, a bold line
+/// and a one-sentence description.
 struct IAPBenefitsCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Section label
-            Text("WHAT PLUS UNLOCKS")
-                .font(Typography.iapSectionHeader)
-                .kerning(0.10 * 12)
-                .foregroundStyle(Color.iapHeaderTeal)
-                .padding(.horizontal, 4)
-                .padding(.bottom, 10)
-
-            // Benefits card
-            VStack(spacing: 0) {
-                benefitRow(
-                    icon: "sparkles",
-                    accentColor: Color.iapPurple,
-                    title: "Unlimited AI chat",
-                    description: "Talk with Ripple as often as you like. Free accounts get 20 messages a month."
-                )
-
-                Divider()
-                    .background(Color.iapIconBorder.opacity(0.15))
-                    .padding(.horizontal, 2)
-
-                benefitRow(
-                    icon: "chart.xyaxis.line",
-                    accentColor: Color.iapHeaderTeal,
-                    title: "All your charts",
-                    description: "See every chart in full: stress over time, HRV trends, monthly heatmap, biological age and breathing results."
-                )
-
-                Divider()
-                    .background(Color.iapIconBorder.opacity(0.15))
-                    .padding(.horizontal, 2)
-
-                benefitRow(
-                    icon: "chart.line.uptrend.xyaxis",
-                    accentColor: Color.iapSavingsGreen,
-                    title: "30- and 90-day Trends",
-                    description: "Look past the last week and spot how your stress changes over months."
-                )
-
-                Divider()
-                    .background(Color.iapIconBorder.opacity(0.15))
-                    .padding(.horizontal, 2)
-
-                benefitRow(
-                    icon: "flame.fill",
-                    accentColor: Color.iapAmber,
-                    title: "Plus companions",
-                    description: "Unlock Ember, Zephyr and Lumi to join Ripple on your home screen."
-                )
-            }
-            .padding(15)
-            .background(
-                RoundedRectangle(cornerRadius: 32)
-                    .fill(Color.iapCardBackground)
-                    .shadow(color: Color.black.opacity(0.08), radius: 18, y: 6)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 32)
-                    .stroke(Color.iapIconBorder.opacity(0.09), lineWidth: 1)
-            )
-        }
+    private struct Benefit: Identifiable {
+        let icon: String
+        let title: String
+        let description: String
+        var id: String { title }
     }
 
-    // MARK: - Subcomponents
+    private let benefits: [Benefit] = [
+        Benefit(
+            icon: "bubble.left.and.bubble.right.fill",
+            title: "Unlimited AI chat",
+            description: "Talk with Ripple as often as you like. Free accounts get 20 messages a month."
+        ),
+        Benefit(
+            icon: "chart.xyaxis.line",
+            title: "All your charts",
+            description: "See every chart in full: stress over time, HRV trends, monthly heatmap, biological age and breathing results."
+        ),
+        Benefit(
+            icon: "calendar",
+            title: "30- and 90-day Trends",
+            description: "Look past the last week and spot how your stress changes over months."
+        ),
+        Benefit(
+            icon: "face.smiling",
+            title: "Plus companions",
+            description: "Unlock Ember, Zephyr and Lumi to join Ripple on your home screen."
+        )
+    ]
 
-    private func benefitRow(icon: String, accentColor: Color, title: String, description: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Icon
-            Image(systemName: icon)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(accentColor)
-                .frame(width: 38, height: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(accentColor.opacity(0.12))
-                )
+    var body: some View {
+        V2Card {
+            VStack(alignment: .leading, spacing: 14) {
+                ForEach(benefits) { benefit in
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: benefit.icon)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(Color.V2.accent)
+                            .frame(width: 24)
+                            .accessibilityHidden(true)
 
-            // Text
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(Typography.iapBenefitTitle)
-                    .tracking(-0.025 * 15)
-                    .foregroundStyle(Color.iapTextPrimary)
-
-                Text(description)
-                    .font(Typography.iapBenefitDescription)
-                    .foregroundStyle(Color.iapTextSecondary)
-                    .lineSpacing(1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(benefit.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.V2.ink)
+                            Text(benefit.description)
+                                .font(.footnote)
+                                .foregroundStyle(Color.V2.ink3)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
-
-            Spacer(minLength: 0)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 2)
     }
 }
 
 #Preview {
-    ScrollView {
-        IAPBenefitsCard()
-            .padding(16)
-    }
-    .background(Color(hex: "F5F2EC"))
+    IAPBenefitsCard()
+        .padding()
+        .background(Color.V2.bg)
 }

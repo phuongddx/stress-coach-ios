@@ -1,78 +1,60 @@
 import SwiftUI
 
-/// Mini Walk active session screen — redesigned per `15-walk.html`.
+/// Mini Walk session screen (UI V2).
 ///
-/// Light green-tinted background with:
-/// - Header row (mode label + LIVE indicator)
-/// - Circular timer ring (WalkTimer) with walk icon, time, target
-/// - Target line (goal + percent)
-/// - Stats tiles (steps / heart rate at start / estimated distance)
-/// - Pause / End Session buttons
+/// - Top row: "Mini walk" and a Ready / Walking / Paused status pill
+/// - Timer ring (WalkTimer) with the time left
+/// - Steps card (steps toward the target, relaxed-tier bar)
+/// - Vitals: heart rate at start and estimated distance
+/// - Ready: "Start walk"; walking/paused: Pause or Resume and End session
+/// - Completion overlay (MiniWalkCompleteView) when the timer runs out
+///
+/// Spec reference: ui-v2-design/screens.js `S.walk` (not started, running,
+/// paused, complete). Timer, pedometer and heart-rate logic live in
+/// `MiniWalkViewModel` and are unchanged.
 struct MiniWalkView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel = MiniWalkViewModel()
 
-    // Design tokens from app.css / 15-walk.html
-    private let success = Color(hex: "#34C759")
-    private let blossom = Color(hex: "#A5D6A7")
-    private let hrColor = Color(hex: "#F87171")
-    private let surface = Color.white
-    private let fg = Color(hex: "#101223")
-    private let fgSecondary = Color(hex: "#3C3C43")
-    private let muted = Color(hex: "#777986")
-    private let separator = Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.12)
-    private let danger = Color(hex: "#FF3B30")
+    private var isReady: Bool {
+        !viewModel.isRunning && !viewModel.isPaused && !viewModel.isFinished
+    }
 
     var body: some View {
         ZStack {
-            // Gradient background matching .walk-stage
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.957, green: 0.984, blue: 0.957),  // #F4FBF4
-                        Color.white
-                    ],
-                    startPoint: .top,
-                    endPoint: .center
-                )
-                RadialGradient(
-                    colors: [blossom.opacity(0.30), Color.clear],
-                    center: .bottom,
-                    startRadius: 50,
-                    endRadius: 300
-                )
+            Color.V2.bg.ignoresSafeArea()
+
+            ScrollView {
+                VStack(spacing: 16) {
+                    walkHead
+                        .padding(.top, 8)
+
+                    WalkTimer(
+                        progress: viewModel.progress,
+                        timeDisplay: viewModel.timeDisplay,
+                        targetDisplay: targetTimeLabel,
+                        stepCount: viewModel.stepCount,
+                        stateLabel: stateWord
+                    )
+                    .padding(.vertical, 8)
+
+                    stepsCard
+
+                    vitalsRow
+
+                    actionButtons
+                        .padding(.top, 4)
+
+                    Text("Heart rate shows when your Apple Watch is on.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink3)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, V2Metrics.margin)
+                .padding(.bottom, 24)
             }
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                // Header row
-                walkHead
-                    .padding(.top, 16)
-
-                Spacer()
-
-                // Timer ring
-                WalkTimer(
-                    progress: viewModel.progress,
-                    timeDisplay: viewModel.timeDisplay,
-                    targetDisplay: targetTimeLabel,
-                    stepCount: viewModel.stepCount
-                )
-
-                // Target line
-                targetLine
-                    .padding(.top, 12)
-
-                // Live stats
-                liveStats
-                    .padding(.top, 20)
-
-                // Buttons
-                actionButtons
-                    .padding(.top, 16)
-                    .padding(.bottom, 24)
-            }
-            .padding(.horizontal, 24)
 
             // Completion overlay
             if viewModel.showComplete {
@@ -87,7 +69,7 @@ struct MiniWalkView: View {
                 .motionAwareTransition(.opacity.combined(with: .scale(scale: 0.95)))
             }
         }
-        .animation(.easeInOut(duration: 0.3), value: viewModel.showComplete)
+        .animateIfMotionAllowed(.easeInOut(duration: 0.3), value: viewModel.showComplete)
         .navigationBarHidden(true)
         .accessibleDynamicType()
         .onDisappear { viewModel.cleanup() }
@@ -98,143 +80,153 @@ struct MiniWalkView: View {
     private var walkHead: some View {
         HStack {
             Text("Mini walk")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .tracking(0.8)
-                .textCase(.uppercase)
-                .foregroundStyle(muted)
-            Spacer()
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(success)
-                    .frame(width: 6, height: 6)
-                    .opacity(viewModel.isRunning ? 1 : 0.4)
-                    .scaleEffect(viewModel.isRunning ? 1.0 : 0.8)
-                    .animateIfMotionAllowed(
-                        .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
-                        value: viewModel.isRunning
-                    )
-                Text(viewModel.isRunning ? "LIVE" : "PAUSED")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(success)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(success.opacity(0.14))
-            .clipShape(Capsule())
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            statusPill
         }
+        .frame(minHeight: V2Metrics.minTouchTarget)
     }
 
-    // MARK: - Target Line
-
-    private var targetLine: some View {
-        HStack {
-            Text("Goal · \(viewModel.targetSteps) steps · \(targetTimeLabel)")
-                .font(.system(size: 13))
-                .foregroundStyle(fgSecondary)
-            Spacer()
-            Text("\(Int((viewModel.progress * 100).rounded()))%")
-                .font(.system(size: 16, weight: .bold, design: .rounded))
-                .foregroundStyle(fg)
+    private var statusPill: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(viewModel.isRunning ? StressCategory.relaxed.fillColor : Color.V2.ink3)
+                .frame(width: 8, height: 8)
+                .accessibilityHidden(true)
+            Text(statusText)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(viewModel.isRunning ? StressCategory.relaxed.color : Color.V2.ink2)
         }
-        .frame(maxWidth: 260)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(Capsule().fill(Color.V2.surface2))
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Live Stats
-
-    private var liveStats: some View {
-        HStack(spacing: 8) {
-            liveStatTile(
-                value: "\(viewModel.stepCount)",
-                suffix: nil,
-                label: "STEPS",
-                color: blossom
-            )
-            liveStatTile(
-                value: viewModel.bpmDisplay,
-                suffix: viewModel.hasBPM ? "bpm" : nil,
-                label: "HR AT START",
-                color: hrColor
-            )
-            liveStatTile(
-                value: distanceLabel,
-                suffix: "mi",
-                label: "EST. DIST.",
-                color: success
-            )
-        }
-        .frame(maxWidth: 260)
+    private var statusText: String {
+        if viewModel.isRunning { return "Walking" }
+        if viewModel.isPaused { return "Paused" }
+        if viewModel.isFinished { return "Done" }
+        return "Ready"
     }
 
-    private func liveStatTile(value: String, suffix: String?, label: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(color)
-                if let suffix {
-                    Text(suffix)
-                        .font(.system(size: 11))
-                        .foregroundStyle(muted)
+    private var stateWord: String {
+        if viewModel.isRunning { return "left" }
+        if viewModel.isPaused { return "Paused" }
+        if viewModel.isFinished { return "Done" }
+        return "Ready"
+    }
+
+    // MARK: - Steps
+
+    private var stepProgress: Double {
+        guard viewModel.targetSteps > 0 else { return 0 }
+        return min(1, Double(viewModel.stepCount) / Double(viewModel.targetSteps))
+    }
+
+    private var stepsCard: some View {
+        V2Card {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Steps")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.V2.ink2)
+                    Spacer(minLength: 8)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(viewModel.stepDisplay)
+                            .font(.v2Number(.title2, weight: .bold))
+                            .foregroundStyle(Color.V2.ink)
+                        Text("/ \(viewModel.targetSteps.formatted())")
+                            .font(.v2Number(.subheadline, weight: .medium))
+                            .foregroundStyle(Color.V2.ink3)
+                    }
                 }
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.V2.surface2)
+                        Capsule()
+                            .fill(StressCategory.relaxed.fillColor)
+                            .frame(width: geo.size.width * stepProgress)
+                    }
+                }
+                .frame(height: 8)
+                .accessibilityHidden(true)
             }
-            Text(label)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(muted)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Steps: \(viewModel.stepDisplay) of \(viewModel.targetSteps.formatted())")
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(surface.opacity(0.8))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(separator, lineWidth: 1))
-        )
+    }
+
+    // MARK: - Vitals
+
+    private var vitalsRow: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+        return layout {
+            WalkVital(
+                icon: "heart.fill",
+                label: "Heart rate at start",
+                value: viewModel.bpmDisplay,
+                unit: viewModel.hasBPM ? "bpm" : nil
+            )
+            WalkVital(
+                icon: "point.topleft.down.to.point.bottomright.curvepath",
+                label: "Est. distance",
+                value: distanceLabel,
+                unit: "mi"
+            )
+        }
     }
 
     // MARK: - Buttons
 
+    @ViewBuilder
     private var actionButtons: some View {
-        HStack(spacing: 10) {
-            // Pause / Resume
-            Button(action: {
-                if viewModel.isPaused {
-                    viewModel.start()
-                } else if !viewModel.isRunning {
-                    viewModel.start()
-                } else {
-                    viewModel.pause()
+        if isReady {
+            VStack(spacing: 4) {
+                Button(action: { viewModel.start() }) {
+                    Text("Start walk")
                 }
-            }) {
-                Text(viewModel.isRunning ? "Pause" : (viewModel.isPaused ? "Resume" : "Start"))
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(fg)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.08))
-                    )
-            }
+                .buttonStyle(.v2(.primary))
 
-            // End Session
-            Button(action: {
-                viewModel.reset()
-                dismiss()
-            }) {
-                Text("End Session")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14)
-                            .fill(danger)
-                    )
+                Button(action: endSession) {
+                    Text("Not now")
+                }
+                .buttonStyle(.v2(.ghost, compact: true))
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { runningButtons }
+                VStack(spacing: 10) { runningButtons }
             }
         }
-        .frame(maxWidth: 260)
+    }
+
+    @ViewBuilder
+    private var runningButtons: some View {
+        Button(action: {
+            if viewModel.isRunning {
+                viewModel.pause()
+            } else {
+                viewModel.start()
+            }
+        }) {
+            Text(viewModel.isRunning ? "Pause" : "Resume")
+        }
+        .buttonStyle(.v2(.secondary))
+
+        Button(action: endSession) {
+            Text("End session")
+        }
+        .buttonStyle(.v2(.destructive))
+    }
+
+    private func endSession() {
+        viewModel.reset()
+        dismiss()
     }
 
     // MARK: - Computed Helpers
@@ -253,8 +245,56 @@ struct MiniWalkView: View {
     }
 }
 
+// MARK: - Vital tile
+
+/// UI V2 `.vit`: surface card with an icon, a footnote label and a number.
+struct WalkVital: View {
+    let icon: String
+    let label: String
+    let value: String
+    let unit: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+                    .accessibilityHidden(true)
+                Text(label)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(.v2Number(.title2, weight: .bold))
+                    .foregroundStyle(Color.V2.ink)
+                if let unit {
+                    Text(unit)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.V2.ink3)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .fill(Color.V2.surface)
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
 #Preview {
     NavigationStack {
         MiniWalkView()
     }
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        MiniWalkView()
+    }
+    .preferredColorScheme(.dark)
 }

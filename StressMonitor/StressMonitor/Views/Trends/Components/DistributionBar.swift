@@ -1,18 +1,22 @@
 import SwiftUI
 
-/// Distribution stacked bar matching `06-trends.html` section 3.
+/// Time-in-each-tier stacked bar (UI V2, ui-v2-design/screens.js `S.trends` tierDist).
 ///
-/// Four segments (Relaxed / Mild / Moderate / High) rendered as a single
-/// horizontal bar whose widths always sum to 100%. Below the bar sits a
-/// 2×2 legend grid showing day-counts per tier, plus an editorial comment.
+/// Four segments (Relaxed / Mild / Elevated / High) in the tier fill colours,
+/// whose widths always sum to 100%. Below the bar sits a 2×2 legend with the
+/// tier shape, name and day count, plus an editorial comment.
 struct DistributionBar: View {
     let relaxedDays: Int
     let mildDays: Int
     let moderateDays: Int
     let highDays: Int
     var comment: String? = nil
+    /// Card title shown above the bar; nil hides the header.
+    var title: String? = nil
+    /// Window shown next to the title (e.g. "7 days").
+    var windowLabel: String? = nil
 
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     // MARK: - Derived
 
@@ -40,29 +44,42 @@ struct DistributionBar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
+            if let title {
+                header(title)
+            }
             bar
             legend
             if let comment {
                 Text(comment)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .lineSpacing(2)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(16)
+        .padding(V2Metrics.margin)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
-        )
+        .v2CardBackground()
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             "Time spent by tier. Relaxed \(segments.relaxed) percent. " +
             "Mild \(segments.mild) percent. Moderate \(segments.moderate) percent. " +
             "High \(segments.high) percent."
         )
+    }
+
+    private func header(_ title: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            if let windowLabel {
+                Text(windowLabel)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+            }
+        }
     }
 
     // MARK: - Bar
@@ -74,66 +91,51 @@ struct DistributionBar: View {
             HStack(spacing: 0) {
                 if s.relaxed > 0 {
                     barSegment(
-                        color: StressCategory.relaxed.color,
+                        color: StressCategory.relaxed.fillColor,
                         width: total * CGFloat(s.relaxed) / 100,
                         label: "\(s.relaxed)%",
-                        textColor: labelTextColor(for: .relaxed)
+                        textColor: StressCategory.relaxed.onFillColor
                     )
                 }
                 if s.mild > 0 {
                     barSegment(
-                        color: StressCategory.mild.color,
+                        color: StressCategory.mild.fillColor,
                         width: total * CGFloat(s.mild) / 100,
                         label: "\(s.mild)%",
-                        textColor: labelTextColor(for: .mild)
+                        textColor: StressCategory.mild.onFillColor
                     )
                 }
                 if s.moderate > 0 {
                     barSegment(
-                        color: StressCategory.moderate.color,
+                        color: StressCategory.moderate.fillColor,
                         width: total * CGFloat(s.moderate) / 100,
                         label: "\(s.moderate)%",
-                        textColor: labelTextColor(for: .moderate)
+                        textColor: StressCategory.moderate.onFillColor
                     )
                 }
                 if s.high > 0 {
                     barSegment(
-                        color: StressCategory.high.color,
+                        color: StressCategory.high.fillColor,
                         width: total * CGFloat(s.high) / 100,
                         label: "\(s.high)%",
-                        textColor: labelTextColor(for: .high)
+                        textColor: StressCategory.high.onFillColor
                     )
                 }
             }
         }
-        .frame(height: 28)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .frame(height: 24)
+        .clipShape(RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous))
     }
 
-    /// Per-tier segment-label text color, resolved against the tier's actual
-    /// fill in the current color scheme so 11pt semibold text clears the
-    /// 4.5:1 WCAG AA bar (this is normal-size text, not large text). Relaxed
-    /// and mild fills are never bright enough for white text in either
-    /// appearance; moderate and high flip between white (light fill) and
-    /// black (bright dark-mode fill).
-    private func labelTextColor(for tier: StressCategory) -> Color {
-        switch tier {
-        case .relaxed, .mild:
-            return .black
-        case .moderate, .high:
-            return colorScheme == .dark ? .black : .white
-        case .severe:
-            return colorScheme == .dark ? .black : .white
-        }
-    }
-
-    private func barSegment(color: Color, width: CGFloat, label: String, textColor: Color = .white) -> some View {
+    private func barSegment(color: Color, width: CGFloat, label: String, textColor: Color) -> some View {
         ZStack {
             Rectangle().fill(color)
-            if width > 32 {
+            if width > 36 {
                 Text(label)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(.v2Number(.caption2))
                     .foregroundStyle(textColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
         }
         .frame(width: max(0, width))
@@ -142,40 +144,31 @@ struct DistributionBar: View {
     // MARK: - Legend
 
     private var legend: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 16),
-                GridItem(.flexible(), spacing: 16)
-            ],
-            spacing: 8
-        ) {
-            legendItem(tier: .relaxed, label: "Relaxed", days: relaxedDays)
-            legendItem(tier: .mild, label: "Mild", days: mildDays)
-            legendItem(tier: .moderate, label: StressCategory.moderate.displayName, days: moderateDays)
-            legendItem(
-                tier: .high,
-                label: "High",
-                days: highDays,
-                dimmed: highDays == 0
-            )
+        let columns = dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible())]
+            : [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)]
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+            legendItem(tier: .relaxed, days: relaxedDays)
+            legendItem(tier: .mild, days: mildDays)
+            legendItem(tier: .moderate, days: moderateDays)
+            legendItem(tier: .high, days: highDays)
         }
     }
 
-    private func legendItem(tier: StressCategory, label: String, days: Int, dimmed: Bool = false) -> some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 3)
-                .fill(tier.color)
-                .frame(width: 10, height: 10)
-                .stressDualCoding(tier, showsCaption: false)
-            Text(label)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            Spacer(minLength: 0)
+    private func legendItem(tier: StressCategory, days: Int) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: tier.icon)
+                .font(.caption2)
+                .foregroundStyle(tier.fillColor)
+                .accessibilityHidden(true)
+            Text(tier.displayName)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+            Spacer(minLength: 4)
             Text("\(days) day\(days == 1 ? "" : "s")")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(dimmed ? 0.45 : 1))
+                .font(.v2Number(.footnote))
+                .foregroundStyle(days == 0 ? Color.V2.ink3 : Color.V2.ink)
         }
-        .opacity(dimmed ? 0.45 : 1)
     }
 }
 
@@ -191,5 +184,5 @@ struct DistributionBar: View {
         Spacer()
     }
     .padding()
-    .background(Color.Wellness.adaptiveBackground)
+    .background(Color.V2.bg)
 }

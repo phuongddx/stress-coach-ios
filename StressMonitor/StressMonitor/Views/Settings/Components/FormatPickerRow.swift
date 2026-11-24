@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Radio-style CSV / JSON format selector for the data export flow.
 ///
-/// Tapping a row selects that format and shows a checkmark; the other row
-/// dims. Designed to drop into a `Form` Section.
+/// Tapping a row selects that format and fills its radio mark (UI V2).
+/// Designed to drop into an `ActionGroupCard`.
 struct FormatPickerRow: View {
     @Binding var format: ExportFormat
 
@@ -21,26 +21,15 @@ struct FormatPickerRow: View {
             format = option
             HapticManager.shared.buttonPress()
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: option == .csv ? "tablecells" : "curlybraces")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.primaryBlue)
-                    .frame(width: 26)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(option.rawValue.uppercased())
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                    Text(option.description)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                }
-                Spacer()
-                Image(systemName: format == option ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
-                    .foregroundStyle(format == option ? Color.primaryGreen : Color.Wellness.adaptiveSecondaryText.opacity(0.4))
+            SettingsRowLabel(
+                icon: option == .csv ? "tablecells" : "curlybraces",
+                tint: format == option ? Color.V2.accentSoft : Color.V2.surface2,
+                glyph: format == option ? Color.V2.accent : Color.V2.ink2,
+                title: option.rawValue.uppercased(),
+                subtitle: option.description
+            ) {
+                SettingsRadioMark(isSelected: format == option)
             }
-            .contentShape(Rectangle())
-            .padding(.vertical, 10)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(option.rawValue) format")
@@ -48,11 +37,7 @@ struct FormatPickerRow: View {
     }
 
     private var divider: some View {
-        Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.14))
-            .frame(height: 0.5)
-            .padding(.leading, 38)
-            .accessibilityHidden(true)
+        ActionRowDivider()
     }
 }
 
@@ -67,9 +52,9 @@ private extension ExportFormat {
 
 #Preview {
     @Previewable @State var format: ExportFormat = .csv
-    return Form {
-        Section("Format") {
-            FormatPickerRow(format: $format)
-        }
+    return ActionGroupCard {
+        FormatPickerRow(format: $format)
     }
+    .padding()
+    .background(Color.V2.bg)
 }

@@ -307,7 +307,8 @@ enum MoodFaceIcon: String, CaseIterable, Identifiable {
 
 // MARK: - SettingsIconView
 
-/// Renders a settings-row icon inside a 28×28 accent-tinted rounded square.
+/// Renders a settings-row icon inside a UI V2 rounded tile (30 pt by
+/// default, `V2Metrics.radiusXS`).
 ///
 /// Resolution order (per `AppIconSystem.Setting`):
 /// 1. If `setting.assetName` is non-nil AND the asset exists in the bundle,
@@ -319,7 +320,11 @@ enum MoodFaceIcon: String, CaseIterable, Identifiable {
 struct SettingsIconView: View {
     let symbolName: String?
     let assetName: String?
-    var color: Color = .accentColor
+    /// Tile fill.
+    var color: Color = Color.V2.accent
+    /// Glyph colour on the tile.
+    var foreground: Color = Color.V2.onAccent
+    var size: CGFloat = 30
 
     var body: some View {
         Group {
@@ -328,15 +333,15 @@ struct SettingsIconView: View {
                     .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 16, height: 16)
+                    .frame(width: size * 0.56, height: size * 0.56)
             } else if let symbolName {
                 Image(systemName: symbolName)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.callout.weight(.semibold))
             }
         }
-        .foregroundStyle(.white)
-        .frame(width: 28, height: 28)
-        .background(color, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .foregroundStyle(foreground)
+        .frame(width: size, height: size)
+        .background(color, in: RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous))
         .accessibilityHidden(true)
     }
 }
@@ -345,17 +350,27 @@ struct SettingsIconView: View {
 
 extension SettingsIconView {
     /// Icon from the Settings enum (preferred entry point).
-    init(_ setting: AppIconSystem.Setting, color: Color = .accentColor) {
-        self.init(symbolName: setting.sfSymbol, assetName: setting.assetName, color: color)
+    init(
+        _ setting: AppIconSystem.Setting,
+        color: Color = Color.V2.accent,
+        foreground: Color = Color.V2.onAccent,
+        size: CGFloat = 30
+    ) {
+        self.init(symbolName: setting.sfSymbol, assetName: setting.assetName, color: color, foreground: foreground, size: size)
     }
 
     /// Direct SF Symbol bypass (rare; use the enum case when one exists).
-    init(systemName: String, color: Color = .accentColor) {
-        self.init(symbolName: systemName, assetName: nil, color: color)
+    init(
+        systemName: String,
+        color: Color = Color.V2.accent,
+        foreground: Color = Color.V2.onAccent,
+        size: CGFloat = 30
+    ) {
+        self.init(symbolName: systemName, assetName: nil, color: color, foreground: foreground, size: size)
     }
 
     /// Direct asset-name bypass (e.g. for the Plus pill sparkle).
-    init(assetName: String, color: Color = .accentColor) {
+    init(assetName: String, color: Color = Color.V2.accent) {
         self.init(symbolName: nil, assetName: assetName, color: color)
     }
 }

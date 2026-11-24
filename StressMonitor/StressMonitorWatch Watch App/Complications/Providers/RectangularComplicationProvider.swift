@@ -49,42 +49,73 @@ struct RectangularComplicationEntry: TimelineEntry {
 }
 
 // MARK: - Rectangular Complication View
-/// SwiftUI view for rectangular complication display.
+/// SwiftUI view for rectangular complication display (UI V2).
 ///
-/// Dark complication canvas (watchOS convention): 3pt tier-colour bar on
-/// the leading edge, the Ripple companion SVG glyph, then the numeric
-/// score in SF Pro Rounded + tier glyph label.  Mirrors the watch design
-/// output "Accessory Rectangular" family.
+/// Companion on the leading edge, then "Stress N", the tier (shape + name
+/// in the tier colour) with HRV, and a level bar in the tier fill.
+/// "—" / "No data" and an empty bar when there is no reading.
 struct RectangularComplicationView: View {
     let entry: RectangularComplicationEntry
 
+    private var data: ComplicationEntry { entry.entry }
+
     var body: some View {
-        HStack(spacing: 9) {
-            // Leading: 3pt tier bar
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(stressColor)
-                .frame(width: 3, height: 36)
+        HStack(spacing: 8) {
+            CharacterFaceView(creature: .ripple, category: data.isPlaceholder ? nil : data.category, size: 26, showsHalo: false)
 
-            // Ripple companion glyph
-            CharacterFaceView(creature: .ripple, category: entry.entry.category, size: 24, showsHalo: false)
-
-            // Score + tier label
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.entry.isPlaceholder ? "—" : "\(Int(entry.entry.stressLevel.rounded()))")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: accessory rectangular template — system-fixed slot
-                    .tracking(-0.02 * 22)
-                    .foregroundColor(stressColor)
-                Text(entry.entry.isPlaceholder ? "No Data" : "\(entry.entry.category.glyph) \(entry.entry.category.displayName) · Ripple")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced)) // dated exception 2026-09-05: accessory rectangular template — system-fixed slot
-                    .tracking(0.04 * 9)
-                    .foregroundColor(.white.opacity(0.55))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7) // dated exception 2026-09-05: accessory rectangular slot — tier label cannot fit the ramp
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("Stress")
+                        .font(.footnote)
+                        .foregroundStyle(WatchV2.ink2)
+                    Text(data.stressLevelText)
+                        .font(.v2Number(.headline, weight: .bold))
+                        .foregroundStyle(data.isPlaceholder ? WatchV2.ink3 : WatchV2.ink)
+                }
+
+                HStack(spacing: 4) {
+                    if data.isPlaceholder {
+                        Text("No data")
+                            .foregroundStyle(WatchV2.ink3)
+                    } else {
+                        Image(systemName: data.category.icon)
+                            .imageScale(.small)
+                            .foregroundStyle(stressColor)
+                            .widgetAccentable()
+                        Text(data.category.displayName)
+                            .foregroundStyle(stressColor)
+                        Text("· HRV \(data.hrvText) ms")
+                            .foregroundStyle(WatchV2.ink3)
+                    }
+                }
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+
+                Capsule()
+                    .fill(WatchV2.surface2)
+                    .frame(height: 3)
+                    .overlay(alignment: .leading) {
+                        GeometryReader { proxy in
+                            Capsule()
+                                .fill(stressColor)
+                                .frame(width: proxy.size.width * fraction)
+                                .widgetAccentable()
+                        }
+                    }
             }
 
             Spacer(minLength: 0)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(data.isPlaceholder
+            ? "No stress reading yet"
+            : "\(data.category.accessibilityValue(level: data.stressLevel)), HRV \(data.hrvText) milliseconds")
         .widgetURL(deepLinkURL)
+    }
+
+    private var fraction: CGFloat {
+        data.isPlaceholder ? 0 : CGFloat(min(max(data.stressLevel, 0), 100) / 100)
     }
 
     // MARK: - Computed Properties

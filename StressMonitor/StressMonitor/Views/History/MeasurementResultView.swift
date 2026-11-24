@@ -1,27 +1,26 @@
 import SwiftData
 import SwiftUI
 
-/// Immediate post-reading result screen matching `design/screens/07-measurement.html`.
+/// Immediate post-reading result screen (UI V2).
 ///
 /// Distinct from the retrospective `MeasurementDetailView`: this renders the
-/// live `StressResult` the Home hero just produced. Layout: score ring →
-/// confidence row → vs-previous delta ribbon → 5-factor breakdown → Ripple
-/// takeaway → Breathe / Mini Walk actions → "View history" CTA.
+/// live `StressResult` the Home hero just produced. Layout: V2 gauge → delta
+/// pill vs the previous reading → time and confidence → "What shaped this
+/// score" factor card → Ripple takeaway → Breathe / Mini walk → View history.
+///
+/// Spec reference: ui-v2-design/screens.js `S.result`.
 struct MeasurementResultView: View {
     let result: StressResult
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: MeasurementResultViewModel?
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 if let viewModel {
-                    scoreHero
-                    confidenceRow(viewModel)
-                    if let deltaLabel = viewModel.deltaLabel {
-                        deltaRibbon(deltaLabel)
-                    }
+                    scoreHero(viewModel)
                     factorSection(viewModel)
                     if let insight = viewModel.insight {
                         RippleInsightCard(insight: insight, onAskRipple: nil)
@@ -32,13 +31,23 @@ struct MeasurementResultView: View {
                     loadingSkeleton
                 }
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, V2Metrics.margin)
             .padding(.vertical, 16)
         }
-        .background(HomeCharacterDesignTokens.homeBackground.ignoresSafeArea())
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
-        .navigationTitle("Result")
+        .navigationTitle("Your reading")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink(value: Route.scienceSources(topic: .stressScore)) {
+                    Image(systemName: "info.circle")
+                        .foregroundStyle(Color.V2.accent)
+                        .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
+                }
+                .accessibilityLabel("About the stress score")
+            }
+        }
         .task {
             guard viewModel == nil else { return }
             let loadedViewModel = MeasurementResultViewModel(
@@ -50,214 +59,110 @@ struct MeasurementResultView: View {
         }
     }
 
-    // MARK: - Score ring
+    // MARK: - Gauge hero
 
-    private var scoreHero: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.10), lineWidth: 13)
-            Circle()
-                .trim(from: 0, to: ringProgress)
-                .stroke(
-                    LinearGradient(
-                        colors: [result.category.color.opacity(0.85), result.category.color],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    style: StrokeStyle(lineWidth: 13, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
+    private func scoreHero(_ viewModel: MeasurementResultViewModel) -> some View {
+        VStack(spacing: 8) {
+            V2StressGauge(score: result.level)
+                .frame(maxWidth: dynamicTypeSize.isAccessibilitySize ? 280 : 232)
 
-            VStack(spacing: 2) {
-                Text("\(Int(result.level.rounded()))")
-                    .font(.system(size: 64, weight: .bold, design: .rounded))
-                    .foregroundStyle(result.category.color)
-
-                Text(result.category.displayName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(result.category.color)
-                    .stressDualCoding(result.category, showsCaption: false)
-
-                Text(result.timestamp, format: .dateTime.hour().minute())
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.4)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .padding(.top, 2)
+            if let deltaLabel = viewModel.deltaLabel {
+                deltaPill(deltaLabel, delta: viewModel.previousDelta ?? 0)
             }
-        }
-        .frame(width: 200, height: 200)
-        .padding(.top, 6)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Stress score \(Int(result.level.rounded())), \(result.category.displayName)"
-        )
-    }
 
-    private var ringProgress: Double {
-        min(1, max(0.01, result.level / 100))
-    }
-
-    // MARK: - Confidence + delta
-
-    private func confidenceRow(_ viewModel: MeasurementResultViewModel) -> some View {
-        HStack(spacing: 6) {
-            Circle()
-                .fill(Color.primaryGreen)
-                .frame(width: 6, height: 6)
-                .accessibilityHidden(true)
-            Text(viewModel.confidenceLabel)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            Text("\(result.timestamp.formatted(date: .omitted, time: .shortened)) · \(viewModel.confidenceLabel)")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
+        .padding(.top, 4)
     }
 
-    private func deltaRibbon(_ label: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: deltaIcon)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(deltaColor)
-                .accessibilityHidden(true)
-            Text(label)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(deltaColor)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(deltaColor.opacity(0.10), in: Capsule())
-        .accessibilityElement(children: .combine)
-    }
-
-    private var deltaIcon: String {
-        guard let previousDelta = viewModel?.previousDelta else { return "minus" }
-        switch previousDelta {
-        case ..<0: return "arrow.down.circle.fill"
-        case 1...: return "arrow.up.circle.fill"
-        default: return "minus.circle.fill"
+    /// Lower than last time is good; higher is not. No change gets a neutral capsule.
+    @ViewBuilder
+    private func deltaPill(_ label: String, delta: Int) -> some View {
+        if delta == 0 {
+            HStack(spacing: 4) {
+                Image(systemName: "equal")
+                    .imageScale(.small)
+                    .accessibilityHidden(true)
+                Text(label)
+            }
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Color.V2.ink2)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(Color.V2.surface2))
+        } else {
+            V2DeltaPill(text: label, isUp: delta > 0, isGood: delta < 0)
         }
     }
 
-    private var deltaColor: Color {
-        guard let previousDelta = viewModel?.previousDelta else {
-            return Color.Wellness.adaptiveSecondaryText
-        }
-        switch previousDelta {
-        case ..<0: return .stressRelaxed
-        case 1...: return .stressHigh
-        default: return Color.Wellness.adaptiveSecondaryText
-        }
-    }
-
-    // MARK: - 5-factor breakdown
+    // MARK: - Factors
 
     private func factorSection(_ viewModel: MeasurementResultViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("5-factor breakdown")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .padding(.horizontal, 4)
+        V2Card {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("What shaped this score")
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+                    .accessibilityAddTraits(.isHeader)
 
-            if viewModel.factorRows.isEmpty {
-                Text("Breakdown unavailable for this reading.")
-                    .font(.system(size: 13, weight: .regular))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 14)
-                    .background(
-                        Color.Wellness.adaptiveCardBackground,
-                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    )
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(Array(viewModel.factorRows.enumerated()), id: \.element.id) { pair in
-                        if pair.offset > 0 {
-                            factorDivider
-                        }
+                if viewModel.factorRows.isEmpty {
+                    Text("Breakdown unavailable for this reading.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.V2.ink2)
+                } else {
+                    ForEach(viewModel.factorRows) { row in
                         FactorBreakdownRow(
-                            factor: pair.element.factor,
-                            value: pair.element.value,
-                            detailText: pair.element.detailText
+                            factor: row.factor,
+                            value: row.value,
+                            detailText: row.detailText
                         )
                     }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    Color.Wellness.adaptiveCardBackground,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                )
 
-                if let breakdown = result.factorBreakdown, breakdown.dataCompleteness < 1.0 {
-                    Text("Some factors were unavailable for this reading.")
-                        .font(.system(size: 11, weight: .regular))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                        .padding(.horizontal, 4)
-                        .padding(.top, 2)
+                    if let breakdown = result.factorBreakdown, breakdown.dataCompleteness < 1.0 {
+                        V2Card(style: .flat, padding: 12) {
+                            Text("Some factors were unavailable for this reading.")
+                                .font(.footnote)
+                                .foregroundStyle(Color.V2.ink2)
+                        }
+                    }
                 }
             }
         }
-    }
-
-    private var factorDivider: some View {
-        Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.10))
-            .frame(height: 0.5)
     }
 
     // MARK: - Actions
 
     private var actionRow: some View {
-        HStack(spacing: 10) {
-            routeLink(route: .boxBreathing, title: "Breathe 2min", icon: "wind", style: .secondary)
-            routeLink(route: .miniWalk, title: "Mini Walk", icon: "figure.walk", style: .primary)
+        // Stacked: full-width buttons never truncate, at any text size.
+        VStack(spacing: 8) { actionLinks }
+    }
+
+    @ViewBuilder
+    private var actionLinks: some View {
+        NavigationLink(value: Route.boxBreathing) {
+            Label("Breathe 2 min", systemImage: "wind")
+                .lineLimit(1)
         }
-        .padding(.top, 2)
+        .buttonStyle(.v2(.primary))
+        .simultaneousGesture(hapticGesture)
+
+        NavigationLink(value: Route.miniWalk) {
+            Label("Mini walk", systemImage: "figure.walk")
+                .lineLimit(1)
+        }
+        .buttonStyle(.v2(.secondary))
+        .simultaneousGesture(hapticGesture)
     }
 
     private var historyLink: some View {
         NavigationLink(value: Route.history) {
             Text("View history")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.primaryBlue)
         }
-        .buttonStyle(.plain)
-        .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
-        .simultaneousGesture(hapticGesture)
-        .frame(maxWidth: .infinity)
-        .padding(.top, 2)
-    }
-
-    private enum ActionStyle {
-        case primary
-        case secondary
-    }
-
-    private func routeLink(route: Route, title: String, icon: String, style: ActionStyle) -> some View {
-        NavigationLink(value: route) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .accessibilityHidden(true)
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(
-                style == .primary ? AnyShapeStyle(Color.primaryBlue) : AnyShapeStyle(Color.Wellness.adaptiveCardBackground),
-                in: Capsule()
-            )
-            .foregroundStyle(
-                style == .primary
-                    ? AnyShapeStyle(Color.white)
-                    : AnyShapeStyle(Color.primaryBlue)
-            )
-        }
-        .buttonStyle(.plain)
-        .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+        .buttonStyle(.v2(.ghost))
         .simultaneousGesture(hapticGesture)
     }
 
@@ -270,16 +175,12 @@ struct MeasurementResultView: View {
     // MARK: - Loading
 
     private var loadingSkeleton: some View {
-        VStack(spacing: 14) {
-            Circle()
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.10), lineWidth: 13)
-                .frame(width: 200, height: 200)
-                .padding(.top, 6)
-
-            SkeletonBlock(height: 24)
+        VStack(spacing: 16) {
+            V2Skeleton(width: 200, height: 200, cornerRadius: 100)
+            V2Skeleton(width: 180, height: 16)
             SkeletonBlock(height: 260)
-            SkeletonBlock(height: 64)
         }
+        .frame(maxWidth: .infinity)
     }
 }
 

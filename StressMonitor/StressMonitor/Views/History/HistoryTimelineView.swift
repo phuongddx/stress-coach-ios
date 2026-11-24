@@ -7,7 +7,7 @@ struct HistoryTimelineView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 if let viewModel {
                     filterChipRow(viewModel)
 
@@ -18,8 +18,15 @@ struct HistoryTimelineView: View {
                     summaryTiles
 
                     if viewModel.dayGroups.isEmpty && !viewModel.isLoading {
-                        NoDataCard(dataType: .timeline) {
-                            Task { await viewModel.loadInitial() }
+                        V2Card {
+                            V2StateView(
+                                systemImage: "clock",
+                                title: "No readings yet",
+                                message: "Readings appear here as your Apple Watch records HRV through the day.",
+                                actionTitle: "Refresh"
+                            ) {
+                                Task { await viewModel.loadInitial() }
+                            }
                         }
                     } else {
                         ForEach(viewModel.dayGroups) { group in
@@ -38,7 +45,7 @@ struct HistoryTimelineView: View {
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .background(HomeCharacterDesignTokens.homeBackground.ignoresSafeArea())
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationTitle("Stress History")
         .navigationBarTitleDisplayMode(.inline)
@@ -69,63 +76,50 @@ struct HistoryTimelineView: View {
         _ filter: HistoryFilter,
         viewModel: HistoryTimelineViewModel
     ) -> some View {
-        let isActive = filter == viewModel.selectedFilter
-
-        return Button {
+        V2Chip(title: filter.title, isSelected: filter == viewModel.selectedFilter) {
             HapticManager.shared.buttonPress()
             viewModel.selectFilter(filter)
-        } label: {
-            Text(filter.title)
-                .font(.system(size: 13, weight: isActive ? .semibold : .medium))
-                .foregroundStyle(
-                    isActive
-                        ? Color.white
-                        : Color.Wellness.adaptiveSecondaryText
-                )
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    isActive
-                        ? AnyShapeStyle(Color.primaryBlue)
-                        : AnyShapeStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.08))
-                )
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+        .frame(minHeight: V2Metrics.minTouchTarget)
     }
 
     // MARK: - Summary
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private var summaryTiles: some View {
-        HStack(alignment: .top, spacing: 10) {
-            summaryTile(title: "avg · 7d", value: viewModel?.summary?.sevenDayAverage)
-            summaryTile(title: "best", value: viewModel?.summary?.best)
-            summaryTile(title: "peak", value: viewModel?.summary?.peak)
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+        return layout {
+            summaryTile(title: "7-day average", value: viewModel?.summary?.sevenDayAverage)
+            summaryTile(title: "Best", value: viewModel?.summary?.best)
+            summaryTile(title: "Peak", value: viewModel?.summary?.peak)
         }
     }
 
     private func summaryTile(title: String, value: Int?) -> some View {
-        let valueColor = value.map {
-            Color.stressColor(for: StressResult.category(for: Double($0)))
-        } ?? Color.Wellness.adaptiveSecondaryText
+        let category = value.map { StressResult.category(for: Double($0)) }
         let displayValue = value.map(String.init) ?? "—"
 
         return VStack(alignment: .leading, spacing: 4) {
-            Text(displayValue)
-                .font(.system(size: 21, weight: .heavy, design: .rounded))
-                .foregroundStyle(valueColor)
-
             Text(title)
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.5)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(displayValue)
+                    .font(.v2Number(.title2))
+                    .foregroundStyle(category?.color ?? Color.V2.ink3)
+                if let category {
+                    V2TierBadge(category: category, compact: true, font: .footnote)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .v2CardBackground()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title), \(displayValue) stress score")
     }
@@ -136,26 +130,36 @@ struct HistoryTimelineView: View {
         _ group: HistoryDayGroup,
         viewModel: HistoryTimelineViewModel
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Text(dayTitle(group.date))
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                    .v2Eyebrow()
+                    .accessibilityAddTraits(.isHeader)
 
                 Spacer()
 
                 Text("\(group.entries.count) \(group.entries.count == 1 ? "reading" : "readings")")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             }
+            .padding(.horizontal, 4)
 
-            ForEach(group.entries) { measurement in
-                NavigationLink(value: viewModel.route(for: measurement)) {
-                    HistoryTimelineEntryCard(measurement: measurement)
+            VStack(spacing: 0) {
+                ForEach(Array(group.entries.enumerated()), id: \.element.id) { index, measurement in
+                    if index > 0 {
+                        Rectangle()
+                            .fill(Color.V2.line)
+                            .frame(height: 0.5)
+                            .padding(.leading, V2Metrics.margin)
+                    }
+                    NavigationLink(value: viewModel.route(for: measurement)) {
+                        HistoryTimelineEntryCard(measurement: measurement)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-                .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
             }
+            .clipShape(RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous))
+            .v2CardBackground()
         }
     }
 
@@ -185,39 +189,33 @@ struct HistoryTimelineView: View {
             HStack(spacing: 8) {
                 if viewModel.isLoading {
                     ProgressView()
+                        .tint(Color.V2.accent)
                 } else {
                     Image(systemName: "clock.arrow.circlepath")
                         .accessibilityHidden(true)
                 }
                 Text("Load earlier")
             }
-            .font(.system(size: 14, weight: .semibold, design: .rounded))
-            .foregroundStyle(Color.primaryBlue)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 13)
-            .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-            .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.v2(.secondary))
         .disabled(viewModel.isLoading)
-        .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
     }
 
     private func errorCard(_ message: String) -> some View {
-        Label(message, systemImage: "exclamationmark.triangle")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(Color.stressColor(for: .high))
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        V2ErrorCard(title: "Couldn't load history", message: message)
             .accessibilityElement(children: .combine)
     }
 
     private var loadingSkeleton: some View {
-        VStack(spacing: 10) {
-            SkeletonBlock(height: 40)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                V2Skeleton(width: 60, height: 32, cornerRadius: 16)
+                V2Skeleton(width: 80, height: 32, cornerRadius: 16)
+                V2Skeleton(width: 60, height: 32, cornerRadius: 16)
+            }
             SkeletonBlock(height: 74)
+            V2Skeleton(width: 90, height: 14)
+            SkeletonBlock(height: 64)
             SkeletonBlock(height: 64)
             SkeletonBlock(height: 64)
         }
@@ -232,5 +230,5 @@ struct HistoryTimelineView: View {
         for: StressMeasurement.self,
         inMemory: true
     )
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

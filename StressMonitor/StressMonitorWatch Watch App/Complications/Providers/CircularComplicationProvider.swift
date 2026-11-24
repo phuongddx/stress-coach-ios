@@ -49,51 +49,41 @@ struct CircularComplicationEntry: TimelineEntry {
 }
 
 // MARK: - Circular Complication View
-/// SwiftUI view for circular complication display.
+/// SwiftUI view for circular complication display (UI V2).
 ///
-/// Dark complication canvas (watchOS convention): a ring whose fill = the
-/// stress level, the numeric score in the centre in SF Pro Rounded, and the
-/// tier label in SF Mono below.  Ripple glyph is omitted at this size to
-/// keep the score legible; the ring colour carries the tier.
+/// The same 240° gauge geometry as Home and the iPhone hero: `surface2`
+/// track, tier-fill value arc, the score in the centre and the tier shape
+/// in the arc's opening. "—" and an empty track when there is no data.
 struct CircularComplicationView: View {
     @Environment(\.widgetFamily) var family
     let entry: CircularComplicationEntry
 
     var body: some View {
-        ZStack {
-            // Background ring
-            Circle()
-                .stroke(Color.white.opacity(0.10), lineWidth: 4)
-
-            // Stress level ring with tier colour coding
-            Circle()
-                .trim(from: 0, to: stressLevelFraction)
-                .stroke(
-                    stressColor,
-                    style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.2), value: stressLevelFraction)
-
-            // Centre content — score + tier label
+        WatchStressGauge(score: entry.entry.isPlaceholder ? nil : entry.entry.stressLevel, lineWidth: 4) {
             VStack(spacing: 0) {
                 Text(entry.entry.isPlaceholder ? "—" : "\(Int(entry.entry.stressLevel.rounded()))")
-                    .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: accessory circular template — system-fixed slot
-                    .foregroundColor(stressColor)
-                Text(entry.entry.category.displayName.uppercased())
-                    .font(.system(size: 6.5, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: accessory circular template — system-fixed slot
-                    .tracking(0.06 * 6.5)
-                    .foregroundColor(.white.opacity(0.55))
+                    .font(.v2Number(.headline, weight: .bold))
+                    .foregroundStyle(entry.entry.isPlaceholder ? WatchV2.ink3 : WatchV2.ink)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                if !entry.entry.isPlaceholder {
+                    Image(systemName: entry.entry.category.icon)
+                        .font(.caption2)
+                        .imageScale(.small)
+                        .foregroundStyle(stressColor)
+                        .widgetAccentable()
+                }
             }
+            .offset(y: 3)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.entry.isPlaceholder
+            ? "No stress reading yet"
+            : entry.entry.category.accessibilityValue(level: entry.entry.stressLevel))
         .widgetURL(deepLinkURL)
     }
 
     // MARK: - Computed Properties
-    private var stressLevelFraction: CGFloat {
-        CGFloat(min(max(entry.entry.stressLevel, 0), 100) / 100.0)
-    }
-
     private var stressColor: Color {
         entry.entry.category.color
     }

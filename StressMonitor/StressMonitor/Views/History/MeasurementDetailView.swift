@@ -1,15 +1,18 @@
 import SwiftUI
 import SwiftData
 
-/// Measurement detail screen matching `12-measurement-detail.html`.
+/// Measurement detail screen (UI V2).
 ///
-/// Layout: big stress score + category label + timestamp → segmented stress-scale
-/// position bar → 5-factor breakdown with weight bars → context card (HR/HRV/Sleep/
-/// Steps/Mood) → action row (Breathe / Ask Ripple / Share).
+/// Layout: header card (small gauge + tier + substate + confidence) → "Where
+/// this sits" tier scale → factor card → context card → "What could help"
+/// (recommendations) → Breathe / Ask Ripple. Share stays in the toolbar.
+///
+/// Spec reference: ui-v2-design/screens.js `S.detail`.
 struct MeasurementDetailView: View {
     let measurement: StressMeasurement
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: DetailViewModel?
     @State private var showChatSheet = false
     @Environment(\.dismiss) private var dismiss
@@ -20,46 +23,37 @@ struct MeasurementDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 scoreHero
-                    .padding(.horizontal, 20)
-
                 stressScaleBar
-                    .padding(.horizontal, 20)
-
                 factorBreakdownSection
-                    .padding(.horizontal, 20)
-
                 contextCard
-                    .padding(.horizontal, 20)
 
                 if let viewModel = viewModel, !viewModel.recommendations.isEmpty {
-                    recommendationsCard
-                        .padding(.horizontal, 20)
+                    recommendationsSection
                 }
 
                 actionBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 2)
             }
+            .padding(.horizontal, V2Metrics.margin)
             .padding(.vertical, 16)
         }
-        .background(Color.appBackground)
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text(navTitle)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(action: { viewModel?.shareMeasurement() }) {
                     Image(systemName: AppIconSystem.System.export_.sfSymbol)
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Color.primaryBlue)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
+                        .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
                 }
-                .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
                 .accessibilityLabel("Share measurement")
             }
         }
@@ -75,234 +69,189 @@ struct MeasurementDetailView: View {
         }
     }
 
-    // MARK: - Score hero (big number + state + time)
+    // MARK: - Score header
 
     private var scoreHero: some View {
-        VStack(spacing: 4) {
-            Text("\(Int(measurement.stressLevel))")
-                .font(.system(size: 80, weight: .heavy, design: .rounded))
-                .foregroundStyle(category.color)
-                .accessibilityLabel("Stress score \(Int(measurement.stressLevel))")
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 16))
+        return V2Card {
+            layout {
+                V2StressGauge(score: measurement.stressLevel, lineWidth: 10, showsTier: false)
+                    .frame(width: 120)
+                    .accessibilityLabel("Stress score \(Int(measurement.stressLevel))")
 
-            Text(categoryDisplayName)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                .foregroundStyle(category.color)
-                .stressDualCoding(category, showsCaption: false)
-
-            Text(formatFullDate(measurement.timestamp))
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .tracking(0.4)
+                VStack(alignment: .leading, spacing: 4) {
+                    V2TierBadge(category: category, font: .title2.weight(.semibold))
+                    Text(category.v2Substate)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.V2.ink2)
+                    Text(formatFullDate(measurement.timestamp))
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink3)
+                    if confidenceText != "—" {
+                        Text("\(confidenceText) confidence")
+                            .font(.footnote)
+                            .foregroundStyle(Color.V2.ink3)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
     }
 
     // MARK: - Stress scale position bar
 
     private var stressScaleBar: some View {
-        VStack(spacing: 6) {
-            HStack {
-                Text("Stress scale · position")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .tracking(0.4)
-                    .textCase(.uppercase)
-                Spacer()
-            }
+        V2Card {
+            VStack(spacing: 8) {
+                HStack {
+                    Text("0")
+                    Spacer()
+                    Text("Where this sits")
+                    Spacer()
+                    Text("100")
+                }
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
 
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                HStack(spacing: 0) {
-                    ForEach(0..<Self.scaleCategories.count, id: \.self) { i in
-                        RoundedRectangle(cornerRadius: 2)
-                            .fill(segmentColor(i))
-                            .frame(height: 8)
-                            .overlay(
-                                activeSegmentIndex == i
-                                    ? RoundedRectangle(cornerRadius: 2)
-                                        .stroke(Color.Wellness.adaptivePrimaryText, lineWidth: 2)
-                                    : nil
-                            )
-                            .padding(.trailing, i == Self.scaleCategories.count - 1 ? 0 : 2)
-                            .frame(width: width * segmentFraction(i))
+                GeometryReader { proxy in
+                    let width = proxy.size.width
+                    HStack(spacing: 2) {
+                        ForEach(0..<Self.scaleCategories.count, id: \.self) { i in
+                            Rectangle()
+                                .fill(Self.scaleCategories[i].fillColor)
+                                .frame(width: max(0, width * segmentFraction(i) - 2))
+                        }
+                    }
+                    .frame(height: 10)
+                    .clipShape(Capsule())
+                    .overlay(alignment: .topLeading) {
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .font(.caption)
+                            .foregroundStyle(Color.V2.ink)
+                            .offset(x: markerOffset(barWidth: width), y: 12)
                     }
                 }
-                .overlay(alignment: .leading) {
-                    Image(systemName: "arrowtriangle.down.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                        .offset(x: markerOffset(barWidth: width), y: -12)
-                }
+                .frame(height: 28, alignment: .top)
             }
-            .frame(height: 8)
-
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    ForEach(Self.scaleLabels, id: \.self) { value in
-                        let fraction = CGFloat(value) / 100
-                        Text("\(value)")
-                            .font(.system(size: 9, weight: .medium, design: .monospaced))
-                            .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                            .fixedSize()
-                            .alignmentGuide(.leading) { $0.width * fraction }
-                            .offset(x: proxy.size.width * fraction)
-                    }
-                }
-            }
-            .frame(height: 12)
         }
-        .padding(12)
-        .background(Color.Wellness.adaptiveCardBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Stress scale position: \(Int(measurement.stressLevel)) of 100, \(category.displayName)")
     }
 
-    // MARK: - 5-factor breakdown
+    // MARK: - Factors
 
     private var factorBreakdownSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("5-factor breakdown")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .padding(.horizontal, 4)
+        V2Card {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Factors")
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+                    .accessibilityAddTraits(.isHeader)
 
-            VStack(spacing: 0) {
                 FactorBreakdownRow(factor: .hrv, value: factorBreakdown.hrvComponent, detailText: hrvDetailText)
-                factorDivider
                 FactorBreakdownRow(factor: .heartRate, value: factorBreakdown.hrComponent, detailText: hrDetailText)
-                factorDivider
                 FactorBreakdownRow(factor: .sleep, value: factorBreakdown.sleepComponent)
-                factorDivider
                 FactorBreakdownRow(factor: .activity, value: factorBreakdown.activityComponent)
-                factorDivider
                 FactorBreakdownRow(factor: .recovery, value: factorBreakdown.recoveryComponent)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.Wellness.adaptiveCardBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-            if factorBreakdown.dataCompleteness < 1.0 {
-                Text("Some factors were unavailable for this measurement.")
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                    .padding(.horizontal, 4)
-                    .padding(.top, 2)
+                if factorBreakdown.dataCompleteness < 1.0 {
+                    V2Card(style: .flat, padding: 12) {
+                        Text("Some factors were unavailable for this measurement.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.V2.ink2)
+                    }
+                }
             }
         }
     }
 
-    private var factorDivider: some View {
-        Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.10))
-            .frame(height: 0.5)
-    }
-
-    // MARK: - Context card (HR / HRV / Sleep / Steps / Mood)
+    // MARK: - Context card (HR / HRV / Confidence)
 
     private var contextCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Context")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .padding(.horizontal, 4)
-
-            VStack(spacing: 0) {
+        V2Card(padding: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Context")
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+                    .accessibilityAddTraits(.isHeader)
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.top, V2Metrics.margin)
+                    .padding(.bottom, 4)
                 contextRow(label: "Heart rate", value: heartRateText)
                 contextDivider
                 contextRow(label: "HRV (SDNN)", value: hrvText)
                 contextDivider
                 contextRow(label: "Confidence", value: confidenceText)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.Wellness.adaptiveCardBackground, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.bottom, 4)
         }
     }
 
     private func contextRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(.system(size: 13, weight: .regular))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.subheadline)
+                .foregroundStyle(Color.V2.ink2)
             Spacer()
             Text(value)
-                .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.v2Number(.subheadline))
+                .foregroundStyle(Color.V2.ink)
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, V2Metrics.margin)
+        .frame(minHeight: V2Metrics.minTouchTarget)
+        .accessibilityElement(children: .combine)
     }
 
     private var contextDivider: some View {
         Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.10))
+            .fill(Color.V2.line)
             .frame(height: 0.5)
+            .padding(.leading, V2Metrics.margin)
     }
 
-    // MARK: - Recommendations
+    // MARK: - What could help
 
-    private var recommendationsCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Recommendations")
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .padding(.horizontal, 4)
-
-            VStack(spacing: 10) {
-                ForEach(viewModel?.recommendations ?? [], id: \.title) { rec in
+    private var recommendationsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            V2SectionHeader(title: "What could help")
+            VStack(spacing: 0) {
+                ForEach(Array((viewModel?.recommendations ?? []).enumerated()), id: \.element.title) { index, rec in
+                    if index > 0 { contextDivider.padding(.leading, 52) }
                     RecommendationCard(recommendation: rec)
                 }
             }
+            .v2CardBackground()
         }
     }
 
     // MARK: - Action bar
 
     private var actionBar: some View {
-        HStack(spacing: 6) {
-            actionButton(icon: "wind", label: "Breathe") {
+        VStack(spacing: 8) {
+            Button {
+                HapticManager.shared.buttonPress()
                 router.deepLink(to: .boxBreathing, in: .action)
+            } label: {
+                Label("Breathe 2 min", systemImage: "wind")
             }
-            actionButton(icon: "bubble.left.fill", label: "Ask Ripple") {
-                showChatSheet = true
-            }
-            actionButton(icon: "square.and.arrow.up", label: "Share") {
-                viewModel?.shareMeasurement()
-            }
-        }
-    }
+            .buttonStyle(.v2(.primary))
 
-    private func actionButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
-        Button {
-            HapticManager.shared.buttonPress()
-            action()
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                Text(label)
-                    .font(.system(size: 13, weight: .semibold))
+            Button {
+                HapticManager.shared.buttonPress()
+                showChatSheet = true
+            } label: {
+                Label("Ask Ripple about this reading", systemImage: "bubble.left.fill")
             }
-            .foregroundStyle(Color.primaryBlue)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(Color.Wellness.adaptiveCardBackground, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .buttonStyle(.v2(.secondary))
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Helpers
 
     private var category: StressCategory {
         measurement.category
-    }
-
-    private var categoryDisplayName: String {
-        switch category {
-        case .relaxed:  return "Relaxed"
-        case .mild:     return "Mild"
-        case .moderate: return "Moderate"
-        case .high:     return "High"
-        case .severe:   return "Severe"
-        }
     }
 
     private var navTitle: String {
@@ -347,29 +296,13 @@ struct MeasurementDetailView: View {
     private static let scaleCategories: [StressCategory] = [.relaxed, .mild, .moderate, .high, .severe]
     /// Lower edge of each tier, then the scale maximum. Mirrors `StressResult.category(for:)`.
     private static let scaleBounds: [Double] = [0, 25, 50, 75, 90, 100]
-    private static let scaleLabels = [0, 25, 50, 75, 100]
-
-    private var activeSegmentIndex: Int {
-        Self.scaleCategories.firstIndex(of: StressResult.category(for: measurement.stressLevel)) ?? 0
-    }
-
     private func segmentFraction(_ index: Int) -> CGFloat {
         CGFloat(Self.scaleBounds[index + 1] - Self.scaleBounds[index]) / 100
     }
 
     private func markerOffset(barWidth: CGFloat) -> CGFloat {
         let clamped = min(1, max(0, measurement.stressLevel / 100))
-        return barWidth * clamped - 5
-    }
-
-    private func segmentColor(_ index: Int) -> Color {
-        switch index {
-        case 0: return .stressRelaxed
-        case 1: return .stressMild
-        case 2: return .stressModerate
-        case 3: return .stressHigh
-        default: return .stressSevere
-        }
+        return barWidth * clamped - 6
     }
 
     private func formatFullDate(_ date: Date) -> String {

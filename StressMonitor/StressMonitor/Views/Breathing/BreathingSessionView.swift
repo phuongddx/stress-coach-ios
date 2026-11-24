@@ -1,133 +1,35 @@
 import SwiftUI
 
-/// Active box-breathing session screen — redesigned per `08-breathing-active.html`.
+/// Active box-breathing session screen (UI V2).
 ///
-/// Light gradient background with:
-/// - Meta row (remaining time / cycles completed)
-/// - Breathing arena (BreathingCircle + PhaseLabel inside core)
-/// - Phase track (4 dots showing inhale→hold→exhale→hold progress)
-/// - Progress bar + End early / Skip cycle buttons
+/// - Top row: "Box breathing" title and the time remaining
+/// - Breathing arena: the growing accent circle, or, when the animated guide
+///   is off (Reduce Motion by default, or the in-session toggle), a ring that
+///   fills one quarter per phase, with a note explaining why
+/// - Phase strip (In 4 / Hold 4 / Out 4 / Hold 4), "Cycle N of M", progress
+/// - End early / Skip cycle, the animation toggle and the haptics note
+///
+/// Spec reference: ui-v2-design/screens.js `S.session` (default and
+/// Reduce Motion). Timing, haptics and HRV capture live in
+/// `BreathingSessionViewModel` and are unchanged.
 struct BreathingSessionView: View {
     @State private var viewModel: BreathingSessionViewModel?
     @State private var motionReduced = false
     @Environment(\.dismiss) private var dismiss
     @Environment(AppRouter.self) private var router
 
-    // Design tokens
-    private let accent = Color(hex: "#4FC3F7")
-    private let accentStrong = Color(hex: "#0288D1")
-    private let fg = Color(hex: "#101223")
-    private let fgSecondary = Color(hex: "#3C3C43")
-    private let muted = Color(hex: "#777986")
-    private let separator = Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.12)
-
     var body: some View {
-        ZStack {
-            // Radial gradient background matching .breath-stage
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.925, green: 0.969, blue: 0.996),  // #ECF8FE
-                        Color.white
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                RadialGradient(
-                    colors: [accent.opacity(0.22), Color.clear],
-                    center: .center,
-                    startRadius: 50,
-                    endRadius: 200
-                )
-            }
-            .ignoresSafeArea()
-
-            VStack(spacing: 0) {
+        GeometryReader { proxy in
+            ScrollView {
                 if let vm = viewModel {
-                    // Top meta row (remaining + cycles)
-                    metaRow(vm: vm)
-                        .padding(.top, 16)
-
-                    Spacer()
-
-                    // Breathing arena (circle + phase label inside)
-                    ZStack {
-                        BreathingCircle(
-                            phase: vm.boxPhase,
-                            size: 280,
-                            isAnimated: vm.isAnimationEnabled
-                        )
-                        if vm.isAnimationEnabled {
-                            PhaseLabel(
-                                phase: vm.boxPhase,
-                                secondsRemaining: vm.secondsRemaining,
-                                tint: .white
-                            )
-                        } else {
-                            fallbackStatusLine(vm: vm)
-                        }
-                    }
-                    .frame(height: 300)
-
-                    Spacer()
-
-                    // Phase track (4 dots)
-                    phaseTrack(vm: vm)
-                        .padding(.top, 8)
-
-                    // Progress bar + buttons
-                    VStack(spacing: 12) {
-                        progressBar(fraction: vm.sessionProgressFraction)
-
-                        HStack(spacing: 10) {
-                            Button(action: {
-                                HapticManager.shared.buttonPress()
-                                dismiss()
-                            }) {
-                                Text("End early")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(fg)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 48)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.08))
-                                    )
-                            }
-
-                            Button(action: {
-                                HapticManager.shared.buttonPress()
-                                vm.skipCycle()
-                            }) {
-                                Text("Skip cycle")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 48)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(fg)
-                                    )
-                            }
-                        }
-
-                        Toggle(isOn: animationToggleBinding(vm: vm)) {
-                            Text("Breathing animation")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(fgSecondary)
-                        }
-                        .toggleStyle(.switch)
-                        .tint(accentStrong)
-
-                        Text("Haptic + heartbeat on each transition")
-                            .font(.system(size: 12))
-                            .foregroundStyle(muted)
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 32)
+                    content(vm: vm)
+                        .frame(minHeight: proxy.size.height)
                 }
             }
+            .scrollBounceBehavior(.basedOnSize)
         }
+        .background(Color.V2.bg.ignoresSafeArea())
+        .accessibleDynamicType()
         .navigationBarHidden(true)
         .onMotionDecision { decision in
             motionReduced = decision
@@ -149,27 +51,197 @@ struct BreathingSessionView: View {
         }
     }
 
-    // MARK: - D-11 Fallback (motion-reduced session presentation)
+    // MARK: - Layout
 
-    /// Text countdown status line shown when the animated guide is off —
-    /// haptic pulses carry the phase rhythm from the view model.
-    private func fallbackStatusLine(vm: BreathingSessionViewModel) -> some View {
-        Text(countdownLine(for: vm.boxPhase, seconds: vm.secondsRemaining))
-            .font(.system(size: 22, weight: .bold, design: .rounded))
-            .monospacedDigit()
-            .foregroundStyle(.white)
-            .accessibilityLabel("\(vm.boxPhase.label), \(vm.secondsRemaining) seconds remaining")
+    private func content(vm: BreathingSessionViewModel) -> some View {
+        VStack(spacing: 16) {
+            topRow(vm: vm)
+                .padding(.top, 8)
+
+            Spacer(minLength: 8)
+
+            arena(vm: vm)
+
+            if !vm.isAnimationEnabled {
+                ringNote
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(spacing: 12) {
+                phaseStrip(vm: vm)
+                cycleLine(vm: vm)
+                progressBar(fraction: vm.sessionProgressFraction, animated: vm.isAnimationEnabled)
+            }
+
+            controls(vm: vm)
+                .padding(.bottom, 16)
+        }
+        .padding(.horizontal, V2Metrics.margin)
     }
 
-    /// Contract copy: phase word + seconds ("Inhale — 3"), vocabulary matching
-    /// the box-breathing step words.
-    private func countdownLine(for phase: BoxBreathingPhase, seconds: Int) -> String {
-        switch phase {
-        case .inhale:  return "Inhale — \(seconds)"
-        case .holdIn:  return "Hold — \(seconds)"
-        case .exhale:  return "Exhale — \(seconds)"
-        case .holdOut: return "Hold — \(seconds)"
+    // MARK: - Top Row
+
+    private func topRow(vm: BreathingSessionViewModel) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("Box breathing")
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 8)
+            Text(vm.remainingTimeString)
+                .font(.v2Number(.headline, weight: .semibold))
+                .foregroundStyle(Color.V2.ink2)
+                .accessibilityLabel("\(vm.remainingTimeString) remaining")
         }
+        .frame(minHeight: V2Metrics.minTouchTarget)
+    }
+
+    // MARK: - Arena
+
+    @ViewBuilder
+    private func arena(vm: BreathingSessionViewModel) -> some View {
+        if vm.isAnimationEnabled {
+            ZStack {
+                BreathingCircle(
+                    phase: vm.boxPhase,
+                    size: 280,
+                    isAnimated: true
+                )
+                PhaseLabel(
+                    phase: vm.boxPhase,
+                    secondsRemaining: vm.secondsRemaining
+                )
+            }
+            .frame(height: 300)
+        } else {
+            BreathingFillRing(phase: vm.boxPhase, secondsRemaining: vm.secondsRemaining)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(vm.boxPhase.label), \(vm.secondsRemaining) seconds remaining")
+        }
+    }
+
+    /// D-11 fallback explainer, shown whenever the animated guide is off.
+    private var ringNote: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "figure.mind.and.body")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .accessibilityHidden(true)
+            Text(motionReduced
+                 ? "Reduce Motion is on, so the ring fills instead of growing. Haptics mark each change."
+                 : "Animation is off, so the ring fills instead of growing. Haptics mark each change.")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .v2CardBackground(.flat)
+    }
+
+    // MARK: - Phase Strip
+
+    private func phaseStrip(vm: BreathingSessionViewModel) -> some View {
+        let phases: [BoxBreathingPhase] = [.inhale, .holdIn, .exhale, .holdOut]
+        let currentIndex = phases.firstIndex(of: vm.boxPhase) ?? 0
+
+        return HStack(alignment: .top, spacing: 8) {
+            ForEach(0..<4, id: \.self) { i in
+                let isActive = i == currentIndex
+                let isDone = i < currentIndex
+                VStack(spacing: 6) {
+                    Capsule()
+                        .fill(isActive ? Color.V2.accent : (isDone ? Color.V2.accentTint : Color.V2.surface2))
+                        .frame(height: 4)
+                    Text("\(stripLabel(phases[i])) 4")
+                        .font(isActive ? .footnote.weight(.bold) : .footnote)
+                        .foregroundStyle(isActive ? Color.V2.accent : Color.V2.ink3)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Phase \(currentIndex + 1) of 4, \(vm.boxPhase.label)")
+    }
+
+    private func stripLabel(_ phase: BoxBreathingPhase) -> String {
+        switch phase {
+        case .inhale:  return "In"
+        case .holdIn:  return "Hold"
+        case .exhale:  return "Out"
+        case .holdOut: return "Hold"
+        }
+    }
+
+    private func cycleLine(vm: BreathingSessionViewModel) -> some View {
+        let current = min(vm.cyclesCompleted + 1, vm.totalCycles)
+        return Text("Cycle \(current) of \(vm.totalCycles)")
+            .font(.v2Number(.subheadline, weight: .medium))
+            .foregroundStyle(Color.V2.ink2)
+    }
+
+    // MARK: - Progress Bar
+
+    private func progressBar(fraction: Double, animated: Bool) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(Color.V2.surface2)
+                Capsule()
+                    .fill(Color.V2.accent)
+                    .frame(width: geo.size.width * min(1, max(0, fraction)))
+                    .animation(animated ? .easeInOut(duration: 0.3) : nil, value: fraction)
+            }
+        }
+        .frame(height: 4)
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Controls
+
+    private func controls(vm: BreathingSessionViewModel) -> some View {
+        VStack(spacing: 12) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { controlButtons(vm: vm) }
+                VStack(spacing: 10) { controlButtons(vm: vm) }
+            }
+
+            Toggle(isOn: animationToggleBinding(vm: vm)) {
+                Text("Breathing animation")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.V2.ink2)
+            }
+            .toggleStyle(.switch)
+            .tint(Color.V2.accent)
+            .frame(minHeight: V2Metrics.minTouchTarget)
+
+            Text("Haptic and heartbeat cue on each change")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    @ViewBuilder
+    private func controlButtons(vm: BreathingSessionViewModel) -> some View {
+        Button(action: {
+            HapticManager.shared.buttonPress()
+            dismiss()
+        }) {
+            Text("End early")
+        }
+        .buttonStyle(.v2(.secondary))
+
+        Button(action: {
+            HapticManager.shared.buttonPress()
+            vm.skipCycle()
+        }) {
+            Text("Skip cycle")
+        }
+        .buttonStyle(.v2(.primary))
     }
 
     private func animationToggleBinding(vm: BreathingSessionViewModel) -> Binding<Bool> {
@@ -178,97 +250,66 @@ struct BreathingSessionView: View {
             set: { vm.setAnimationEnabled($0) }
         )
     }
+}
 
-    // MARK: - Meta Row
+// MARK: - Reduce Motion ring
 
-    private func metaRow(vm: BreathingSessionViewModel) -> some View {
-        HStack(spacing: 24) {
-            VStack(spacing: 2) {
-                Text(vm.remainingTimeString)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(fg)
-                    .monospacedDigit()
-                Text("REMAINING")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(muted)
-            }
-            // Vertical separator
-            Rectangle()
-                .fill(separator)
-                .frame(width: 1, height: 36)
+/// The D-11 still guide (UI V2 `S.session` Reduce Motion): a 240 pt ring
+/// on `accentSoft` that fills one quarter per 4-second phase in one-second
+/// steps, with tick marks between the quarters. No animation.
+struct BreathingFillRing: View {
+    let phase: BoxBreathingPhase
+    let secondsRemaining: Int
+    var size: CGFloat = 240
 
-            VStack(spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(vm.cyclesCompleted)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(fg)
-                    Text("/\(vm.totalCycles)")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(muted)
-                }
-                Text("CYCLES")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(muted)
-            }
-        }
-        .frame(maxWidth: 280)
+    private let lineWidth: CGFloat = 14
+
+    private var phaseIndex: Int {
+        BoxBreathingPhase.allCases.firstIndex(of: phase) ?? 0
     }
 
-    // MARK: - Phase Track
+    /// Filled share of the whole ring: completed quarters plus the elapsed
+    /// seconds of the current one. secondsRemaining counts 4 → 1, so a phase
+    /// starts at 0 elapsed and its quarter completes at the next phase.
+    private var fraction: CGFloat {
+        let elapsed = CGFloat(min(4, max(0, 4 - secondsRemaining)))
+        return (CGFloat(phaseIndex) + elapsed / 4) / 4
+    }
 
-    private func phaseTrack(vm: BreathingSessionViewModel) -> some View {
-        let phases: [BoxBreathingPhase] = [.inhale, .holdIn, .exhale, .holdOut]
-        let currentIndex = phases.firstIndex(of: vm.boxPhase) ?? 0
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.V2.accentSoft)
+                .padding(lineWidth / 2)
 
-        return HStack(spacing: 14) {
+            Circle()
+                .stroke(Color.V2.surface2, lineWidth: lineWidth)
+                .padding(lineWidth / 2)
+
+            Circle()
+                .trim(from: 0, to: fraction)
+                .stroke(Color.V2.accent, style: StrokeStyle(lineWidth: lineWidth, lineCap: .butt))
+                .rotationEffect(.degrees(-90))
+                .padding(lineWidth / 2)
+
             ForEach(0..<4, id: \.self) { i in
-                let phase = phases[i]
-                let isActive = i == currentIndex
-                let isDone = i < currentIndex
+                Rectangle()
+                    .fill(Color.V2.bg)
+                    .frame(width: 3, height: lineWidth + 2)
+                    .offset(y: -(size / 2 - lineWidth / 2))
+                    .rotationEffect(.degrees(Double(i) * 90))
+            }
 
-                VStack(spacing: 4) {
-                    Circle()
-                        .fill(dotColor(isActive: isActive, isDone: isDone))
-                        .frame(width: 10, height: 10)
-                        .scaleEffect(isActive ? 1.4 : 1.0)
-                        .animation(vm.isAnimationEnabled ? .easeInOut(duration: 0.3) : .none, value: vm.boxPhase)
-                    Text("\(phase.label) 4")
-                        .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .tracking(0.4)
-                        .textCase(.uppercase)
-                        .foregroundStyle(isActive ? accentStrong : muted)
-                        .animation(vm.isAnimationEnabled ? .easeInOut(duration: 0.3) : .none, value: vm.boxPhase)
-                }
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 2) {
+                Text(phase.label)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+                Text("\(secondsRemaining)")
+                    .font(.v2Number(.largeTitle, weight: .bold))
+                    .foregroundStyle(Color.V2.ink)
             }
         }
-        .frame(maxWidth: 280)
-        .padding(.horizontal, 24)
-    }
-
-    private func dotColor(isActive: Bool, isDone: Bool) -> Color {
-        if isActive { return accentStrong }
-        if isDone { return accent }
-        return Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.18)
-    }
-
-    // MARK: - Progress Bar
-
-    private func progressBar(fraction: Double) -> some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 999)
-                    .fill(Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.10))
-                    .frame(height: 4)
-                RoundedRectangle(cornerRadius: 999)
-                    .fill(accent)
-                    .frame(width: geo.size.width * min(1, max(0, fraction)), height: 4)
-                    .animation(.easeInOut(duration: 0.3), value: fraction)
-            }
-        }
-        .frame(height: 4)
+        .frame(width: size, height: size)
     }
 }
 
@@ -293,4 +334,13 @@ extension BreathingSessionViewModel {
             .stressNavigationDestinations()
     }
     .environment(AppRouter())
+}
+
+#Preview("Fill ring") {
+    HStack {
+        BreathingFillRing(phase: .holdIn, secondsRemaining: 2, size: 160)
+        BreathingFillRing(phase: .holdOut, secondsRemaining: 1, size: 160)
+    }
+    .padding()
+    .background(Color.V2.bg)
 }

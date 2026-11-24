@@ -81,66 +81,19 @@ private struct PlusLockedModifier: ViewModifier {
 
 // MARK: - Overlay
 
+/// Thin adapter from the tested presentation copy to the V2 lock visuals.
 private struct PlusLockOverlay: View {
     let presentation: PlusLockPresentation
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            // Short charts (the tier bar) only fit the compact row.
-            ViewThatFits(in: .vertical) {
-                fullLayout
-                compactLayout
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(presentation.accessibilityLabel)
-        .accessibilityHint(presentation.accessibilityHint)
-        .accessibilityAddTraits(.isButton)
-    }
-
-    private var fullLayout: some View {
-        VStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.iapHeaderTeal)
-            Text(presentation.message)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-            pill
-        }
-        .padding(DesignTokens.Spacing.md)
-    }
-
-    private var compactLayout: some View {
-        HStack(spacing: DesignTokens.Spacing.sm) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.iapHeaderTeal)
-            pill
-        }
-    }
-
-    private var pill: some View {
-        Text(presentation.buttonTitle)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.white)
-            .padding(.horizontal, DesignTokens.Spacing.md)
-            .padding(.vertical, DesignTokens.Spacing.xs)
-            .frame(minHeight: 32)
-            .background(
-                Capsule().fill(
-                    LinearGradient(
-                        colors: [Color.iapCTATeal, Color.iapHeaderTeal],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-            )
+        V2PlusLockOverlay(
+            message: presentation.message,
+            buttonTitle: presentation.buttonTitle,
+            accessibilityLabel: presentation.accessibilityLabel,
+            accessibilityHint: presentation.accessibilityHint,
+            action: action
+        )
     }
 }
 

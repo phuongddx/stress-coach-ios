@@ -1,64 +1,43 @@
 import SwiftUI
 
+/// Paywall nav row (UI V2): Restore on the leading side, a circular Close on
+/// the trailing side. Pinned above the scroll so both are always visible.
 struct IAPNavBar: View {
-    let onBack: () -> Void
+    var isRestoreDisabled: Bool = false
+    let onRestore: () -> Void
     let onClose: () -> Void
 
     var body: some View {
         HStack {
-            // Back button — circle style
-            Button(action: onBack) {
-                Image(systemName: AppIconSystem.Nav.back.sfSymbol)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.iapTextSecondary)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color(light: Color.white.opacity(0.62), dark: Color.white.opacity(0.06)))
-                            .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.iapIconBorder.opacity(0.3), lineWidth: 1)
-                    )
-            }
+            Button("Restore", action: onRestore)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
+                .contentShape(Rectangle())
+                .disabled(isRestoreDisabled)
+                .accessibilityLabel("Restore purchases")
 
             Spacer()
 
-            Text("StressMonitor Plus")
-                .font(Typography.iapNavTitle)
-                .foregroundStyle(Color.iapTextMuted)
-
-            Spacer()
-
-            // Close button — circle style
             Button(action: onClose) {
                 Image(systemName: AppIconSystem.Nav.close.sfSymbol)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.iapTextSecondary)
-                    .frame(width: 44, height: 44)
-                    .background(
-                        Circle()
-                            .fill(Color(light: Color.white.opacity(0.62), dark: Color.white.opacity(0.06)))
-                            .shadow(color: Color.black.opacity(0.04), radius: 4, y: 2)
-                    )
-                    .overlay(
-                        Circle()
-                            .stroke(Color.iapIconBorder.opacity(0.3), lineWidth: 1)
-                    )
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(Color.V2.ink2)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Color.V2.surface2))
+                    .frame(width: V2Metrics.minTouchTarget, height: V2Metrics.minTouchTarget)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Close")
         }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 8)
+        .padding(.horizontal, V2Metrics.margin - 4)
+        .padding(.vertical, 2)
+        .background(Color.V2.bg.ignoresSafeArea(edges: .top))
     }
 }
 
 #Preview {
-    ZStack {
-        Color.Wellness.adaptiveBackground.ignoresSafeArea()
-        IAPNavBar(
-            onBack: { print("Back tapped") },
-            onClose: { print("Close tapped") }
-        )
-    }
+    IAPNavBar(onRestore: {}, onClose: {})
+        .background(Color.V2.bg)
 }

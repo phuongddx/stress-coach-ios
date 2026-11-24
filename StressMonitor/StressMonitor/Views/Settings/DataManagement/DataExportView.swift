@@ -17,15 +17,21 @@ struct DataExportView: View {
     }
 
     var body: some View {
-        Form {
-            dateRangeSection
-            dataSelectionSection
-            formatSection
-            previewSection
-            exportProgressSection
-            exportButtonSection
-            recordsCountSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                formatSection
+                dateRangeSection
+                dataSelectionSection
+                previewSection
+                recordsCountSection
+                exportProgressSection
+                exportButtonSection
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationTitle("Export Data")
         .navigationBarTitleDisplayMode(.inline)
         .accessibleDynamicType()
@@ -90,72 +96,110 @@ struct DataExportView: View {
     }
 
     private var dateRangeSection: some View {
-        Section("Date Range") {
-            Picker("Range", selection: $viewModel.dateRange) {
-                ForEach(ExportDateRange.allCases, id: \.self) { range in
-                    Text(range.rawValue).tag(range)
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "Date range")
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    ForEach(Array(ExportDateRange.allCases.enumerated()), id: \.element) { index, range in
+                        if index > 0 { SettingsPlainDivider() }
+                        Button {
+                            viewModel.dateRange = range
+                            HapticManager.shared.buttonPress()
+                        } label: {
+                            SettingsPlainRow(title: range.rawValue) {
+                                SettingsRadioMark(isSelected: viewModel.dateRange == range)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(range.rawValue)
+                        .accessibilityAddTraits(viewModel.dateRange == range ? .isSelected : [])
+                    }
+
+                    if viewModel.dateRange == .custom {
+                        SettingsPlainDivider()
+                        DatePicker("Start Date", selection: $viewModel.customStartDate, displayedComponents: .date)
+                            .font(.body)
+                            .foregroundStyle(Color.V2.ink)
+                            .tint(Color.V2.accent)
+                            .padding(.horizontal, V2Metrics.margin)
+                            .frame(minHeight: V2Metrics.minTouchTarget)
+                            .accessibilityLabel("Start date")
+                        SettingsPlainDivider()
+                        DatePicker("End Date", selection: $viewModel.customEndDate, displayedComponents: .date)
+                            .font(.body)
+                            .foregroundStyle(Color.V2.ink)
+                            .tint(Color.V2.accent)
+                            .padding(.horizontal, V2Metrics.margin)
+                            .frame(minHeight: V2Metrics.minTouchTarget)
+                            .accessibilityLabel("End date")
+                    }
                 }
             }
-            .pickerStyle(.segmented)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("Date range selection")
-
-            if viewModel.dateRange == .custom {
-                DatePicker("Start Date", selection: $viewModel.customStartDate, displayedComponents: .date)
-                    .accessibilityLabel("Start date")
-                DatePicker("End Date", selection: $viewModel.customEndDate, displayedComponents: .date)
-                    .accessibilityLabel("End date")
-            }
-
-            Text(viewModel.dateRangeDescription)
-                .font(.caption)
-                .foregroundColor(.secondary)
+            ActionGroupFooter(text: viewModel.dateRangeDescription)
         }
     }
 
     private var dataSelectionSection: some View {
-        Section("Data to Include") {
-            Toggle("HRV Measurements", isOn: $viewModel.includeHRV)
-                .accessibilityLabel("Include HRV measurements")
-
-            Toggle("Heart Rate Data", isOn: $viewModel.includeHeartRate)
-                .accessibilityLabel("Include heart rate data")
-
-            Toggle("Stress Levels", isOn: $viewModel.includeStressLevels)
-                .accessibilityLabel("Include stress levels")
-
-            Toggle("Baseline Data", isOn: $viewModel.includeBaseline)
-                .accessibilityLabel("Include baseline data")
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "Include")
+            ActionGroupCard {
+                VStack(spacing: 0) {
+                    includeToggle("HRV Measurements", icon: "waveform.path.ecg", isOn: $viewModel.includeHRV, label: "Include HRV measurements")
+                    ActionRowDivider()
+                    includeToggle("Heart Rate Data", icon: "heart.fill", isOn: $viewModel.includeHeartRate, label: "Include heart rate data")
+                    ActionRowDivider()
+                    includeToggle("Stress Levels", icon: "gauge.with.dots.needle.50percent", isOn: $viewModel.includeStressLevels, label: "Include stress levels")
+                    ActionRowDivider()
+                    includeToggle("Baseline Data", icon: "chart.line.flattrend.xyaxis", isOn: $viewModel.includeBaseline, label: "Include baseline data")
+                }
+            }
         }
     }
 
+    private func includeToggle(_ title: String, icon: String, isOn: Binding<Bool>, label: String) -> some View {
+        SettingsRowLabel(icon: icon, title: title) {
+            Toggle(title, isOn: isOn)
+                .labelsHidden()
+                .tint(Color.V2.accent)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
+    }
+
     private var formatSection: some View {
-        Section {
-            FormatPickerRow(format: $viewModel.format)
-        } header: {
-            Text("Format")
-        } footer: {
-            Text(viewModel.formatDescription)
-                .font(.caption)
-                .foregroundColor(.secondary)
+        VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: "Format")
+            ActionGroupCard {
+                FormatPickerRow(format: $viewModel.format)
+            }
+            ActionGroupFooter(text: viewModel.formatDescription)
         }
     }
 
     @ViewBuilder
     private var previewSection: some View {
         if let preview = viewModel.previewData {
-            Section("Preview") {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("First \(preview.count) records will be exported")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                ActionGroupHeader(title: "Preview")
+                V2Card {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("First \(preview.count) records will be exported")
+                            .font(.caption)
+                            .foregroundStyle(Color.V2.ink3)
 
-                    Text(preview)
-                        .font(.system(.caption, design: .monospaced))
-                        .padding(8)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.secondary.opacity(0.1))
-                        .cornerRadius(6)
-                        .lineLimit(5)
+                        Text(preview)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(Color.V2.ink2)
+                            .padding(8)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous)
+                                    .fill(Color.V2.surface2)
+                            )
+                            .lineLimit(5)
+                    }
                 }
             }
         }
@@ -164,7 +208,7 @@ struct DataExportView: View {
     @ViewBuilder
     private var exportProgressSection: some View {
         if viewModel.isExporting {
-            Section {
+            V2Card {
                 ExportProgressBarView(
                     progress: viewModel.exportProgress,
                     currentOperation: viewModel.currentOperation,
@@ -176,42 +220,40 @@ struct DataExportView: View {
     }
 
     private var exportButtonSection: some View {
-        Section {
-            Button(action: {
-                Task {
-                    await performExport()
-                }
-            }) {
-                HStack {
-                    Spacer()
-                    if viewModel.isExporting {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Exporting...")
-                            .foregroundColor(.secondary)
-                    } else {
-                        Image(systemName: AppIconSystem.System.export_.sfSymbol)
-                        Text("Export Data")
-                    }
-                    Spacer()
+        Button(action: {
+            Task {
+                await performExport()
+            }
+        }) {
+            HStack(spacing: 8) {
+                if viewModel.isExporting {
+                    ProgressView()
+                        .tint(Color.V2.onAccent)
+                    Text("Exporting...")
+                } else {
+                    Image(systemName: AppIconSystem.System.export_.sfSymbol)
+                    Text("Export Data")
                 }
             }
-            .disabled(viewModel.isExporting || !viewModel.hasValidSelection)
-            .accessibilityLabel(viewModel.isExporting ? "Exporting data" : "Export data")
-            .accessibilityHint(!viewModel.hasValidSelection ? "Select at least one data type to export" : "Double tap to start export")
         }
+        .buttonStyle(.v2(.primary))
+        .disabled(viewModel.isExporting || !viewModel.hasValidSelection)
+        .accessibilityLabel(viewModel.isExporting ? "Exporting data" : "Export data")
+        .accessibilityHint(!viewModel.hasValidSelection ? "Select at least one data type to export" : "Double tap to start export")
     }
 
     @ViewBuilder
     private var recordsCountSection: some View {
         if !viewModel.isExporting {
-            Section {
+            V2Card(style: .flat) {
                 HStack {
                     Text("Records to Export")
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.V2.ink2)
                     Spacer()
                     Text("\(viewModel.estimatedRecordCount)")
-                        .fontWeight(.semibold)
+                        .font(.v2Number(.title3))
+                        .foregroundStyle(Color.V2.ink)
                 }
                 .accessibilityElement(children: .combine)
             }

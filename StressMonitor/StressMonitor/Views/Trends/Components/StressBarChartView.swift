@@ -1,13 +1,17 @@
 import SwiftUI
 
-/// Daily stress bar chart matching `06-trends.html` section 2.
+/// Daily average bar chart (UI V2, ui-v2-design/screens.js `weekBars`).
 ///
-/// Seven vertical bars in a 7-column grid, each colored by its stress tier
-/// (Relaxed/Mild/Moderate/High). Today's bar gets an accent outline ring.
-/// Below each bar: weekday abbreviation + date number.
+/// Up to seven vertical bars, each filled with its tier fill colour, the
+/// day's average above it and the weekday + date below. Today's bar gets an
+/// `ink` outline. Days without data show an empty track.
 struct StressBarChartView: View {
     let dailyStress: [DailyStressData]
     var averageValue: Int = 0
+    /// Window shown in the header (e.g. "7 days"); nil shows the scale only.
+    var windowLabel: String? = nil
+
+    @ScaledMetric(relativeTo: .body) private var trackHeight: CGFloat = 112
 
     // MARK: - Body
 
@@ -20,14 +24,9 @@ struct StressBarChartView: View {
                 bars
             }
         }
-        .padding(16)
+        .padding(V2Metrics.margin)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
-        )
+        .v2CardBackground()
         .accessibilityChart(
             description: "Daily stress bar chart. Average \(averageValue) on a 0 to 100 scale.",
             summary: accessibilityTrendSummary,
@@ -59,21 +58,37 @@ struct StressBarChartView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Daily stress")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            Spacer()
-            Text("avg \(averageValue) · 0-100")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                title
+                Spacer(minLength: 8)
+                caption
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                title
+                caption
+            }
         }
+    }
+
+    private var title: some View {
+        Text("Daily average")
+            .font(.headline)
+            .foregroundStyle(Color.V2.ink)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var caption: some View {
+        Text(windowLabel.map { "avg \(averageValue) · \($0)" } ?? "avg \(averageValue) of 100")
+            .font(.footnote)
+            .monospacedDigit()
+            .foregroundStyle(Color.V2.ink3)
     }
 
     // MARK: - Bars
 
     private var bars: some View {
-        HStack(alignment: .bottom, spacing: 6) {
+        HStack(alignment: .bottom, spacing: 8) {
             ForEach(Array(dailyStress.enumerated()), id: \.element.id) { index, item in
                 barColumn(item: item, isToday: index == dailyStress.count - 1)
             }
@@ -84,51 +99,49 @@ struct StressBarChartView: View {
     private func barColumn(item: DailyStressData, isToday: Bool) -> some View {
         let tier = stressCategory(for: item.averageStress)
         let hasData = item.averageStress > 0
-        let fillHeight = CGFloat(hasData ? item.averageStress : 3) / 100.0
+        let fillFraction = CGFloat(min(item.averageStress, 100)) / 100.0
 
-        VStack(spacing: 5) {
+        VStack(spacing: 4) {
+            Text(hasData ? "\(Int(item.averageStress.rounded()))" : "–")
+                .font(.v2Number(.caption2))
+                .foregroundStyle(hasData ? Color.V2.ink2 : Color.V2.ink3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+
             // Track + fill
             GeometryReader { proxy in
-                let trackHeight = proxy.size.height
-                let fillPx = trackHeight * fillHeight
                 ZStack(alignment: .bottom) {
-                    // Track background
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.05))
-                    // Fill
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.V2.surface2)
                     if hasData {
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(tier.color)
-                            .frame(height: max(2, fillPx))
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(tier.fillColor)
+                            .frame(height: max(6, proxy.size.height * fillFraction))
                     }
                 }
+                .padding(isToday ? 3 : 0)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(
-                            isToday ? Color(hex: "#0288D1") : Color.clear,
-                            lineWidth: 2
-                        )
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .strokeBorder(isToday ? Color.V2.ink : Color.clear, lineWidth: 2)
                 )
             }
-            .frame(height: 104)
+            .frame(height: trackHeight)
 
-            // Weekday label
-            Text(item.dayLabel.uppercased())
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .tracking(0.6)
-                .foregroundStyle(
-                    isToday
-                        ? Color(hex: "#0288D1")
-                        : Color.Wellness.adaptiveSecondaryText.opacity(0.55)
-                )
+            Text(item.dayLabel)
+                .font(.caption2.weight(isToday ? .bold : .medium))
+                .foregroundStyle(isToday ? Color.V2.ink : Color.V2.ink3)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
-            // Date number
             if let dateNum = item.dateNumber {
                 Text("\(dateNum)")
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.3))
+                    .font(.v2Number(.caption2, weight: .regular))
+                    .foregroundStyle(Color.V2.ink3)
+                    .lineLimit(1)
             }
         }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(
             "\(item.dayLabel) \(item.dateNumber.map { "\($0)" } ?? ""), " +
             (hasData ? "stress level \(Int(item.averageStress)), \(tier.displayName)" : "no data")
@@ -147,16 +160,13 @@ struct StressBarChartView: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 32))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.25))
-            Text("No data yet")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.45))
-        }
-        .frame(height: 120)
-        .frame(maxWidth: .infinity)
+        V2StateView(
+            systemImage: "chart.bar.xaxis",
+            title: "No data yet",
+            message: "Daily averages appear after your first readings.",
+            tint: Color.V2.ink3
+        )
+        .frame(minHeight: 120)
     }
 }
 
@@ -172,10 +182,12 @@ struct StressBarChartView: View {
                 DailyStressData(dayLabel: "Mon", averageStress: 18, dateNumber: 21),
                 DailyStressData(dayLabel: "Tue", averageStress: 42, dateNumber: 22)
             ],
-            averageValue: 41
+            averageValue: 41,
+            windowLabel: "7 days"
         )
+        StressBarChartView(dailyStress: [], averageValue: 0)
         Spacer()
     }
     .padding()
-    .background(Color.Wellness.adaptiveBackground)
+    .background(Color.V2.bg)
 }

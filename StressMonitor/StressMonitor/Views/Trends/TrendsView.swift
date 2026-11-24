@@ -1,23 +1,28 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - TrendsView (Light Theme Redesign)
+// MARK: - TrendsView (UI V2)
 //
-// Six sections matching `06-trends.html`:
-//   1. Editorial summary — computed from this week's daily stress
-//   2. Daily stress bars (7d) — StressBarChartView
-//   3. Distribution stacked bar — DistributionBar (4-tier day counts)
-//   4. Calendar heatmap — MonthlyCalendarHeatmap (current month, today outlined)
-//   5. HRV trend line — HRVTrendChart (52 ms reference)
-//   6. Editorial insight — pattern detected card
+// Spec reference: ui-v2-design/screens.js `S.trends`.
+//   - Week / Month / 3 Months range chips (Month and 3 Months show a lock for Free)
+//   - Summary of the week vs the prior 7 days
+//   - Plus: daily bars, time in each tier, monthly heatmap, HRV trend
+//   - Free: ONE locked preview (daily bars) plus a list of what Plus adds.
+//     The other three charts keep their `.plusLocked(...)` call sites; they are
+//     only rendered when `PlusAccess.isChartLocked` is false, i.e. exactly when
+//     the modifier would show them unblurred anyway.
+//   - Ripple weekly insight
+// States: skeleton while the first load runs, empty card without readings.
 
 struct TrendsView: View {
     @Environment(\.modelContext) private var modelContext
     // Optional so the preview without the app root's environment still runs.
     @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
     @Environment(PaywallController.self) private var paywall: PaywallController?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel: TrendsViewModel
 
+    /// Same rule `PlusLockedModifier` uses for every chart on this screen.
     private var isRangeLocked: Bool {
         (injectedPlusAccess ?? .shared).isChartLocked
     }
@@ -38,29 +43,36 @@ struct TrendsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                // Chip row — Week / Month / 3 Months
+            VStack(alignment: .leading, spacing: 16) {
                 chipRow
-                if viewModel.weeklyMeasurements.isEmpty && !viewModel.isLoading {
+                if viewModel.weeklyMeasurements.isEmpty && viewModel.isLoading {
+                    loadingSkeleton
+                } else if viewModel.weeklyMeasurements.isEmpty {
                     NoDataCard(dataType: .trends) {
                         Task { await viewModel.loadTrendData() }
                     }
                 } else {
                     editorialSummary
-                    dailyBars
-                    distributionCard
-                    calendarCard
-                    hrvCard
+                    if isRangeLocked {
+                        // Free: one locked preview, then the list of what Plus adds.
+                        dailyBars
+                        plusFeatureList
+                    } else {
+                        dailyBars
+                        distributionCard
+                        calendarCard
+                        hrvCard
+                    }
                     if let insight = viewModel.weeklyInsight {
                         editorialInsight(insight)
                     }
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, V2Metrics.margin)
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .background(HomeCharacterDesignTokens.homeBackground.ignoresSafeArea())
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationTitle("Trends")
         .navigationBarTitleDisplayMode(.inline)
@@ -91,39 +103,33 @@ struct TrendsView: View {
     private func chipView(_ chip: TrendsChip) -> some View {
         let isActive = chip.toTrendsTimeRange == viewModel.selectedTimeRange
         let isLocked = isRangeLocked && chip.toTrendsTimeRange.requiresPlus
-        return Button {
+        return V2Chip(
+            title: chip.title,
+            systemImage: isLocked ? "lock.fill" : nil,
+            isSelected: isActive
+        ) {
             if viewModel.selectRange(chip.toTrendsTimeRange, locked: isRangeLocked) {
                 paywall?.present(reason: .trendsLongRange)
             } else {
                 Task { await viewModel.loadTrendData() }
             }
-        } label: {
-            HStack(spacing: 4) {
-                if isLocked {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10, weight: .semibold))
-                        .accessibilityHidden(true)
-                }
-                Text(chip.title)
-            }
-                .font(.system(size: 13, weight: isActive ? .semibold : .medium))
-                .foregroundStyle(
-                    isActive
-                        ? Color.white
-                        : Color.Wellness.adaptiveSecondaryText
-                )
-                .padding(.horizontal, 14)
-                .padding(.vertical, 7)
-                .background(
-                    isActive
-                        ? AnyShapeStyle(Color(hex: "#0288D1"))
-                        : AnyShapeStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.08))
-                )
-                .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
-        .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+        .frame(minHeight: V2Metrics.minTouchTarget)
         .accessibilityLabel(isLocked ? "\(chip.title), requires Plus" : chip.title)
+    }
+
+    // MARK: - Loading
+
+    private var loadingSkeleton: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            V2Skeleton(width: 220, height: 22)
+            V2Skeleton(width: 160, height: 14)
+            V2Skeleton(height: 180, cornerRadius: V2Metrics.radiusLG)
+                .padding(.top, 4)
+            V2Skeleton(height: 120, cornerRadius: V2Metrics.radiusLG)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading trends")
     }
 
     // MARK: - 1. Editorial Summary
@@ -132,38 +138,29 @@ struct TrendsView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let delta = viewModel.editorialDelta {
                 Text("Vs the prior 7 days")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.8)
-                    .textCase(.uppercase)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+                    .v2Eyebrow()
 
-                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text("You're ")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                    Text(delta)
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(deltaColor)
-                    Text(".")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                }
+                Text("You're \(Text(delta).foregroundStyle(deltaColor)).")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Text(viewModel.editorialSummary)
-                .font(.system(size: 17, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                .lineSpacing(4)
+                .font(viewModel.editorialDelta == nil ? .title3.weight(.semibold) : .callout)
+                .foregroundStyle(viewModel.editorialDelta == nil ? Color.V2.ink : Color.V2.ink2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
+        .accessibilityElement(children: .combine)
     }
 
     private var deltaColor: Color {
         switch viewModel.stressCalmerPercent ?? 0 {
-        case 1...:  return Color(hex: "#34C759")
-        case 0:     return Color.Wellness.adaptiveSecondaryText
-        default:    return Color(hex: "#FF9500")
+        case 1...:  return StressCategory.relaxed.color
+        case 0:     return Color.V2.ink2
+        default:    return StressCategory.high.color
         }
     }
 
@@ -172,7 +169,8 @@ struct TrendsView: View {
     private var dailyBars: some View {
         StressBarChartView(
             dailyStress: viewModel.dailyStressData,
-            averageValue: viewModel.dailyStressAverage
+            averageValue: viewModel.dailyStressAverage,
+            windowLabel: viewModel.dailyWindowLabel
         )
         .plusLocked(.trendsDailyBars)
     }
@@ -180,26 +178,17 @@ struct TrendsView: View {
     // MARK: - 3. Distribution
 
     private var distributionCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Time spent by tier")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                Spacer()
-                Text(viewModel.dailyWindowLabel)
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
-            }
-            let d = viewModel.distributionDays
-            DistributionBar(
-                relaxedDays: d.relaxed,
-                mildDays: d.mild,
-                moderateDays: d.moderate,
-                highDays: d.high,
-                comment: viewModel.distributionComment
-            )
-            .plusLocked(.trendsDistribution)
-        }
+        let d = viewModel.distributionDays
+        return DistributionBar(
+            relaxedDays: d.relaxed,
+            mildDays: d.mild,
+            moderateDays: d.moderate,
+            highDays: d.high,
+            comment: viewModel.distributionComment,
+            title: "Time in each tier",
+            windowLabel: viewModel.dailyWindowLabel
+        )
+        .plusLocked(.trendsDistribution)
     }
 
     // MARK: - 4. Monthly Calendar Heatmap
@@ -221,28 +210,83 @@ struct TrendsView: View {
         .plusLocked(.trendsHRV)
     }
 
-    // MARK: - 6. Editorial Insight
+    // MARK: - Free: What Plus Adds
+
+    private var plusFeatureList: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Also with Plus")
+                .v2Eyebrow()
+                .accessibilityAddTraits(.isHeader)
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                plusRow(icon: "chart.bar.doc.horizontal", title: "Time in each tier", reason: .chart(.trendsDistribution))
+                rowDivider
+                plusRow(icon: "calendar", title: "Monthly heatmap", reason: .chart(.trendsCalendar))
+                rowDivider
+                plusRow(icon: "waveform.path.ecg", title: "HRV trend", reason: .chart(.trendsHRV))
+                rowDivider
+                plusRow(icon: "clock", title: "30- and 90-day ranges", reason: .trendsLongRange)
+            }
+            .v2CardBackground()
+        }
+    }
+
+    private var rowDivider: some View {
+        Rectangle()
+            .fill(Color.V2.line)
+            .frame(height: 0.5)
+            .padding(.leading, 60)
+    }
+
+    /// Same tap target the blurred chart used to offer: opens the paywall
+    /// with that chart's reason.
+    private func plusRow(icon: String, title: String, reason: PaywallReason) -> some View {
+        Button {
+            paywall?.present(reason: reason)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.V2.plus)
+                    .frame(width: 32, height: 32)
+                    .background(
+                        RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous)
+                            .fill(Color.V2.plusBg)
+                    )
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(Color.V2.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                if !dynamicTypeSize.isAccessibilitySize {
+                    V2PlusPill()
+                }
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.vertical, 10)
+            .frame(minHeight: V2Metrics.minTouchTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), Plus feature")
+        .accessibilityHint("Double-tap to unlock Plus")
+        .accessibilityAddTraits(.isButton)
+    }
+
+    // MARK: - 6. Weekly Insight
 
     private func editorialInsight(_ insight: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Pattern detected")
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.8)
-                .textCase(.uppercase)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
-
-            Text(insight)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .lineSpacing(4)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
+        RippleInsightCard(
+            insight: AIInsight(
+                title: "Weekly insight",
+                message: insight,
+                actionTitle: nil,
+                trendData: nil
+            ),
+            onAskRipple: nil
         )
     }
 }
