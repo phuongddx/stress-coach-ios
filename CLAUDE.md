@@ -24,7 +24,7 @@ gh run watch <id> --exit-status
 gh run download <id> -n agent-xcresult -n agent-screenshots -D /tmp/agent-verify-<id>
 ```
 
-Release-only compile errors show on the PR's `Release Build` check (`gh pr checks <pr>`).
+Release-only compile errors show on the PR's `Release Build (Xcode 27.2)` check (the SDK Xcode Cloud archives with) and in the `Lint & Build / Lint & Build` job's `Build Release (Xcode 26.3)` step (older-SDK fallback) (`gh pr checks <pr>`).
 
 **If a local build is unavoidable:** run `xcodebuild` with `-parallel-testing-enabled NO` and a throwaway `-derivedDataPath /tmp/dd-<topic>`, then delete it (`rm -rf /tmp/dd-<topic>`). After using the MCP tools below, remove `~/Library/Developer/Xcode/DerivedData/StressMonitor-*`.
 

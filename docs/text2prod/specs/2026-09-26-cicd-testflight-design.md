@@ -98,7 +98,9 @@ rollback artifact.
   for branch `main`** (API-started builds count as manual). Keep Archive iOS,
   `INTERNAL_ONLY`, clean build, Xcode 26.6 + latest macOS.
 - `PR Gate`: `isEnabled = false`.
-- `Release` and the image guard: unchanged.
+- `Release` and the image guard: unchanged by this design. Later change (2026-11-24): `Release`'s tag start
+  condition is the prefix `v` (was `release`), so `v1.4`-style tags start it; rollback JSON
+  `plans/260926-1046-cicd-testflight-cd/backup/xcode-cloud-release-before.json`.
 
 These settings are not in git; this section is their written record.
 
