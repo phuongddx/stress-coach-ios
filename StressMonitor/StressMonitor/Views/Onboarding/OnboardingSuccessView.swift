@@ -86,7 +86,7 @@ struct OnboardingSuccessView: View {
     private var buddyCard: some View {
         V2Card {
             HStack(spacing: 14) {
-                StressBuddyIllustration(mood: .celebrating, size: 60)
+                StressBuddyIllustration(mood: .celebrating, size: 60, pose: .celebrating)
                     .frame(width: 64, height: 64)
                     .background(Circle().fill(Color.V2.Companion.ripple.opacity(0.18)))
                     .accessibilityHidden(true)

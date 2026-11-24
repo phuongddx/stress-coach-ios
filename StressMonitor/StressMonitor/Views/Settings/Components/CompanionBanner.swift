@@ -20,7 +20,7 @@ struct CompanionBanner: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
                         .fill(Color.V2.accentSoft)
-                    StressBuddyIllustration(mood: mood, size: 44)
+                    StressBuddyIllustration(mood: mood, size: 44, pose: .base)
                 }
                 .frame(width: 60, height: 60)
                 .accessibilityHidden(true)

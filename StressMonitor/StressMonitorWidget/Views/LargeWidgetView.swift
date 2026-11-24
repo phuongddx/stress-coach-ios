@@ -55,7 +55,7 @@ public struct LargeWidgetView: View {
         let category = stress.stressCategory
 
         HStack(alignment: .center, spacing: 12) {
-            WidgetCompanionBadge(tier: WidgetStressTier.from(category: category), size: 64)
+            WidgetCompanionBadge(category: category, size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 WidgetScoreText(level: stress.level)
                 WidgetTierLabel(category: category, font: .headline)
@@ -98,7 +98,7 @@ public struct LargeWidgetView: View {
     @ViewBuilder
     private var emptyContent: some View {
         HStack(alignment: .center, spacing: 12) {
-            WidgetCompanionBadge(tier: .resting, size: 64)
+            WidgetCompanionBadge(category: nil, size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 WidgetScoreText(level: nil)
                 Text("No reading yet")

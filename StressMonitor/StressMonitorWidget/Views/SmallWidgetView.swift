@@ -52,7 +52,7 @@ public struct SmallWidgetView: View {
             HStack(alignment: .center, spacing: 6) {
                 WidgetScoreText(level: stress.level)
                 Spacer(minLength: 0)
-                WidgetCompanionBadge(tier: WidgetStressTier.from(category: stress.stressCategory), size: 44)
+                WidgetCompanionBadge(category: stress.stressCategory, size: 44)
             }
             .opacity(isStale ? 0.6 : 1)
 
@@ -80,7 +80,7 @@ public struct SmallWidgetView: View {
             HStack(alignment: .center, spacing: 6) {
                 WidgetScoreText(level: nil)
                 Spacer(minLength: 0)
-                WidgetCompanionBadge(tier: .resting, size: 44)
+                WidgetCompanionBadge(category: nil, size: 44)
             }
 
             Text("No reading yet")

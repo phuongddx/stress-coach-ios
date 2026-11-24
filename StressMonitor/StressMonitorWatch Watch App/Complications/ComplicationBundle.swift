@@ -86,7 +86,7 @@ struct CornerComplicationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            CharacterFaceView(creature: .ripple, category: isPlaceholder ? nil : entry.category, size: 22, showsHalo: false)
+            RippleComplicationHead(category: isPlaceholder ? nil : entry.category, size: 22)
             Text(isPlaceholder ? "—" : "\(Int(entry.stressLevel.rounded()))")
                 .font(.v2Number(.headline, weight: .bold))
                 .foregroundStyle(isPlaceholder ? WatchV2.ink3 : entry.category.color)

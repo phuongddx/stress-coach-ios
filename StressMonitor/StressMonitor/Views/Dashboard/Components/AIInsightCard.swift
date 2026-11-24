@@ -14,7 +14,7 @@ struct RippleInsightCard: View {
     var body: some View {
         V2Card {
             HStack(alignment: .top, spacing: 12) {
-                StressBuddyIllustration(mood: .happy, size: 44)
+                StressBuddyIllustration(mood: .happy, size: 44, pose: .thinking, crop: .head, lightChip: true)
                     .frame(width: 44, height: 44)
                     .accessibilityHidden(true)
 

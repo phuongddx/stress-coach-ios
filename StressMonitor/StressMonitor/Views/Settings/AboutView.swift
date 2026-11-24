@@ -42,7 +42,7 @@ struct AboutView: View {
             ZStack {
                 RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
                     .fill(Color.V2.accentSoft)
-                StressBuddyIllustration(mood: .happy, size: tileSize * 0.66)
+                StressBuddyIllustration(mood: .happy, size: tileSize * 0.66, pose: .base)
             }
             .frame(width: tileSize, height: tileSize)
             .accessibilityHidden(true)

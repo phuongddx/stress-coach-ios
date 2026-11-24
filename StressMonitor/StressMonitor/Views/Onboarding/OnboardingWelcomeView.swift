@@ -90,7 +90,7 @@ struct OnboardingWelcomeView: View {
     // MARK: - Hero
 
     private var welcomeHero: some View {
-        StressBuddyIllustration(mood: .happy, size: 124)
+        StressBuddyIllustration(mood: .happy, size: 124, pose: .mild)
             // Gentle float from the view model's loop; still under Reduce Motion.
             .offset(y: motionAllowed && viewModel.floatOffset ? -6 : 0)
             .frame(width: 168, height: 168)

@@ -16,7 +16,14 @@ struct RippleRecommendationCard: View {
     var body: some View {
         V2Card(style: .tint) {
             HStack(alignment: .top, spacing: 12) {
-                StressBuddyIllustration(mood: RippleMood.from(stressLevel: stressLevel ?? 0), size: 44)
+                // The voice line says the level, so the drawing stays hidden.
+                StressBuddyIllustration(
+                    mood: RippleMood.from(stressLevel: stressLevel ?? 0),
+                    size: 44,
+                    pose: RipplePose.from(category: stressLevel.map { StressResult.category(for: $0) }),
+                    crop: .head,
+                    lightChip: true
+                )
                     .frame(width: 44, height: 44)
                     .accessibilityHidden(true)
 

@@ -69,21 +69,29 @@ struct ChatBubbleRow<Content: View>: View {
 
 // MARK: - Typing Dots
 
-/// Three `ink3` dots that pulse while a reply is on its way. Static under
-/// Reduce Motion.
+/// Three `ink3` dots that pulse while a reply is on its way, optionally led by
+/// Ripple's small thinking head (spec §4.2). The dots are static under Reduce
+/// Motion; the head never animates.
 struct ChatTypingDots: View {
-    var accessibilityLabel: String = "Ripple is typing"
+    var accessibilityLabel: String = "Ripple is thinking"
+    /// Shows Ripple's thinking head before the dots.
+    var showsThinkingHead: Bool = false
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(Color.V2.ink3)
-                    .frame(width: 7, height: 7)
-                    .modifier(TypingDotAnimation(delay: Double(index) * 0.2))
+        HStack(spacing: 8) {
+            if showsThinkingHead {
+                RippleV2Image(pose: .thinking, lightChip: true, size: 20)
             }
+            HStack(spacing: 4) {
+                ForEach(0..<3, id: \.self) { index in
+                    Circle()
+                        .fill(Color.V2.ink3)
+                        .frame(width: 7, height: 7)
+                        .modifier(TypingDotAnimation(delay: Double(index) * 0.2))
+                }
+            }
+            .padding(.vertical, 7)
         }
-        .padding(.vertical, 7)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
     }
@@ -206,7 +214,7 @@ struct ChatTag: View {
             ChatBubble(isUser: true) { Text("Why was I stressed this afternoon?") }
         }
         ChatBubbleRow(isUser: false) {
-            ChatBubble(isUser: false) { ChatTypingDots() }
+            ChatBubble(isUser: false) { ChatTypingDots(showsThinkingHead: true) }
         }
         HStack {
             ChatTag(text: "14 of 20 left", foreground: Color.V2.accent, background: Color.V2.accentSoft)

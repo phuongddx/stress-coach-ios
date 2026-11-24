@@ -69,7 +69,6 @@ public struct MediumWidgetView: View {
 
     private var historyColumn: some View {
         let readings = widgetRecentReadings(entry.history, limit: 12)
-        let tier = entry.latestStress.map { WidgetStressTier.from(category: $0.stressCategory) } ?? .resting
 
         return VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center) {
@@ -78,7 +77,7 @@ public struct MediumWidgetView: View {
                     .foregroundStyle(Color.V2.ink3)
                     .lineLimit(1)
                 Spacer(minLength: 4)
-                WidgetCompanionBadge(tier: tier, size: 30)
+                WidgetCompanionBadge(category: entry.latestStress?.stressCategory, size: 30)
             }
 
             if entry.latestStress == nil {

@@ -1,0 +1,97 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.24314,0.60392,0.52549,1.00000",
+          "srgb:0.12157,0.41569,0.36078,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.08627,0.20784,0.17647,1.00000",
+          "srgb:0.04314,0.07843,0.06667,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "tinted",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.14902,0.14902,0.14902,1.00000",
+          "srgb:0.07843,0.07843,0.07843,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Face",
+      "layers": [
+        {
+          "name": "face",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "face-light.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "face-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "face-tinted.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": true
+    },
+    {
+      "name": "Hood",
+      "layers": [
+        {
+          "name": "hood",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "hood-light.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "hood-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "hood-tinted.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": true
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

@@ -43,14 +43,14 @@ public enum CharacterAssetResolver {
     // MARK: - Asset Name Resolution
 
     /// Map a character id to its SVG imageset name in Assets.xcassets.
-    private static func assetName(for id: String) -> String {
+    /// Ripple and unknown ids use the Ripple v2 base pose.
+    static func assetName(for id: String) -> String {
         switch id {
-        case "ripple":  return "ripple"
         case "blossom": return "blossom"
         case "ember":   return "ember"
         case "zephyr":  return "zephyr"
         case "lumi":    return "lumi"
-        default:        return "ripple"
+        default:        return RipplePose.base.assetName
         }
     }
 }
@@ -66,7 +66,6 @@ extension CharacterAssetResolver {
     private static let fallbackDropletSlug = "calm"
 
     private static let placeholderCharacterAssets: Set<String> = [
-        "ripple_droplet_calm",
         "blossom_droplet_calm",
         "ember_droplet_calm",
         "zephyr_droplet_calm",

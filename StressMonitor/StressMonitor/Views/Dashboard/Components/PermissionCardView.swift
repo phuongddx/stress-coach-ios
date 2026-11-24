@@ -46,9 +46,9 @@ struct PermissionCardView: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            StressBuddyIllustration(mood: .tired, size: 72)
+            // Labelled by the pose ("Ripple, asleep").
+            StressBuddyIllustration(mood: .tired, size: 72, pose: .sleeping)
                 .frame(width: 72, height: 72)
-                .accessibilityHidden(true)
 
             Text(permissionType.title)
                 .font(.headline)
