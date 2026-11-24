@@ -269,9 +269,10 @@ struct BreathingFillRing: View {
     }
 
     /// Filled share of the whole ring: completed quarters plus the elapsed
-    /// seconds of the current one (secondsRemaining counts 4 → 1).
+    /// seconds of the current one. secondsRemaining counts 4 → 1, so a phase
+    /// starts at 0 elapsed and its quarter completes at the next phase.
     private var fraction: CGFloat {
-        let elapsed = CGFloat(min(4, max(0, 5 - secondsRemaining)))
+        let elapsed = CGFloat(min(4, max(0, 4 - secondsRemaining)))
         return (CGFloat(phaseIndex) + elapsed / 4) / 4
     }
 

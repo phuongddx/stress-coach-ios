@@ -37,9 +37,6 @@ struct SettingsView: View {
                 VStack(spacing: 12) {
                     meHeroSection
                     companionBannerSection
-                    if isHealthOff {
-                        healthOffBanner
-                    }
                 }
                 plusSection
                 healthDevicesSection
@@ -178,51 +175,6 @@ struct SettingsView: View {
             companionSubtitle: activeCreature.element.rawValue.capitalized,
             mood: RippleMood.from(stressLevel: viewModel.latestStressLevel ?? 0),
             onSwitch: { router.settingsPath.append(Route.characters) }
-        )
-    }
-
-    // MARK: - 2b. Health-off banner
-
-    /// The only "Health is off" signal the screen already has: HealthKit
-    /// reports sharing denied for HRV (the Apple Health row reads "Enable"
-    /// and a re-request raises the "Health Access Needed" alert).
-    private var isHealthOff: Bool {
-        healthAuthStatus == .sharingDenied
-    }
-
-    private var healthOffBanner: some View {
-        HStack(alignment: .top, spacing: 12) {
-            SettingsIconView(
-                systemName: "heart.slash.fill",
-                color: Color.V2.dangerSoft,
-                foreground: Color.V2.danger
-            )
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Health access is off")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.V2.ink)
-                Text("Your score can't update without HRV and heart rate.")
-                    .font(.footnote)
-                    .foregroundStyle(Color.V2.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Button("Turn on in Health") {
-                    HapticManager.shared.buttonPress()
-                    requestHealthPermission()
-                }
-                .buttonStyle(.v2(.secondary, compact: true, fullWidth: false))
-                .padding(.top, 4)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(V2Metrics.margin)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
-                .fill(Color.V2.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
-                .strokeBorder(Color.V2.danger.opacity(0.35), lineWidth: 1)
         )
     }
 
