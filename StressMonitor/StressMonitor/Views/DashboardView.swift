@@ -8,6 +8,7 @@ struct DashboardView: View {
     @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
     @State private var viewModel: StressViewModel
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var appeared = false
     @State private var appearAnimation = false
 
@@ -149,9 +150,37 @@ struct DashboardView: View {
     // MARK: - Ready Dashboard Content
 
     private var readyStateView: some View {
+        Group {
+            switch DuoLayout.mode(for: horizontalSizeClass) {
+            case .singleColumn:
+                ScrollView {
+                    LazyVStack(spacing: 16) {
+                        dashboardContent(viewModel.currentStress)
+                    }
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.top, 8)
+                    .padding(.bottom, 24)
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(DuoLayoutID.singleColumn)
+            case .twoColumns:
+                // iPhone Duo inner display: today on the left of the fold,
+                // the week and quick resets on the right.
+                FoldAwareSplit {
+                    dashboardColumn { summaryContent(viewModel.currentStress) }
+                } trailing: {
+                    dashboardColumn { weekContent }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(DuoLayoutID.twoColumns)
+            }
+        }
+    }
+
+    private func dashboardColumn<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                dashboardContent(viewModel.currentStress)
+                content()
             }
             .padding(.horizontal, V2Metrics.margin)
             .padding(.top, 8)
@@ -161,8 +190,39 @@ struct DashboardView: View {
 
     // MARK: - Dashboard Content (Home tab)
 
+    /// One column (phones, the Duo outer display): the original order.
     @ViewBuilder
     private func dashboardContent(_ stress: StressResult?) -> some View {
+        todayContent(stress)
+        moodCheckIn
+        healthData
+        quickReset
+        stressOverTime
+        premiumUpsell
+        disclaimer
+            .padding(.top, 8)
+    }
+
+    /// Left column in two columns: today's reading and signals.
+    @ViewBuilder
+    private func summaryContent(_ stress: StressResult?) -> some View {
+        todayContent(stress)
+        healthData
+    }
+
+    /// Right column in two columns: the week, quick resets and check-in.
+    @ViewBuilder
+    private var weekContent: some View {
+        stressOverTime
+        quickReset
+        moodCheckIn
+        premiumUpsell
+        disclaimer
+            .padding(.top, 8)
+    }
+
+    @ViewBuilder
+    private func todayContent(_ stress: StressResult?) -> some View {
         // 1. Date + bio-age / streak tags, then the greeting
         header
             .opacity(appearAnimation ? 1 : 0)
@@ -221,6 +281,9 @@ struct DashboardView: View {
         ServerScoreCard()
             .opacity(appearAnimation ? 1 : 0)
 
+    }
+
+    private var moodCheckIn: some View {
         // 5. Mood check-in (Calm / Focused / Tense / Wired / Fried)
         MoodCheckInView(selected: viewModel.mood?.level) { level in
             viewModel.setMood(level)
@@ -228,6 +291,9 @@ struct DashboardView: View {
         .padding(.top, 8)
         .opacity(appearAnimation ? 1 : 0)
 
+    }
+
+    private var healthData: some View {
         // 6. Health data — Exercise / Sleep / Daylight (behavioral signals)
         HealthDataSection(
             exerciseMinutes: viewModel.lastWorkoutMinutes,
@@ -237,11 +303,17 @@ struct DashboardView: View {
         )
         .opacity(appearAnimation ? 1 : 0)
 
+    }
+
+    private var quickReset: some View {
         // 7. Quick reset — Box Breathing + Mini Walk
         QuickActionGrid(first: .boxBreathing, second: .miniWalk)
             .padding(.top, 8)
             .opacity(appearAnimation ? 1 : 0)
 
+    }
+
+    private var stressOverTime: some View {
         // 8. Stress over time — 7-day bar chart + tier legend. The section
         // header (with the History link) stays outside the Plus lock.
         VStack(alignment: .leading, spacing: 8) {
@@ -255,6 +327,10 @@ struct DashboardView: View {
         .padding(.top, 8)
         .opacity(appearAnimation ? 1 : 0)
 
+    }
+
+    @ViewBuilder
+    private var premiumUpsell: some View {
         // 9. Premium upsell (full-screen paywall).
         // Hidden while purchases are postponed, so the dashboard never
         // references purchasable content. Plus members never see it.
@@ -269,8 +345,6 @@ struct DashboardView: View {
             .opacity(appearAnimation ? 1 : 0)
         }
 
-        disclaimer
-            .padding(.top, 8)
     }
 
     private var disclaimer: some View {

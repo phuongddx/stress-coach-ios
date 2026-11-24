@@ -15,23 +15,13 @@ struct BreathingExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(AppRouter.self) private var router
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var currentHRV: Double?
     @State private var hrvTimestamp: Date?
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                introHero
-                patternExplain
-                beforeCard
-                sessionConfig
-                ctaRow
-                footnote
-            }
-            .padding(.horizontal, V2Metrics.margin)
-            .padding(.bottom, 24)
-        }
+        content
         .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
         .navigationBarBackButtonHidden(true)
@@ -53,6 +43,57 @@ struct BreathingExerciseView: View {
             }
         }
         .task { await fetchCurrentHRV() }
+    }
+
+    // MARK: - Layout
+
+    @ViewBuilder
+    private var content: some View {
+        switch DuoLayout.mode(for: horizontalSizeClass) {
+        case .singleColumn:
+            ScrollView {
+                VStack(spacing: 16) {
+                    introHero
+                    details
+                }
+                .padding(.horizontal, V2Metrics.margin)
+                .padding(.bottom, 24)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.singleColumn)
+        case .twoColumns:
+            // Duo inner display: the box and the explainer on one side of
+            // the fold, the steps, settings and Begin on the other.
+            FoldAwareSplit(axis: nil) {
+                ScrollView {
+                    introHero
+                        .padding(.horizontal, V2Metrics.margin)
+                        .padding(.vertical, 24)
+                }
+                .defaultScrollAnchor(.center, for: .alignment)
+                .scrollBounceBehavior(.basedOnSize)
+            } trailing: {
+                ScrollView {
+                    details
+                        .padding(.horizontal, V2Metrics.margin)
+                        .padding(.vertical, 24)
+                }
+                .defaultScrollAnchor(.center, for: .alignment)
+                .scrollBounceBehavior(.basedOnSize)
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.twoColumns)
+        }
+    }
+
+    private var details: some View {
+        VStack(spacing: 16) {
+            patternExplain
+            beforeCard
+            sessionConfig
+            ctaRow
+            footnote
+        }
     }
 
     // MARK: - Intro Hero

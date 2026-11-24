@@ -16,6 +16,9 @@ class BreathingSessionViewModel {
     var sessionDuration: TimeInterval = BreathingSessionViewModel.defaultSessionDuration
     var remainingTime: TimeInterval = BreathingSessionViewModel.defaultSessionDuration
     var isActive = false
+    /// Paused from the session screen or the Live Activity. The session
+    /// stays active; the countdown and the phase ticks stand still.
+    private(set) var isPaused = false
     var sessionResult: BreathingSessionResult?
 
     /// Single source of truth for the 4-4-4-4 box-breathing phase.
@@ -78,6 +81,7 @@ class BreathingSessionViewModel {
 
     func startSession() {
         isActive = true
+        isPaused = false
         remainingTime = sessionDuration
         boxPhase = .inhale
         secondsRemaining = BoxBreathingPhase.inhale.durationSeconds
@@ -107,9 +111,26 @@ class BreathingSessionViewModel {
         endSession(completed: false)
     }
 
+    /// Freezes the countdown and the phase where they are.
+    func pauseSession() {
+        guard isActive, !isPaused else { return }
+        isPaused = true
+    }
+
+    /// Carries on from where `pauseSession()` stopped.
+    func resumeSession() {
+        guard isActive, isPaused else { return }
+        isPaused = false
+    }
+
+    func togglePause() {
+        isPaused ? resumeSession() : pauseSession()
+    }
+
     private func endSession(completed: Bool) {
         guard isActive else { return }
         isActive = false
+        isPaused = false
         timer?.invalidate()
         timer = nil
         phaseTickTimer?.invalidate()
@@ -147,7 +168,7 @@ class BreathingSessionViewModel {
         phaseTickTimer?.invalidate()
         phaseTickTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self, self.isActive else { return }
+                guard let self, self.isActive, !self.isPaused else { return }
                 if self.secondsRemaining > 1 {
                     self.secondsRemaining -= 1
                 } else {
@@ -182,7 +203,7 @@ class BreathingSessionViewModel {
     private func startCountdown() {
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, !self.isPaused else { return }
                 if self.remainingTime <= 0 { return }
 
                 self.remainingTime -= 1

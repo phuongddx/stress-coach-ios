@@ -226,7 +226,7 @@ To test with simulated HealthKit data on simulator:
 
 ## Architecture Overview
 
-**iOS 17+ / watchOS 10+ stress monitoring app** with MVVM + SwiftUI. Tracks stress via multi-factor biometric analysis from HealthKit, with a character/mascot gamification layer and AI chat.
+**iOS 18.6+ / watchOS 11.6+ stress monitoring app** (deployment targets in `project.pbxproj`; iPhone Duo layouts need the iOS 27.1 SDK — see AGENTS.md) with MVVM + SwiftUI. Tracks stress via multi-factor biometric analysis from HealthKit, with a character/mascot gamification layer and AI chat.
 
 ### Tech Stack
 - **Language**: Swift 5.9+, strict concurrency (`Sendable` throughout)
@@ -350,7 +350,7 @@ StressMonitor/
 │   │   └── Protocols/      (all service protocols)
 │   └── Theme/              (DesignTokens, Color+Extensions, Font+WellnessType, Gradients)
 ├── StressMonitorWatch Watch App/  ← watchOS target (mirrors iPhone service structure)
-├── StressMonitorWidget/           ← WidgetKit target (Smart Stack, Live Activities)
+├── StressMonitorWidget/           ← WidgetKit target (Smart Stack, breathing Live Activity)
 └── StressMonitorTests/            (CharacterAssetResolverTests, StoreKitProductCatalogTests,
                                     PremiumViewModelTests, CharacterCollectionViewModelTests)
 ```

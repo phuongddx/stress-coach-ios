@@ -20,6 +20,7 @@ struct TrendsView: View {
     @Environment(PlusAccess.self) private var injectedPlusAccess: PlusAccess?
     @Environment(PaywallController.self) private var paywall: PaywallController?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel: TrendsViewModel
 
     /// Same rule `PlusLockedModifier` uses for every chart on this screen.
@@ -42,8 +43,48 @@ struct TrendsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+        trendsLayout
+            .background(Color.V2.bg.ignoresSafeArea())
+            .accessibleDynamicType()
+            .navigationTitle("Trends")
+            .navigationBarTitleDisplayMode(.inline)
+            .task {
+                viewModel = TrendsViewModel(modelContext: modelContext)
+                await viewModel.loadTrendData()
+            }
+            .onChange(of: isRangeLocked) { _, locked in
+                if viewModel.enforceRangeLock(locked) {
+                    Task { await viewModel.loadTrendData() }
+                }
+            }
+    }
+
+    // MARK: - Layout
+
+    private var hasData: Bool {
+        !viewModel.weeklyMeasurements.isEmpty
+    }
+
+    /// One column on phones and the Duo outer display. On the Duo inner
+    /// display (regular width) the week sits left of the fold and the
+    /// breakdown charts right of it.
+    @ViewBuilder
+    private var trendsLayout: some View {
+        if DuoLayout.mode(for: horizontalSizeClass) == .twoColumns, hasData {
+            FoldAwareSplit {
+                trendsColumn {
+                    chipRow
+                    weekSection
+                }
+            } trailing: {
+                trendsColumn {
+                    breakdownSection
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.twoColumns)
+        } else {
+            trendsColumn {
                 chipRow
                 if viewModel.weeklyMeasurements.isEmpty && viewModel.isLoading {
                     loadingSkeleton
@@ -52,38 +93,44 @@ struct TrendsView: View {
                         Task { await viewModel.loadTrendData() }
                     }
                 } else {
-                    editorialSummary
-                    if isRangeLocked {
-                        // Free: one locked preview, then the list of what Plus adds.
-                        dailyBars
-                        plusFeatureList
-                    } else {
-                        dailyBars
-                        distributionCard
-                        calendarCard
-                        hrvCard
-                    }
-                    if let insight = viewModel.weeklyInsight {
-                        editorialInsight(insight)
-                    }
+                    weekSection
+                    breakdownSection
                 }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.singleColumn)
+        }
+    }
+
+    private func trendsColumn<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                content()
             }
             .padding(.horizontal, V2Metrics.margin)
             .padding(.top, 8)
             .padding(.bottom, 24)
         }
-        .background(Color.V2.bg.ignoresSafeArea())
-        .accessibleDynamicType()
-        .navigationTitle("Trends")
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            viewModel = TrendsViewModel(modelContext: modelContext)
-            await viewModel.loadTrendData()
+    }
+
+    @ViewBuilder
+    private var weekSection: some View {
+        editorialSummary
+        dailyBars
+    }
+
+    @ViewBuilder
+    private var breakdownSection: some View {
+        if isRangeLocked {
+            // Free: one locked preview, then the list of what Plus adds.
+            plusFeatureList
+        } else {
+            distributionCard
+            calendarCard
+            hrvCard
         }
-        .onChange(of: isRangeLocked) { _, locked in
-            if viewModel.enforceRangeLock(locked) {
-                Task { await viewModel.loadTrendData() }
-            }
+        if let insight = viewModel.weeklyInsight {
+            editorialInsight(insight)
         }
     }
 

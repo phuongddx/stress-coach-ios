@@ -14,6 +14,7 @@ import SwiftUI
 struct IAPPremiumView<Header: View>: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var viewModel: PremiumViewModel
     @State private var creditsViewModel: CreditsViewModel
     @State private var showPurchaseSuccess = false
@@ -35,45 +36,28 @@ struct IAPPremiumView<Header: View>: View {
     private var isLoadingPlans: Bool { viewModel.loadState == .loading }
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: 20) {
-                hero
-                header
-                IAPBenefitsCard()
-                plansSection
-
-                if dynamicTypeSize.isAccessibilitySize {
-                    purchaseFooter
-                        .padding(.top, 4)
+        Group {
+            if #available(iOS 27.1, *) {
+                // System bar: on the iPhone Duo it moves to the side of the
+                // display. Close leads it; Restore sits in the "⋯" menu and
+                // as a link in the footer.
+                NavigationStack {
+                    paywallLayout
+                        .toolbar { systemToolbar }
+                        .toolbarBackground(Color.V2.bg, for: .navigationBar)
                 }
-
-                paymentNote
-            }
-            .padding(.horizontal, V2Metrics.margin)
-            .padding(.top, 4)
-            .padding(.bottom, 24)
-        }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            IAPNavBar(
-                isRestoreDisabled: viewModel.isLoading,
-                onRestore: { Task { await viewModel.restorePurchases() } },
-                onClose: { dismiss() }
-            )
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !dynamicTypeSize.isAccessibilitySize {
-                purchaseFooter
-                    .padding(.horizontal, V2Metrics.margin)
-                    .padding(.top, 12)
-                    .padding(.bottom, 4)
-                    .background(Color.V2.bg.ignoresSafeArea(edges: .bottom))
-                    .overlay(alignment: .top) {
-                        Rectangle().fill(Color.V2.line).frame(height: 0.5)
+            } else {
+                paywallLayout
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        IAPNavBar(
+                            isRestoreDisabled: viewModel.isLoading,
+                            onRestore: restore,
+                            onClose: { dismiss() }
+                        )
                     }
             }
         }
         .background(Color.V2.bg.ignoresSafeArea())
-        .navigationBarHidden(true)
         .task {
             await viewModel.loadInitialData()
         }
@@ -119,6 +103,117 @@ struct IAPPremiumView<Header: View>: View {
     // MARK: - Hero
 
     /// Ripple with the two Plus companions, then the Plus pill.
+    // MARK: - Layout
+
+    /// One column on phones and the Duo outer display. On the Duo inner
+    /// display (regular width) what Plus adds sits left of the fold and the
+    /// plans and purchase button right of it.
+    @ViewBuilder
+    private var paywallLayout: some View {
+        switch DuoLayout.mode(for: horizontalSizeClass) {
+        case .singleColumn:
+            singleColumn
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier(DuoLayoutID.singleColumn)
+        case .twoColumns:
+            FoldAwareSplit {
+                paywallColumn {
+                    hero
+                    header
+                    IAPBenefitsCard()
+                }
+            } trailing: {
+                paywallColumn {
+                    plansSection
+                    purchaseFooter
+                        .padding(.top, 4)
+                    paymentNote
+                }
+            }
+            .background(Color.V2.bg.ignoresSafeArea())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(DuoLayoutID.twoColumns)
+        }
+    }
+
+    private var singleColumn: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                hero
+                header
+                IAPBenefitsCard()
+                plansSection
+
+                if dynamicTypeSize.isAccessibilitySize {
+                    purchaseFooter
+                        .padding(.top, 4)
+                }
+
+                paymentNote
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 4)
+            .padding(.bottom, 24)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !dynamicTypeSize.isAccessibilitySize {
+                purchaseFooter
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+                    .background(Color.V2.bg.ignoresSafeArea(edges: .bottom))
+                    .overlay(alignment: .top) {
+                        Rectangle().fill(Color.V2.line).frame(height: 0.5)
+                    }
+            }
+        }
+    }
+
+    private func paywallColumn<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                content()
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.vertical, 24)
+            .frame(maxWidth: .infinity)
+        }
+        .defaultScrollAnchor(.center, for: .alignment)
+    }
+
+    @available(iOS 27.1, *)
+    @ToolbarContentBuilder
+    private var systemToolbar: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button {
+                dismiss()
+            } label: {
+                Label("Close", systemImage: AppIconSystem.Nav.close.sfSymbol)
+            }
+        }
+        // The "⋯" menu needs the iOS 27.1 SDK. Built with an older one,
+        // Restore stays reachable through the footer link.
+        #if canImport(SwiftUI, _version: 8.0.85)
+        ToolbarOverflowMenu {
+            Button(action: restore) {
+                Label("Restore purchases", systemImage: "arrow.clockwise")
+            }
+            .disabled(viewModel.isLoading)
+        }
+        #endif
+    }
+
+    private func restore() {
+        Task { await viewModel.restorePurchases() }
+    }
+
+    /// Restore is in the "⋯" menu on iOS 27.1 and later, so the footer
+    /// carries a visible link too. Earlier, the top bar shows it.
+    private var footerRestore: (() -> Void)? {
+        if #available(iOS 27.1, *) { return restore }
+        return nil
+    }
+
     private var hero: some View {
         VStack(spacing: 10) {
             HStack(alignment: .bottom, spacing: 0) {
@@ -238,7 +333,7 @@ struct IAPPremiumView<Header: View>: View {
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
 
-            IAPFooterLinks()
+            IAPFooterLinks(onRestore: footerRestore)
         }
     }
 

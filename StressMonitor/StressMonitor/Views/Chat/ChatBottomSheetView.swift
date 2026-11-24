@@ -9,13 +9,42 @@ import SwiftUI
 /// composer with a send button. The Ripple avatar's expression reflects
 /// the user's current stress level.
 struct ChatBottomSheetView: View {
+    /// Where the chat is shown.
+    enum Presentation {
+        /// A sheet (compact width): Close dismisses it.
+        case sheet
+        /// Inline beside the Action list (regular width, the iPhone Duo
+        /// inner display). Always on screen, so there is no Close.
+        case pane
+    }
+
     @Environment(\.dismiss) private var dismiss
     @Environment(PaywallController.self) private var paywall
     @Environment(CreditService.self) private var creditService
     @Environment(PreferencesService.self) private var preferencesService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var viewModel: ChatViewModel
-    @State private var inputText = ""
+    @State private var localDraft = ""
+
+    /// Draft owned by the caller (`SceneContinuity`), so it survives the chat
+    /// moving between the sheet and the pane. Nil keeps the draft local.
+    private let sharedDraft: Binding<String>?
+    private let presentation: Presentation
+    /// A caller-owned view model outlives this view, so leaving the screen
+    /// must not cancel its reply; the owner does that on close.
+    private let ownsViewModel: Bool
+    private let onClose: (() -> Void)?
+
+    private var inputText: String {
+        get { sharedDraft?.wrappedValue ?? localDraft }
+        nonmutating set {
+            if let sharedDraft { sharedDraft.wrappedValue = newValue } else { localDraft = newValue }
+        }
+    }
+
+    private var inputBinding: Binding<String> {
+        sharedDraft ?? $localDraft
+    }
 
     // MARK: - Initialization
 
@@ -29,21 +58,51 @@ struct ChatBottomSheetView: View {
             baseline: baseline,
             recentHistory: recentHistory
         ))
+        sharedDraft = nil
+        presentation = .sheet
+        ownsViewModel = true
+        onClose = nil
+    }
+
+    /// Chat whose conversation and draft are kept by the caller, for the
+    /// Action tab where the chat moves between a sheet and an inline pane as
+    /// the iPhone Duo folds and unfolds.
+    init(
+        viewModel: ChatViewModel,
+        draft: Binding<String>,
+        presentation: Presentation,
+        onClose: (() -> Void)? = nil
+    ) {
+        _viewModel = State(initialValue: viewModel)
+        sharedDraft = draft
+        self.presentation = presentation
+        ownsViewModel = false
+        self.onClose = onClose
+    }
+
+    /// Close: the caller's handler (it ends the conversation), then dismiss
+    /// the sheet.
+    private func close() {
+        onClose?()
+        if presentation == .sheet { dismiss() }
     }
 
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            chatHeader
-
-            if viewModel.isAvailable {
-                chatContent
+        Group {
+            if #available(iOS 27.1, *), presentation == .sheet {
+                // System bar: on the iPhone Duo it moves to the side of the
+                // outer display, with Close at the top of that column.
+                NavigationStack {
+                    chatBody
+                        .toolbar { systemToolbar }
+                        .toolbarTitleDisplayMode(.inline)
+                }
             } else {
-                unavailableView
+                chatBody
             }
         }
-        .background(Color.V2.bg.ignoresSafeArea())
         // Wire the view model to app-scope services from the environment:
         // the 402 paywall presentation and the credits convergence sink.
         // The environment is not reachable in `init`, so this happens on
@@ -66,11 +125,54 @@ struct ChatBottomSheetView: View {
             Task { await viewModel.hydratePreferencesAndFetchQuickActions() }
         }
         // Covers swipe-to-dismiss too, not just the Close button — without
-        // this the SSE stream and its owning objects outlive the sheet.
-        .onDisappear { viewModel.cancelResponse() }
+        // this the SSE stream and its owning objects outlive the sheet. A
+        // caller-owned view model is cancelled by its owner instead.
+        .onDisappear {
+            if ownsViewModel { viewModel.cancelResponse() }
+        }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.V2.bg)
+    }
+
+    private var chatBody: some View {
+        VStack(spacing: 0) {
+            chatHeader
+
+            if viewModel.isAvailable {
+                chatContent
+            } else {
+                unavailableView
+            }
+        }
+        .background(Color.V2.bg.ignoresSafeArea())
+    }
+
+    /// iOS 27.1: Close leads (`.cancellationAction`), Clear follows.
+    @available(iOS 27.1, *)
+    @ToolbarContentBuilder
+    private var systemToolbar: some ToolbarContent {
+        ToolbarItem(placement: .cancellationAction) {
+            Button(action: close) {
+                Label("Close", systemImage: "xmark")
+            }
+        }
+        if !viewModel.messages.isEmpty {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    viewModel.clearConversation()
+                } label: {
+                    Label("Clear conversation", systemImage: "arrow.counterclockwise")
+                }
+            }
+        }
+    }
+
+    /// The header keeps its own buttons only where the system bar does not
+    /// carry them: below iOS 27.1, and in the inline pane.
+    private var showsHeaderButtons: Bool {
+        if #available(iOS 27.1, *) { return presentation == .pane }
+        return true
     }
 
     // MARK: - Chat Content
@@ -96,7 +198,7 @@ struct ChatBottomSheetView: View {
 
             ChatComposer(
                 placeholder: "Message Ripple",
-                text: $inputText,
+                text: inputBinding,
                 canSend: canSend,
                 onSend: sendMessage
             )
@@ -173,15 +275,19 @@ struct ChatBottomSheetView: View {
 
     @ViewBuilder
     private var headerButtons: some View {
-        HStack(spacing: 0) {
-            if !viewModel.messages.isEmpty {
-                headerIconButton(systemImage: "arrow.counterclockwise", label: "Clear conversation") {
-                    viewModel.clearConversation()
+        if showsHeaderButtons {
+            HStack(spacing: 0) {
+                if !viewModel.messages.isEmpty {
+                    headerIconButton(systemImage: "arrow.counterclockwise", label: "Clear conversation") {
+                        viewModel.clearConversation()
+                    }
                 }
-            }
 
-            headerIconButton(systemImage: "xmark", label: "Close") {
-                dismiss()
+                if presentation == .sheet {
+                    headerIconButton(systemImage: "xmark", label: "Close") {
+                        close()
+                    }
+                }
             }
         }
     }
@@ -365,7 +471,7 @@ struct ChatBottomSheetView: View {
                     paywall.present(reason: .outOfCredits)
                 }
                 .buttonStyle(.v2(.primary, compact: true, fullWidth: false))
-                Button("Not now") { dismiss() }
+                Button("Not now") { close() }
                     .buttonStyle(.v2(.ghost, compact: true, fullWidth: false))
             }
             .padding(.top, 4)

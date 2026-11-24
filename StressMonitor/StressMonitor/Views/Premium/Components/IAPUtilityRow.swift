@@ -46,14 +46,18 @@ struct IAPTrustIndicators: View {
 struct IAPFooterLinks: View {
     private static let manageSubscriptionsURL = URL(string: "https://apps.apple.com/account/subscriptions")!
 
+    /// Shows a "Restore purchases" link when set (iOS 27.1 and later, where
+    /// the top bar's Restore moves into the "⋯" menu).
+    var onRestore: (() -> Void)? = nil
+
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            HStack(spacing: 0) { terms; dot; privacy; dot; manage }
+            HStack(spacing: 0) { terms; dot; privacy; restoreWithDot; dot; manage }
             VStack(spacing: 0) {
                 HStack(spacing: 0) { terms; dot; privacy }
-                manage
+                HStack(spacing: 0) { restoreLeading; manage }
             }
-            VStack(spacing: 0) { terms; privacy; manage }
+            VStack(spacing: 0) { terms; privacy; restore; manage }
         }
         .font(.footnote.weight(.semibold))
         .frame(maxWidth: .infinity)
@@ -69,6 +73,31 @@ struct IAPFooterLinks: View {
 
     private var manage: some View {
         Link("Manage subscription", destination: Self.manageSubscriptionsURL).modifier(FooterLinkStyle())
+    }
+
+    @ViewBuilder
+    private var restore: some View {
+        if let onRestore {
+            Button("Restore purchases", action: onRestore)
+                .buttonStyle(.plain)
+                .modifier(FooterLinkStyle())
+        }
+    }
+
+    @ViewBuilder
+    private var restoreWithDot: some View {
+        if onRestore != nil {
+            dot
+            restore
+        }
+    }
+
+    @ViewBuilder
+    private var restoreLeading: some View {
+        if onRestore != nil {
+            restore
+            dot
+        }
     }
 
     private var dot: some View {

@@ -38,6 +38,8 @@
 		61B559B45CF24F418A4472AE /* TrendsWeekComparisonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */; };
 		EF3B08E86D944802AD7BFE77 /* HabitViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472477EDAA6840068745933E /* HabitViewModelTests.swift */; };
 		39ADB906D77D39D8D61F9702 /* HapticPreferenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */; };
+		D0A0D0A100000000000000B1 /* DuoLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A0D0A100000000000000F1 /* DuoLayoutTests.swift */; };
+		D0A0D0A100000000000000B2 /* SceneContinuityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0A0D0A100000000000000F2 /* SceneContinuityTests.swift */; };
 		CE6153BA6628BD9CDC61828F /* BreathingSessionCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */; };
 		F1A1B2C3D4E500000000B010 /* LLMServiceErrorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */; };
 		F1A1B2C3D4E500000000B012 /* DataDeletionConsolidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */; };
@@ -155,6 +157,8 @@
 		70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendsWeekComparisonTests.swift; path = StressMonitorTests/TrendsWeekComparisonTests.swift; sourceTree = "<group>"; };
 		472477EDAA6840068745933E /* HabitViewModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HabitViewModelTests.swift; path = StressMonitorTests/HabitViewModelTests.swift; sourceTree = "<group>"; };
 		6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HapticPreferenceTests.swift; path = StressMonitorTests/HapticPreferenceTests.swift; sourceTree = "<group>"; };
+		D0A0D0A100000000000000F1 /* DuoLayoutTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DuoLayoutTests.swift; path = StressMonitorTests/DuoLayoutTests.swift; sourceTree = "<group>"; };
+		D0A0D0A100000000000000F2 /* SceneContinuityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SceneContinuityTests.swift; path = StressMonitorTests/SceneContinuityTests.swift; sourceTree = "<group>"; };
 		DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = BreathingSessionCompletionTests.swift; path = StressMonitorTests/BreathingSessionCompletionTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LLMServiceErrorTests.swift; path = StressMonitorTests/LLMServiceErrorTests.swift; sourceTree = "<group>"; };
 		F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DataDeletionConsolidationTests.swift; path = StressMonitorTests/DataDeletionConsolidationTests.swift; sourceTree = "<group>"; };
@@ -221,6 +225,13 @@
 			);
 			target = F2E2EC182F1CC602000C2B53 /* StressMonitorWatch Watch App */;
 		};
+		F2D0D0A12FE1000100A0D0A1 /* Exceptions for "StressMonitor" folder in "StressMonitorWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				LiveActivity/BreathingActivityShared.swift,
+			);
+			target = F211BBD62FD9111F00A6E25D /* StressMonitorWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -237,6 +248,7 @@
 			exceptions = (
 				F2CD35E02FDD272A000ED536 /* Exceptions for "StressMonitor" folder in "StressMonitor" target */,
 				F2D098F52F66727C00EC7538 /* Exceptions for "StressMonitor" folder in "StressMonitorWatch Watch App" target */,
+				F2D0D0A12FE1000100A0D0A1 /* Exceptions for "StressMonitor" folder in "StressMonitorWidgetExtension" target */,
 			);
 			path = StressMonitor;
 			sourceTree = "<group>";
@@ -355,6 +367,8 @@
 				70890D80FC684A6DB701F956 /* TrendsWeekComparisonTests.swift */,
 				472477EDAA6840068745933E /* HabitViewModelTests.swift */,
 				6BE1DC25E709D03198B95C61 /* HapticPreferenceTests.swift */,
+				D0A0D0A100000000000000F1 /* DuoLayoutTests.swift */,
+				D0A0D0A100000000000000F2 /* SceneContinuityTests.swift */,
 				DC81E4874AAAE3AA3D2853E6 /* BreathingSessionCompletionTests.swift */,
 				F1A1B2C3D4E500000000A010 /* LLMServiceErrorTests.swift */,
 				F1A1B2C3D4E500000000A012 /* DataDeletionConsolidationTests.swift */,
@@ -606,6 +620,8 @@
 				61B559B45CF24F418A4472AE /* TrendsWeekComparisonTests.swift in Sources */,
 				EF3B08E86D944802AD7BFE77 /* HabitViewModelTests.swift in Sources */,
 				39ADB906D77D39D8D61F9702 /* HapticPreferenceTests.swift in Sources */,
+				D0A0D0A100000000000000B1 /* DuoLayoutTests.swift in Sources */,
+				D0A0D0A100000000000000B2 /* SceneContinuityTests.swift in Sources */,
 				CE6153BA6628BD9CDC61828F /* BreathingSessionCompletionTests.swift in Sources */,
 				F1A1B2C3D4E500000000B010 /* LLMServiceErrorTests.swift in Sources */,
 				F1A1B2C3D4E500000000B012 /* DataDeletionConsolidationTests.swift in Sources */,
