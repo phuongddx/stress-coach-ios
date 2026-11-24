@@ -32,4 +32,10 @@ enum CharactersAvailability: Sendable, Equatable {
     var paywallHeroCharacterIds: [String] {
         self == .enabled ? ["zephyr", "ripple", "ember"] : ["ripple"]
     }
+
+    /// Whether `route` may be shown. While hidden, the Characters screen is
+    /// dropped from restored navigation paths and never rendered.
+    func allows(_ route: Route) -> Bool {
+        route != .characters || self == .enabled
+    }
 }

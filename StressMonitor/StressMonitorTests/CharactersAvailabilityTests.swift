@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 @testable import StressMonitor
 
@@ -63,5 +64,50 @@ struct CharactersAvailabilityTests {
         #expect(IAPBenefitsCard.benefits(.enabled).contains { $0.title == "Plus companions" })
         #expect(PurchaseSuccessView.unlockedLines(.enabled).count == 4)
         #expect(PremiumBanner.benefits(.enabled).contains("premium companions"))
+    }
+
+    // MARK: Restored navigation
+
+    @MainActor
+    private static func savedPath(_ routes: [Route]) -> Data? {
+        var path = NavigationPath()
+        for route in routes { path.append(route) }
+        return AppRouter.encodePath(path)
+    }
+
+    @Test("Hidden: a restored path drops Characters and anything pushed above it")
+    @MainActor
+    func restoreDropsCharactersWhenHidden() {
+        let restored = AppRouter.decodePath(
+            Self.savedPath([.about, .characters, .appearance]),
+            keeping: Self.hidden.allows
+        )
+        #expect(AppRouter.encodePath(restored) == Self.savedPath([.about]))
+
+        let onlyCharacters = AppRouter.decodePath(Self.savedPath([.characters]), keeping: Self.hidden.allows)
+        #expect(onlyCharacters.isEmpty)
+    }
+
+    @Test("Hidden: a restored path without Characters is unchanged")
+    @MainActor
+    func restoreKeepsOtherRoutesWhenHidden() {
+        let saved = Self.savedPath([.about, .appearance])
+        let restored = AppRouter.decodePath(saved, keeping: Self.hidden.allows)
+        #expect(AppRouter.encodePath(restored) == saved)
+    }
+
+    @Test("Enabled: a restored path keeps Characters")
+    @MainActor
+    func restoreKeepsCharactersWhenEnabled() {
+        let saved = Self.savedPath([.about, .characters])
+        let restored = AppRouter.decodePath(saved, keeping: CharactersAvailability.enabled.allows)
+        #expect(AppRouter.encodePath(restored) == saved)
+    }
+
+    @Test("Corrupt saved data restores an empty path")
+    @MainActor
+    func restoreCorruptDataIsEmpty() {
+        let restored = AppRouter.decodePath(Data("not json".utf8), keeping: Self.hidden.allows)
+        #expect(restored.isEmpty)
     }
 }
