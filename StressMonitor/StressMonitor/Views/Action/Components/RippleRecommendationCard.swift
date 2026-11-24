@@ -1,115 +1,105 @@
 import SwiftUI
 
-/// Hero recommendation card for the Action tab — matches `05-action.html` §2.
+/// Ripple's recommendation at the top of the Action tab (UI V2): a tinted
+/// card with the companion, a "Ripple" label, one line of advice, a primary
+/// "Start box breathing" link and, when Chat is available, a secondary
+/// "Talk to Ripple" button.
 ///
-/// Editorial type-led layout: Ripple 84px character + voice line with inline
-/// accent highlight + inline CTA pill. Ripple-blue tint border ties the card
-/// to the active companion.
+/// Spec reference: ui-v2-design/screens.js `S.action` (`rippleCard` with
+/// `tint:1`), states default / no-reading / chat-off.
 struct RippleRecommendationCard: View {
     let stressLevel: Double?
-    var ctaTitle: String = "Start Box Breath"
-    var onCTA: (() -> Void)? = nil
+    var isChatAvailable: Bool = true
+    /// Opens the Chat sheet. Only offered when `isChatAvailable`.
+    var onTalkToRipple: (() -> Void)? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Eyebrow: "Ripple · your companion" + status dot
-            HStack {
-                Text("Ripple")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(0.08)
-                    .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-                + Text(" · your companion")
-                    .font(.system(size: 10, weight: .medium, design: .rounded))
-                    .tracking(0.08)
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-
-                Spacer(minLength: 0)
-
-                Circle()
-                    .fill(Color(hex: "#34C759"))
-                    .frame(width: 6, height: 6)
-                    .shadow(color: Color(hex: "#34C759").opacity(0.18), radius: 3)
-            }
-            .textCase(.uppercase)
-
-            // Grid: Ripple 84px + voice + CTA
-            HStack(alignment: .center, spacing: 14) {
-                StressBuddyIllustration(mood: RippleMood.from(stressLevel: stressLevel ?? 0), size: 84)
+        V2Card(style: .tint) {
+            HStack(alignment: .top, spacing: 12) {
+                StressBuddyIllustration(mood: RippleMood.from(stressLevel: stressLevel ?? 0), size: 44)
+                    .frame(width: 44, height: 44)
                     .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(voiceLine)
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                        .multilineTextAlignment(.leading)
-                        .lineSpacing(2)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ripple")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
 
-                    Button {
-                        HapticManager.shared.buttonPress()
-                        onCTA?()
-                    } label: {
-                        HStack(spacing: 6) {
-                            Text(ctaTitle)
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 9)
-                        .background(HomeCharacterDesignTokens.Ripple.primary)
-                        .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                    .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+                    Text(voiceLine)
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel("Ripple says: \(voiceLine)")
+
+                    buttons
+                        .padding(.top, 8)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.32), lineWidth: 1)
-        )
     }
 
-    /// Voice line matching the HTML editorial style, with the stress tier
-    /// highlighted. Says nothing about the user's data until a reading exists.
-    private var voiceLine: AttributedString {
-        guard let level = stressLevel else {
-            return AttributedString("No stress reading yet. A slow Box Breath is a good place to start.")
+    /// Side by side when they fit; otherwise stacked at full width.
+    private var buttons: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { buttonViews(fullWidth: false) }
+                .fixedSize(horizontal: true, vertical: false)
+            VStack(spacing: 8) { buttonViews(fullWidth: true) }
         }
-        let (tier, suffix) = recommendation(for: level)
-
-        var text = AttributedString("Stress is ")
-        var accent = AttributedString(tier)
-        accent.foregroundColor = HomeCharacterDesignTokens.Ripple.primary
-        text += accent
-        text += AttributedString(suffix)
-
-        return text
     }
 
-    private func recommendation(for level: Double) -> (tier: String, suffix: String) {
-        switch level {
-        case ..<25:
-            return ("low", ". You're settled — a slow breath keeps you here.")
-        case 25..<50:
-            return ("mild", ". A 2-minute Box Breath keeps your parasympathetic tone primed.")
-        case 50..<75:
-            return ("climbing", " — let's bring it down with a quick reset.")
-        default:
-            return ("high", ". Box breathing first, then move.")
+    @ViewBuilder
+    private func buttonViews(fullWidth: Bool) -> some View {
+        NavigationLink(value: Route.boxBreathing) {
+            Text("Start box breathing")
+        }
+        .buttonStyle(.v2(.primary, compact: true, fullWidth: fullWidth))
+        .accessibilityHint("Opens box breathing")
+
+        if isChatAvailable, let onTalkToRipple {
+            // Ghost on a surface capsule: the secondary fill would vanish on
+            // the accentSoft card.
+            Button("Talk to Ripple") {
+                HapticManager.shared.buttonPress()
+                onTalkToRipple()
+            }
+            .buttonStyle(.v2(.ghost, compact: true, fullWidth: fullWidth))
+            .background(Capsule().fill(Color.V2.surface))
+        }
+    }
+
+    /// Says nothing about the user's data until a reading exists.
+    private var voiceLine: String {
+        guard let level = stressLevel else {
+            return "No reading yet today. Any of these is a good reset while we wait."
+        }
+        switch StressResult.category(for: level) {
+        case .relaxed:
+            return "Stress is low. You're settled. A slow breath keeps you here."
+        case .mild:
+            return isChatAvailable
+                ? "Stress is mild. You're settled. A slow breath keeps you here."
+                : "Stress is mild. A slow breath keeps you steady."
+        case .moderate:
+            return "Stress is building. A 2-minute box breath helps bring it down."
+        case .high:
+            return "Stress is high. Box breathing first, then a short walk."
+        case .severe:
+            return "Stress is running hot. Start with a slow breath, then step away for a few minutes."
         }
     }
 }
 
 #Preview("RippleRecommendationCard") {
-    VStack {
-        RippleRecommendationCard(stressLevel: 42)
-        Spacer()
+    NavigationStack {
+        VStack(spacing: 16) {
+            RippleRecommendationCard(stressLevel: 42, onTalkToRipple: {})
+            RippleRecommendationCard(stressLevel: nil, onTalkToRipple: {})
+            RippleRecommendationCard(stressLevel: 32, isChatAvailable: false)
+            Spacer()
+        }
+        .padding()
+        .background(Color.V2.bg)
+        .stressNavigationDestinations()
     }
-    .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
 }

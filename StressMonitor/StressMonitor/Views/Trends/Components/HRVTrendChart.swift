@@ -15,8 +15,10 @@ struct HRVTrendChart: View {
     /// for VoiceOver.
     var periodLabel: String = "7 days"
 
-    /// HRV accent color — see `Color.hrvTrendAccent`.
-    private let hrvColor = Color.hrvTrendAccent
+    /// HRV line colour: the V2 accent.
+    private let hrvColor = Color.V2.accent
+
+    @ScaledMetric(relativeTo: .body) private var chartHeight: CGFloat = 110
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -29,14 +31,9 @@ struct HRVTrendChart: View {
                 chart
             }
         }
-        .padding(16)
+        .padding(V2Metrics.margin)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
-        )
+        .v2CardBackground()
         .accessibilityChart(
             description: dataPoints.isEmpty
                 ? "HRV trend chart. No data yet."
@@ -76,34 +73,74 @@ struct HRVTrendChart: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("HRV trend")
-                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            Spacer()
-            Text("ms · \(periodLabel)")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline) {
+                headerTitle
+                Spacer(minLength: 8)
+                headerCaption
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                headerTitle
+                headerCaption
+            }
         }
+    }
+
+    private var headerTitle: some View {
+        Text("HRV trend")
+            .font(.headline)
+            .foregroundStyle(Color.V2.ink)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private var headerCaption: some View {
+        Text("ms · \(periodLabel)")
+            .font(.footnote)
+            .foregroundStyle(Color.V2.ink3)
     }
 
     // MARK: - Summary Row
 
     private var summaryRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("\(Int(referenceValue))")
-                .font(.system(size: 22, weight: .semibold, design: .rounded))
-                .foregroundStyle(hrvColor)
-            Text("ms avg")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            Spacer()
-            if let deltaText {
-                Text(deltaText)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#34C759"))
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                averageValue
+                Spacer(minLength: 8)
+                deltaLabel
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                averageValue
+                deltaLabel
             }
         }
+    }
+
+    private var averageValue: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text("\(Int(referenceValue))")
+                .font(.v2Number(.title2, weight: .semibold))
+                .foregroundStyle(Color.V2.ink)
+            Text("ms avg")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+        }
+    }
+
+    @ViewBuilder
+    private var deltaLabel: some View {
+        if let deltaText {
+            Text(deltaText)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(deltaColor(for: deltaText))
+        }
+    }
+
+    /// Higher HRV is better: a rise reads in the Relaxed text colour, a drop in
+    /// the High text colour, anything else stays neutral.
+    private func deltaColor(for text: String) -> Color {
+        if text.hasPrefix("+") { return StressCategory.relaxed.color }
+        if text.hasPrefix("-") || text.hasPrefix("\u{2212}") { return StressCategory.high.color }
+        return Color.V2.ink2
     }
 
     // MARK: - Chart
@@ -125,15 +162,16 @@ struct HRVTrendChart: View {
                     }
                 }
             }
-            .frame(height: 110)
+            .frame(height: chartHeight)
 
             // Endpoint annotation (top-right)
             if let last = dataPoints.last {
                 Text("\(endpointDayLabel(for: last.date)) · \(Int(last.value))ms")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(hrvColor)
-                    .padding(.horizontal, 4)
-                    .background(Color.Wellness.adaptiveCardBackground)
+                    .font(.v2Number(.caption2, weight: .medium))
+                    .foregroundStyle(Color.V2.ink2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.V2.surface, in: Capsule())
                     .zIndex(2)
             }
         }
@@ -153,7 +191,7 @@ struct HRVTrendChart: View {
             path.addLine(to: CGPoint(x: layout.size.width, y: y))
         }
         .stroke(
-            Color.Wellness.adaptiveSecondaryText.opacity(0.28),
+            Color.V2.ink3.opacity(0.6),
             style: StrokeStyle(lineWidth: 1, dash: [3, 3])
         )
     }
@@ -176,7 +214,7 @@ struct HRVTrendChart: View {
         .fill(
             LinearGradient(
                 colors: [
-                    hrvColor.opacity(0.32),
+                    hrvColor.opacity(0.24),
                     hrvColor.opacity(0)
                 ],
                 startPoint: .top,
@@ -212,20 +250,13 @@ struct HRVTrendChart: View {
     // MARK: - Empty State
 
     private var emptyState: some View {
-        VStack(spacing: 10) {
-            Image(systemName: AppIconSystem.Metric.hrv.sfSymbol)
-                .font(.system(size: 28))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.4))
-            Text("Need more data")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-            Text("Measure for 7 days to see your HRV trend")
-                .font(.system(size: 12))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.7))
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 110)
+        V2StateView(
+            systemImage: AppIconSystem.Metric.hrv.sfSymbol,
+            title: "Need more data",
+            message: "Measure for 7 days to see your HRV trend",
+            tint: Color.V2.ink3
+        )
+        .frame(maxWidth: .infinity, minHeight: 110)
     }
 }
 
@@ -281,5 +312,5 @@ private struct ChartLayout {
         Spacer()
     }
     .padding()
-    .background(Color.Wellness.adaptiveBackground)
+    .background(Color.V2.bg)
 }

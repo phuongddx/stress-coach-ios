@@ -49,26 +49,28 @@ struct InlineComplicationEntry: TimelineEntry {
 }
 
 // MARK: - Inline Complication View
-/// SwiftUI view for inline complication display.
+/// SwiftUI view for inline complication display (UI V2).
 ///
-/// Single-line: Ripple mini glyph + numeric score + tier glyph.  Score is
-/// rendered in the tier colour; the label sits in muted white.
+/// The inline family renders a single image and line of text, so the
+/// tier shape takes the image slot: "◆ 32 · Mild" style, with "Stress —"
+/// when there is no reading.
 struct InlineComplicationView: View {
     let entry: InlineComplicationEntry
 
     var body: some View {
         HStack(spacing: 4) {
-            // Ripple mini glyph (no expression at this size)
-            CharacterFaceView(creature: .ripple, category: entry.entry.category, size: 14, showsHalo: false)
-
-            Text(entry.entry.isPlaceholder ? "—" : "\(Int(entry.entry.stressLevel.rounded()))")
-                .font(.system(size: 13, weight: .semibold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                .foregroundColor(stressColor)
-
-            Text("· \(entry.entry.category.displayName)")
-                .font(.system(size: 11, weight: .medium, design: .monospaced)) // dated exception 2026-09-05: accessory inline template — single-line system slot
-                .foregroundColor(.white.opacity(0.55))
+            if entry.entry.isPlaceholder {
+                Text("Stress —")
+                    .foregroundStyle(WatchV2.ink3)
+            } else {
+                Image(systemName: entry.entry.category.icon)
+                    .foregroundStyle(stressColor)
+                Text("\(Int(entry.entry.stressLevel.rounded())) · \(entry.entry.category.displayName)")
+                    .foregroundStyle(stressColor)
+            }
         }
+        .font(.footnote.weight(.semibold))
+        .lineLimit(1)
         .widgetURL(deepLinkURL)
     }
 

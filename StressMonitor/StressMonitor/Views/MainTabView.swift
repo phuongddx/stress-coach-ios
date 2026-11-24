@@ -87,6 +87,8 @@ struct MainTabView: View {
                 }
             }
         }
+        // UI V2: selected tab and system controls use the forest-green accent.
+        .tint(Color.V2.accent)
         .onChange(of: router.selectedTab) {
             HapticManager.shared.buttonPress()
             selectedTabData = router.selectedTab.rawValue

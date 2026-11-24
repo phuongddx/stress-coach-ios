@@ -3,12 +3,13 @@ import SwiftUI
 // MARK: - Agent Chat View
 
 /// Health Coach chat (POST /agent/chat). Pushed from Settings' Sync & devices
-/// card behind `FeatureFlags.agentChatEnabled`. Message bubbles and the
-/// composer mirror `ChatBottomSheetView` — user gradient-right, assistant
-/// surface-left — so the two chat surfaces read as one product.
+/// card behind `FeatureFlags.agentChatEnabled`. Bubbles, typing dots and the
+/// composer are the shared UI V2 chat components used by `ChatBottomSheetView`,
+/// so the two chat surfaces read as one product.
 struct AgentChatView: View {
     @StateObject private var vm = AgentChatViewModel()
     @State private var draft = ""
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var canSend: Bool {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !vm.isStreaming
@@ -16,23 +17,69 @@ struct AgentChatView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            messageList
-            if let error = vm.errorText {
-                Text(error)
-                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                    .foregroundStyle(Color.error)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 4)
+            if vm.messages.isEmpty {
+                emptyState
+            } else {
+                messageList
             }
-            composer
+            if let error = vm.errorText {
+                V2ErrorCard(title: "Coach couldn't answer", message: error)
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.bottom, 8)
+            }
+            ChatComposer(
+                placeholder: "Ask about sleep, stress or habits",
+                text: $draft,
+                canSend: canSend,
+                onSend: send
+            )
         }
-        .background(Color.Wellness.adaptiveBackground)
+        .background(Color.V2.bg.ignoresSafeArea())
         .navigationTitle("Health Coach")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            Button("New") { vm.startNewConversation() }
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 6) {
+                    Text("Health Coach")
+                        .font(.headline)
+                        .foregroundStyle(Color.V2.ink)
+                    ChatTag(text: "Beta", foreground: Color.V2.accent, background: Color.V2.accentSoft)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("New") { vm.startNewConversation() }
+                    .tint(Color.V2.accent)
+            }
         }
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                StressBuddyIllustration(mood: .happy, size: 80)
+                    .frame(width: 112, height: 112)
+                    .background(Circle().fill(Color.V2.accentSoft))
+                    .accessibilityHidden(true)
+
+                Text("Ask the Health Coach")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                    .multilineTextAlignment(.center)
+
+                Text("Longer answers that look across your trends. It sees your derived scores only, and it can't diagnose.")
+                    .font(.callout)
+                    .foregroundStyle(Color.V2.ink2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 56)
+            .frame(maxWidth: .infinity)
+        }
+        .scrollDismissesKeyboard(.interactively)
     }
 
     // MARK: - Message stream
@@ -40,7 +87,7 @@ struct AgentChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 16) {
+                LazyVStack(spacing: 10) {
                     ForEach(vm.messages) { message in
                         MessageBubble(message: message, isStreaming: vm.isStreaming)
                             .id(message.id)
@@ -48,6 +95,7 @@ struct AgentChatView: View {
                 }
                 .padding(.vertical, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: vm.messages.count) {
                 scrollToLast(proxy)
             }
@@ -59,47 +107,13 @@ struct AgentChatView: View {
 
     private func scrollToLast(_ proxy: ScrollViewProxy) {
         guard let last = vm.messages.last else { return }
-        withAnimation(.easeOut(duration: 0.2)) {
+        if WellnessMotion.isMotionReduced(reduceMotionEnvironment: reduceMotion) {
             proxy.scrollTo(last.id, anchor: .bottom)
-        }
-    }
-
-    // MARK: - Composer
-
-    private var composer: some View {
-        HStack(spacing: 8) {
-            HStack(spacing: 4) {
-                TextField("Ask your coach…", text: $draft, axis: .vertical)
-                    .textFieldStyle(.plain)
-                    .lineLimit(1...4)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .onSubmit { send() }
+        } else {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo(last.id, anchor: .bottom)
             }
-            .background(Color.Wellness.adaptiveCardBackground)
-            .clipShape(Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
-            )
-
-            Button {
-                send()
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(canSend ? Color(hex: "#0288D1") : Color.Wellness.adaptiveSecondaryText.opacity(0.3))
-                    .clipShape(Circle())
-            }
-            .disabled(!canSend)
-            .accessibilityLabel("Send message")
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 14)
-        .background(Color.Wellness.adaptiveBackground.opacity(0.92))
     }
 
     private func send() {
@@ -112,45 +126,25 @@ struct AgentChatView: View {
 
 // MARK: - Message Bubble
 
-/// Single coach-chat bubble, matching `ChatBottomSheetView`'s
-/// `MessageBubbleView`: user gradient-blue trailing, assistant surface
-/// leading, continuous 18pt corners, 260pt max width.
+/// Single coach-chat bubble: user on `accent` to the right, assistant on
+/// `surface` to the left. An in-flight empty assistant reply shows the
+/// typing dots.
 private struct MessageBubble: View {
     let message: AgentMessage
     let isStreaming: Bool
 
+    private var isUser: Bool { message.role == "user" }
+
     var body: some View {
-        HStack {
-            if message.role == "user" { Spacer(minLength: 60) }
-
-            Text(bubbleText)
-                .font(.system(size: 14))
-                .foregroundStyle(message.role == "user" ? .white : Color.Wellness.adaptivePrimaryText)
-                .lineSpacing(2)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(
-                    message.role == "user"
-                    ? AnyShapeStyle(
-                        LinearGradient(
-                            colors: [Color(hex: "#4FC3F7"), Color(hex: "#0288D1")],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    : AnyShapeStyle(Color.Wellness.adaptiveCardBackground)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .frame(maxWidth: 260, alignment: message.role == "user" ? .trailing : .leading)
-
-            if message.role == "assistant" { Spacer(minLength: 60) }
+        ChatBubbleRow(isUser: isUser) {
+            ChatBubble(isUser: isUser) {
+                if !isUser && message.text.isEmpty && isStreaming {
+                    ChatTypingDots(accessibilityLabel: "Coach is typing")
+                } else {
+                    Text(message.text)
+                }
+            }
         }
-        .padding(.horizontal, 16)
-    }
-
-    /// In-flight empty assistant bubble shows the streaming ellipsis.
-    private var bubbleText: String {
-        message.text.isEmpty && isStreaming ? "…" : message.text
     }
 }
 

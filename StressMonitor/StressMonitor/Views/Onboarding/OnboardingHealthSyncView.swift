@@ -1,132 +1,90 @@
 import SwiftUI
 
 // MARK: - Permissions Screen (Screen 1)
-// Frictionless: one screen, read-only data types list, privacy-first.
-// "Connect Apple Health" CTA triggers HealthKit authorization via the shared VM.
+// Says what each Health type is for before the iOS sheet appears, then
+// "Continue" triggers HealthKit authorization via the shared VM.
+// UI V2 `S.onbHealth`.
 struct OnboardingHealthSyncView: View {
     @State private var viewModel = OnboardingHealthSyncViewModel()
-    @State private var appearAnimation = false
 
     var onAuthorize: (() -> Void)?
     var onBack: (() -> Void)?
+    var onSelectStep: ((Int) -> Void)?
+
+    /// What `HealthKitManager.requestAuthorization()` reads, grouped the way
+    /// the iOS sheet lists them, each with the reason the app needs it.
+    private static let dataTypes: [(icon: String, title: String, purpose: String)] = [
+        ("waveform.path.ecg", "Heart rate variability", "The main signal in your score"),
+        ("heart", "Heart rate & resting heart rate", "How hard your body is working"),
+        ("bed.double", "Sleep", "How well you recovered"),
+        ("figure.walk", "Steps, activity & workouts", "Movement lowers stress"),
+        ("lungs", "Breathing, blood oxygen, water & daylight", "Extra context for recovery and daily habits"),
+        ("calendar", "Date of birth", "Your biological age estimate"),
+    ]
 
     var body: some View {
         VStack(spacing: 0) {
-            // Back button
             HStack {
-                Button(action: { onBack?() }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: AppIconSystem.Nav.back.sfSymbol)
-                            .font(.system(size: 14, weight: .medium))
-                        Text("Back")
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                    )
-                }
+                OnboardingBackButton { onBack?() }
                 Spacer()
             }
-            .padding(.top, 20)
-            .padding(.bottom, 8)
+            .frame(minHeight: V2Metrics.minTouchTarget)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    // Lock icon
-                    Text("🔐")
-                        .font(.system(size: 52))
-                        .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.2), radius: 12)
-                        .padding(.top, 32)
+                VStack(alignment: .leading, spacing: 0) {
+                    Image(systemName: "heart.fill")
+                        .font(.title.weight(.semibold))
+                        .foregroundStyle(Color.V2.onAccent)
+                        .frame(width: 56, height: 56)
+                        .background(
+                            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                                .fill(Color.V2.accent)
+                        )
+                        .accessibilityHidden(true)
+
+                    Text("Connect Apple Health")
+                        .font(.title.weight(.bold))
+                        .foregroundStyle(Color.V2.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 16)
+                        .accessibilityAddTraits(.isHeader)
+
+                    Text("Next, iOS asks which data Stress AI Coach can read. Here is what each one is for.")
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 8)
                         .padding(.bottom, 16)
 
-                    // Title
-                    Text("Connect Apple Health")
-                        .font(.system(size: 24, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color(hex: "#E8E8F0"))
-                        .multilineTextAlignment(.center)
+                    dataTypeList
 
-                    // Subtitle
-                    Text("Ripple reads these data types to calculate your stress on your device. Nothing is shared unless you turn on Health Data Sync or use AI coaching.")
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: 310)
-                        .padding(.top, 8)
-                        .padding(.bottom, 20)
-
-                    // Read-only data types list
-                    VStack(spacing: 8) {
-                        PermissionDataTypeRow(
-                            emoji: "📈",
-                            iconBgColor: Color(hex: "#7986CB").opacity(0.1),
-                            title: "Heart Rate Variability",
-                            subtitle: "Primary stress indicator"
-                        )
-
-                        PermissionDataTypeRow(
-                            emoji: "❤️",
-                            iconBgColor: Color(hex: "#EF5350").opacity(0.1),
-                            title: "Heart Rate",
-                            subtitle: "Resting & active BPM"
-                        )
-
-                        PermissionDataTypeRow(
-                            emoji: "😴",
-                            iconBgColor: HomeCharacterDesignTokens.Ripple.primary.opacity(0.1),
-                            title: "Sleep Analysis",
-                            subtitle: "Recovery quality tracking"
-                        )
-
-                        PermissionDataTypeRow(
-                            emoji: "👟",
-                            iconBgColor: HomeCharacterDesignTokens.Blossom.primary.opacity(0.1),
-                            title: "Steps",
-                            subtitle: "Activity context for accuracy"
-                        )
-                    }
-                    .padding(.bottom, 16)
-
-                    // ON-DEVICE privacy pill
-                    onDevicePill
-                        .padding(.bottom, 20)
+                    privacyNote
+                        .padding(.top, 12)
                 }
+                .padding(.bottom, 16)
             }
 
-            // Authorize CTA — pinned to bottom
-            Button(action: { Task { await authorizeAndContinue() } }) {
-                HStack(spacing: 8) {
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Image(systemName: "heart.text.square.fill")
-                            .font(.system(size: 17, weight: .bold))
-                        Text("Connect Apple Health")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+            VStack(spacing: 0) {
+                OnboardingStepDots(current: 1, onSelect: onSelectStep)
+
+                Button(action: { Task { await authorizeAndContinue() } }) {
+                    HStack(spacing: 8) {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .tint(Color.V2.onAccent)
+                            Text("Waiting for iOS…")
+                        } else {
+                            Text("Continue")
+                        }
                     }
                 }
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(
-                    LinearGradient(
-                        colors: [HomeCharacterDesignTokens.Ripple.primary, HomeCharacterDesignTokens.Ripple.deep],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.28), radius: 12, y: 6)
+                .buttonStyle(.v2(.primary))
+                .disabled(viewModel.isLoading)
+                .padding(.bottom, 24)
             }
-            .disabled(viewModel.isLoading)
-            .padding(.bottom, 48)
         }
-        .padding(.horizontal, 28)
-        .background(HomeCharacterDesignTokens.darkCanvas)
+        .padding(.horizontal, V2Metrics.margin)
+        .background(Color.V2.bg.ignoresSafeArea())
         .alert("Authorization Error", isPresented: .constant(viewModel.authorizationError != nil)) {
             Button("OK") {
                 viewModel.authorizationError = nil
@@ -138,27 +96,43 @@ struct OnboardingHealthSyncView: View {
         }
     }
 
-    // MARK: - ON-DEVICE privacy pill
+    // MARK: - Data types
 
-    private var onDevicePill: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "iphone.gen3")
-                .font(.system(size: 11, weight: .bold))
-            Text("ON-DEVICE")
-                .font(.system(size: 11, weight: .heavy))
-                .kerning(0.8)
+    private var dataTypeList: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(Self.dataTypes.enumerated()), id: \.offset) { index, item in
+                OnboardingInfoRow(systemImage: item.icon, title: item.title, subtitle: item.purpose)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                if index < Self.dataTypes.count - 1 {
+                    Rectangle()
+                        .fill(Color.V2.line)
+                        .frame(height: 0.5)
+                        .padding(.leading, 58)
+                }
+            }
         }
-        .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .background(
-            Capsule()
-                .fill(HomeCharacterDesignTokens.Ripple.primary.opacity(0.1))
-                .overlay(
-                    Capsule()
-                        .stroke(HomeCharacterDesignTokens.Ripple.primary.opacity(0.25), lineWidth: 1)
-                )
-        )
+        .v2CardBackground(.standard)
+    }
+
+    // MARK: - Privacy note
+
+    private var privacyNote: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "checkmark.shield")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.V2.accent)
+                .accessibilityHidden(true)
+
+            Text("\(Text("Scored on your iPhone.").fontWeight(.semibold).foregroundStyle(Color.V2.ink)) Ripple only sees your scores, never raw health data. You can revoke access in Settings.")
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(14)
+        .v2CardBackground(.flat)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Actions
@@ -169,56 +143,6 @@ struct OnboardingHealthSyncView: View {
         if viewModel.healthKitAuthorized {
             onAuthorize?()
         }
-    }
-}
-
-// MARK: - Permission Data Type Row (read-only)
-
-private struct PermissionDataTypeRow: View {
-    let emoji: String
-    let iconBgColor: Color
-    let title: String
-    let subtitle: String
-
-    var body: some View {
-        HStack(spacing: 14) {
-            // Icon
-            Text(emoji)
-                .font(.system(size: 20))
-                .frame(width: 40, height: 40)
-                .background(iconBgColor)
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            // Text
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#E8E8F0"))
-                Text(subtitle)
-                    .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(HomeCharacterDesignTokens.mutedInk)
-            }
-
-            Spacer()
-
-            // Read-only badge
-            Image(systemName: AppIconSystem.System.success.sfSymbol)
-                .font(.system(size: 16))
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary.opacity(0.7))
-                .accessibilityHidden(true)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.darkCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
-                )
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(title). \(subtitle)")
     }
 }
 

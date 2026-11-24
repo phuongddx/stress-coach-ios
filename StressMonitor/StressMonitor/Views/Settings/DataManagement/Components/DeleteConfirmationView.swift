@@ -18,43 +18,22 @@ struct DeleteConfirmationView: View {
         confirmationText.uppercased() == requiredConfirmationText
     }
 
+    @ScaledMetric(relativeTo: .largeTitle) private var heroTile: CGFloat = 64
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Warning icon
-                    Image(systemName: AppIconSystem.System.warning.sfSymbol)
-                        .font(.system(size: 64))
-                        .foregroundColor(.warning)
-                        .padding(.top, 20)
+                VStack(spacing: 20) {
+                    header
 
-                    // Title
-                    Text(deleteScope.title)
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.primary)
-                        .padding(.horizontal)
-
-                    // Warning message
-                    Text(deleteScope.warningMessage)
-                        .font(.body)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-
-                    // What will be deleted section
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("What will be deleted")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-
+                    // What will be deleted
+                    section("What will be deleted") {
                         VStack(alignment: .leading, spacing: 12) {
                             DeleteConfirmationItem(
                                 icon: "heart.slash.fill",
                                 title: "Stress Measurements",
                                 count: affectedDataCounts.stressMeasurements,
-                                color: .error
+                                color: Color.V2.danger
                             )
 
                             if deleteScope.includesBaseline {
@@ -62,7 +41,7 @@ struct DeleteConfirmationView: View {
                                     icon: "chart.line.flattrend.xyaxis",
                                     title: "Personal Baseline",
                                     count: affectedDataCounts.baseline ? 1 : 0,
-                                    color: .warning
+                                    color: Color.V2.danger
                                 )
                             }
 
@@ -72,22 +51,15 @@ struct DeleteConfirmationView: View {
                                     title: "Date Range",
                                     subtitle: range.displayText,
                                     count: nil,
-                                    color: .secondary
+                                    color: Color.V2.ink2
                                 )
                             }
                         }
                     }
-                    .padding()
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(12)
 
-                    // Consequences section
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Important")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-
-                        VStack(alignment: .leading, spacing: 8) {
+                    // Consequences
+                    section("Important") {
+                        VStack(alignment: .leading, spacing: 10) {
                             ConsequenceRow(
                                 icon: "xmark.circle.fill",
                                 text: "This action cannot be undone"
@@ -104,65 +76,100 @@ struct DeleteConfirmationView: View {
                             )
                         }
                     }
-                    .padding()
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(12)
 
                     // Confirmation requirement
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Type DELETE to confirm")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-
+                    section("Type DELETE to confirm") {
                         TextField("Enter DELETE", text: $confirmationText)
-                            .textFieldStyle(.roundedBorder)
+                            .font(.v2Number(.body))
+                            .foregroundStyle(Color.V2.ink)
                             .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
                             .focused($isTextFieldFocused)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: V2Metrics.minTouchTarget)
+                            .background(
+                                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                                    .fill(Color.V2.surface2)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                                    .strokeBorder(
+                                        isConfirmationValid ? Color.V2.danger : Color.V2.line2,
+                                        lineWidth: isConfirmationValid ? 1.5 : 1
+                                    )
+                            )
                             .accessibilityLabel("Confirmation text field")
                             .accessibilityHint("Type \(requiredConfirmationText) to enable the delete button")
                     }
-                    .padding()
-                    .background(Color.secondary.opacity(0.1))
-                    .cornerRadius(12)
 
                     // Action buttons
-                    VStack(spacing: 12) {
+                    VStack(spacing: 10) {
                         Button(action: onConfirm) {
-                            HStack {
+                            HStack(spacing: 8) {
                                 Image(systemName: AppIconSystem.System.delete.sfSymbol)
                                 Text("Delete Everything")
                             }
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(isConfirmationValid ? Color.error : Color.secondary)
-                            .cornerRadius(26)
                         }
+                        .buttonStyle(.v2(.destructiveFill))
                         .disabled(!isConfirmationValid)
                         .accessibilityLabel("Delete all data")
                         .accessibilityHint(isConfirmationValid ? "Double tap to permanently delete data" : "Type DELETE to enable")
 
                         Button(action: onCancel) {
                             Text("Cancel")
-                                .font(.headline)
-                                .foregroundColor(.primaryBlue)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 52)
-                                .background(Color.primaryBlue.opacity(0.1))
-                                .cornerRadius(26)
                         }
+                        .buttonStyle(.v2(.ghost))
                         .accessibilityLabel("Cancel and return")
                     }
-                    .padding(.horizontal, 32)
                 }
+                .padding(.horizontal, V2Metrics.margin)
                 .padding(.bottom, 24)
             }
+            .background(Color.V2.bg.ignoresSafeArea())
             .navigationTitle("Confirm Deletion")
             .navigationBarTitleDisplayMode(.inline)
         }
         .onAppear {
             isTextFieldFocused = true
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 12) {
+            Image(systemName: AppIconSystem.System.warning.sfSymbol)
+                .font(.title.weight(.semibold))
+                .foregroundStyle(Color.V2.danger)
+                .frame(width: heroTile, height: heroTile)
+                .background(
+                    RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                        .fill(Color.V2.dangerSoft)
+                )
+                .accessibilityHidden(true)
+
+            Text(deleteScope.title)
+                .font(.title2.weight(.bold))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            Text(deleteScope.warningMessage)
+                .font(.body)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 20)
+    }
+
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        let inner = content()
+        return VStack(alignment: .leading, spacing: 6) {
+            ActionGroupHeader(title: title)
+            V2Card {
+                inner
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 }
@@ -175,22 +182,26 @@ struct DeleteConfirmationItem: View {
     let count: Int?
     let color: Color
 
+    @ScaledMetric(relativeTo: .body) private var tileSize: CGFloat = 30
+
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(color)
-                .frame(width: 28)
+            SettingsIconView(
+                systemName: icon,
+                color: count == nil ? Color.V2.surface2 : Color.V2.dangerSoft,
+                foreground: color,
+                size: tileSize
+            )
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.callout)
-                    .foregroundColor(.primary)
+                    .font(.body)
+                    .foregroundStyle(Color.V2.ink)
 
                 if let subtitle = subtitle {
                     Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink3)
                 }
             }
 
@@ -198,17 +209,13 @@ struct DeleteConfirmationItem: View {
 
             if let count = count {
                 Text("\(count)")
-                    .font(.callout)
-                    .fontWeight(.semibold)
-                    .foregroundColor(color)
+                    .font(.v2Number(.body))
+                    .foregroundStyle(color)
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
-        if let count = count {
-            Text(count == 1 ? "1 item" : "\(count) items")
-                .accessibilityHidden(true)
-        }
+        .accessibilityValue(count.map { $0 == 1 ? "1 item" : "\($0) items" } ?? (subtitle ?? ""))
     }
 }
 
@@ -218,14 +225,15 @@ struct ConsequenceRow: View {
     let text: String
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
                 .font(.callout)
-                .foregroundColor(icon.contains("xmark") ? .error : .warning)
+                .foregroundStyle(icon.contains("xmark") ? Color.V2.danger : Color.V2.ink3)
+                .accessibilityHidden(true)
 
             Text(text)
                 .font(.callout)
-                .foregroundColor(.primary)
+                .foregroundStyle(Color.V2.ink)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

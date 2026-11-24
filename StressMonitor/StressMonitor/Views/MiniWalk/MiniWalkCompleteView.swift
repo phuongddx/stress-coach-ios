@@ -1,15 +1,18 @@
 import SwiftUI
 
-/// Completion screen shown when the Mini Walk finishes.
+/// Completion overlay shown when the Mini Walk timer runs out (UI V2).
 ///
-/// - Tired-happy Ripple (mood = .tired) with rosy cheeks and sweat drop
-/// - Headline: "Nice walk!" + companion message
-/// - 3-stat grid: Steps, Minutes, kcal
-/// - Buttons: Done + View Full Trends
+/// - Happy Ripple, "Walk complete" and one line of encouragement
+/// - Vitals: Time, Steps, kcal (est.)
+/// - Done (primary) and See trends (ghost)
+///
+/// Spec reference: ui-v2-design/screens.js `S.walk` state `complete`.
 struct MiniWalkCompleteView: View {
     let viewModel: MiniWalkViewModel
     var onDone: () -> Void
     var onTrends: () -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(viewModel: MiniWalkViewModel, onDone: @escaping () -> Void, onTrends: @escaping () -> Void) {
         self.viewModel = viewModel
@@ -19,112 +22,58 @@ struct MiniWalkCompleteView: View {
 
     var body: some View {
         ZStack {
-            HomeCharacterDesignTokens.darkCanvas.ignoresSafeArea()
+            Color.V2.bg.ignoresSafeArea()
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
-                    // Tired-happy Ripple
-                    StressBuddyIllustration(mood: .tired, size: 100)
-                        .padding(.top, 20)
+            ScrollView {
+                VStack(spacing: 16) {
+                    StressBuddyIllustration(mood: .happy, size: 104)
+                        .frame(width: 104, height: 104)
+                        .padding(.top, 32)
+                        .accessibilityHidden(true)
 
-                    // Headline
-                    VStack(spacing: 6) {
-                        Text("Nice walk! \u{1F6B6}")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color(hex: "#E0E0E8"))
-                        Text("Ripple enjoyed every step with you!")
-                            .font(.system(size: 15, weight: .regular, design: .rounded))
-                            .foregroundStyle(Color(hex: "#9CA3AF"))
+                    VStack(spacing: 8) {
+                        Text("Walk complete")
+                            .font(.title.weight(.bold))
+                            .foregroundStyle(Color.V2.ink)
+                            .accessibilityAddTraits(.isHeader)
+                        Text("Fresh air and movement both help bring stress down.")
+                            .font(.callout)
+                            .foregroundStyle(Color.V2.ink2)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    // 3-stat grid
-                    HStack(spacing: 12) {
-                        CompletionStat(value: viewModel.stepDisplay, label: "Steps", icon: "figure.walk")
-                        CompletionStat(value: "\(viewModel.elapsedMinutes)", label: "Minutes", icon: "clock")
-                        CompletionStat(value: viewModel.calorieDisplay, label: "kcal (est.)", icon: "flame.fill")
-                    }
-                    .padding(.horizontal, 16)
+                    statsRow
+                        .padding(.top, 8)
 
-                    Spacer(minLength: 16)
-
-                    // Buttons
-                    VStack(spacing: 12) {
+                    VStack(spacing: 4) {
                         Button(action: onDone) {
                             Text("Done")
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 56)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(
-                                            LinearGradient(
-                                                colors: [
-                                                    HomeCharacterDesignTokens.Ripple.primary,
-                                                    HomeCharacterDesignTokens.Ripple.deep
-                                                ],
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                        )
-                                )
-                                .shadow(color: HomeCharacterDesignTokens.Ripple.primary.opacity(0.3), radius: 8, y: 4)
                         }
+                        .buttonStyle(.v2(.primary))
 
                         Button(action: onTrends) {
-                            Text("View Full Trends")
-                                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Color(hex: "#9CA3AF"))
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 50)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 14)
-                                        .fill(HomeCharacterDesignTokens.darkCard)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 14)
-                                                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-                                        )
-                                )
+                            Text("See trends")
                         }
+                        .buttonStyle(.v2(.ghost, compact: true))
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 40)
+                    .padding(.top, 8)
                 }
+                .padding(.horizontal, V2Metrics.margin)
+                .padding(.bottom, 32)
             }
         }
     }
-}
 
-// MARK: - Completion Stat Cell
-
-private struct CompletionStat: View {
-    let value: String
-    let label: String
-    let icon: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary)
-            Text(value)
-                .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundStyle(Color(hex: "#E0E0E8"))
-                .monospacedDigit()
-            Text(label)
-                .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Color(hex: "#9CA3AF"))
+    private var statsRow: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+        return layout {
+            WalkVital(icon: "clock", label: "Time", value: "\(viewModel.elapsedMinutes)", unit: "min")
+            WalkVital(icon: "figure.walk", label: "Steps", value: viewModel.stepDisplay, unit: nil)
+            WalkVital(icon: "flame.fill", label: "kcal (est.)", value: viewModel.calorieDisplay, unit: nil)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(HomeCharacterDesignTokens.darkCard)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-                )
-        )
     }
 }
 
@@ -134,4 +83,13 @@ private struct CompletionStat: View {
         onDone: {},
         onTrends: {}
     )
+}
+
+#Preview("Dark") {
+    MiniWalkCompleteView(
+        viewModel: MiniWalkViewModel(),
+        onDone: {},
+        onTrends: {}
+    )
+    .preferredColorScheme(.dark)
 }

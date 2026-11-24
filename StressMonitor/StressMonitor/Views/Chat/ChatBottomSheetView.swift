@@ -2,17 +2,18 @@ import SwiftUI
 
 // MARK: - Chat Bottom Sheet View
 
-/// AI Chat bottom sheet matching `09-chat.html`.
+/// AI Chat bottom sheet (UI V2 `S.chat`).
 ///
 /// Shows a chat header with a mood-reactive Ripple avatar (serene when stress
 /// is Mild, worried when High), a message stream, quick reply chips, and a
-/// composer with mic + send buttons. The Ripple avatar's expression reflects
+/// composer with a send button. The Ripple avatar's expression reflects
 /// the user's current stress level.
 struct ChatBottomSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PaywallController.self) private var paywall
     @Environment(CreditService.self) private var creditService
     @Environment(PreferencesService.self) private var preferencesService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var viewModel: ChatViewModel
     @State private var inputText = ""
 
@@ -33,147 +34,169 @@ struct ChatBottomSheetView: View {
     // MARK: - Body
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                if viewModel.isAvailable {
-                    chatContent
-                } else {
-                    unavailableView
-                }
-            }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
-            // Wire the view model to app-scope services from the environment:
-            // the 402 paywall presentation and the credits convergence sink.
-            // The environment is not reachable in `init`, so this happens on
-            // first appear, before any message can be sent.
-            .onAppear {
-                viewModel.presentPaywall = { paywall.present(reason: $0) }
-                viewModel.setCreditsConvergenceSink { [weak creditService] remaining in
-                    creditService?.apply(creditsRemaining: remaining)
-                }
-                // Server-authoritative history restore (derived-SES-01): the
-                // VM is fresh per presentation, and restoreHistory guards
-                // re-appear within one presentation.
-                viewModel.apiClient = StressAPIClient()
-                Task { await viewModel.restoreHistory() }
-                // Server-suggested chips swap over the instant local set once
-                // the GET lands (derived-QA-01); preferences seed first so
-                // the query carries the server pair, not install defaults
-                // (WR-02 — COVERAGE row 14's chat-open seed).
-                viewModel.preferencesService = preferencesService
-                Task { await viewModel.hydratePreferencesAndFetchQuickActions() }
-            }
-            // Covers swipe-to-dismiss too, not just the Close button — without
-            // this the SSE stream and its owning objects outlive the sheet.
-            .onDisappear { viewModel.cancelResponse() }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Close") { dismiss() }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !viewModel.messages.isEmpty {
-                        Button {
-                            viewModel.clearConversation()
-                        } label: {
-                            Image(systemName: "arrow.counterclockwise")
-                                .foregroundStyle(.secondary)
-                        }
-                        .accessibilityLabel("Clear conversation")
-                    }
-                }
+        VStack(spacing: 0) {
+            chatHeader
+
+            if viewModel.isAvailable {
+                chatContent
+            } else {
+                unavailableView
             }
         }
+        .background(Color.V2.bg.ignoresSafeArea())
+        // Wire the view model to app-scope services from the environment:
+        // the 402 paywall presentation and the credits convergence sink.
+        // The environment is not reachable in `init`, so this happens on
+        // first appear, before any message can be sent.
+        .onAppear {
+            viewModel.presentPaywall = { paywall.present(reason: $0) }
+            viewModel.setCreditsConvergenceSink { [weak creditService] remaining in
+                creditService?.apply(creditsRemaining: remaining)
+            }
+            // Server-authoritative history restore (derived-SES-01): the
+            // VM is fresh per presentation, and restoreHistory guards
+            // re-appear within one presentation.
+            viewModel.apiClient = StressAPIClient()
+            Task { await viewModel.restoreHistory() }
+            // Server-suggested chips swap over the instant local set once
+            // the GET lands (derived-QA-01); preferences seed first so
+            // the query carries the server pair, not install defaults
+            // (WR-02 — COVERAGE row 14's chat-open seed).
+            viewModel.preferencesService = preferencesService
+            Task { await viewModel.hydratePreferencesAndFetchQuickActions() }
+        }
+        // Covers swipe-to-dismiss too, not just the Close button — without
+        // this the SSE stream and its owning objects outlive the sheet.
+        .onDisappear { viewModel.cancelResponse() }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(Color.V2.bg)
     }
 
     // MARK: - Chat Content
 
     private var chatContent: some View {
         VStack(spacing: 0) {
-            // Chat header (Ripple avatar + name + subtitle)
-            chatHeader
-
-            // Message stream
+            // Message stream (welcome, messages, typing, streaming reply)
             messageList
 
-            // Streaming indicator
-            if viewModel.isLoading && !viewModel.currentStreamingText.isEmpty {
-                streamingBubble
-            }
-
-            // Error banner
+            // Error card
             if let error = viewModel.errorMessage {
-                errorBanner(error)
+                V2ErrorCard(title: "Message didn't send", message: error)
+                    .padding(.horizontal, V2Metrics.margin)
+                    .padding(.bottom, 8)
             }
 
-            // Quick replies (label + chips)
-            if !viewModel.isLoading {
+            // Out of free messages: the same paywall trigger as the pill.
+            if showsOutOfCreditsCard {
+                outOfCreditsCard
+            } else if !viewModel.isLoading {
                 quickRepliesSection
             }
 
-            // Composer
-            chatComposer
+            ChatComposer(
+                placeholder: "Message Ripple",
+                text: $inputText,
+                canSend: canSend,
+                onSend: sendMessage
+            )
         }
     }
 
     // MARK: - Chat Header
 
+    /// Avatar, name, subtitle, balance pill and the clear/close buttons.
+    /// DEC-2 placement-a: the live balance pill is informational while the
+    /// user still has credits and tappable straight to the paywall when the
+    /// remaining count hits zero. Hidden while purchases are postponed — a
+    /// zero balance would otherwise offer no way out. The pill sits inline
+    /// when everything fits on one line, otherwise under the subtitle.
     private var chatHeader: some View {
-        HStack(spacing: 12) {
-            // Ripple avatar with online dot
-            ZStack(alignment: .bottomTrailing) {
-                StressBuddyIllustration(
-                    mood: viewModel.companionMood,
-                    size: 36
-                )
-                .background(
-                    Circle()
-                        .fill(Color(hex: "#4FC3F7").opacity(0.12))
-                )
-
-                // Online indicator dot
-                Circle()
-                    .fill(Color(hex: "#34C759"))
-                    .frame(width: 10, height: 10)
-                    .overlay(
-                        Circle().stroke(.white, lineWidth: 2)
-                    )
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 12) {
+                headerAvatar
+                headerTitle(subtitleOnOneLine: true)
+                Spacer(minLength: 0)
+                if PurchaseAvailability.isEnabled { balancePill }
+                headerButtons
             }
-            .accessibilityHidden(true)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ripple")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-                Text(companionSubtitle)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            HStack(alignment: .top, spacing: 12) {
+                headerAvatar
+                VStack(alignment: .leading, spacing: 4) {
+                    headerTitle(subtitleOnOneLine: false)
+                    if PurchaseAvailability.isEnabled { balancePill }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                headerButtons
             }
-
-            Spacer()
-
-            // DEC-2 placement-a: live balance pill. Informational while the
-            // user still has credits; tappable straight to the paywall when
-            // the remaining count hits zero. Hidden while purchases are
-            // postponed — a zero balance would otherwise offer no way out.
-            if PurchaseAvailability.isEnabled {
-                balancePill
-            }
-
-            // Overflow menu
-            Image(systemName: "ellipsis")
-                .font(.system(size: 20))
-                .foregroundStyle(Color(hex: "#0288D1"))
-                .accessibilityLabel("More options")
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .overlay(alignment: .bottom) {
-            Divider()
+        .padding(.leading, V2Metrics.margin)
+        .padding(.trailing, V2Metrics.margin - 6)
+        .padding(.top, 18)
+        .padding(.bottom, 8)
+        .background(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.V2.line)
+                .frame(height: 0.5)
+                .ignoresSafeArea(edges: .horizontal)
         }
+    }
+
+    private var headerAvatar: some View {
+        StressBuddyIllustration(
+            mood: viewModel.companionMood,
+            size: 32
+        )
+        .frame(width: 40, height: 40)
+        .background(Circle().fill(Color.V2.Companion.ripple.opacity(0.18)))
+        .accessibilityHidden(true)
+    }
+
+    private func headerTitle(subtitleOnOneLine: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Ripple")
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+                .accessibilityAddTraits(.isHeader)
+
+            Text("Sees your scores, never raw health data")
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink3)
+                .fixedSize(horizontal: subtitleOnOneLine, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var headerButtons: some View {
+        HStack(spacing: 0) {
+            if !viewModel.messages.isEmpty {
+                headerIconButton(systemImage: "arrow.counterclockwise", label: "Clear conversation") {
+                    viewModel.clearConversation()
+                }
+            }
+
+            headerIconButton(systemImage: "xmark", label: "Close") {
+                dismiss()
+            }
+        }
+    }
+
+    private func headerIconButton(
+        systemImage: String,
+        label: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(Color.V2.ink2)
+                .frame(width: 32, height: 32)
+                .background(Circle().fill(Color.V2.surface2))
+                .frame(width: V2Metrics.minTouchTarget, height: V2Metrics.minTouchTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     // MARK: - Balance Pill
@@ -183,53 +206,52 @@ struct ChatBottomSheetView: View {
         return !balance.isUnlimited && balance.remaining <= 0
     }
 
+    /// The out-of-credits card only shows where the pill would: a paywall
+    /// route has to exist for it to offer one.
+    private var showsOutOfCreditsCard: Bool {
+        PurchaseAvailability.isEnabled && isOutOfCredits
+    }
+
     @ViewBuilder
     private var balancePill: some View {
         if isOutOfCredits {
             Button {
                 paywall.present(reason: .outOfCredits)
             } label: {
-                pillLabel(systemImage: "exclamationmark.circle.fill", tint: Color(hex: "#FF9500"))
+                ChatTag(
+                    text: CreditBalanceFormatter.balanceText(creditService.balance),
+                    systemImage: "exclamationmark.circle.fill",
+                    foreground: StressCategory.moderate.color,
+                    background: Color.V2.warnSoft
+                )
+                .frame(minHeight: V2Metrics.minTouchTarget)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .frame(minHeight: 44)
             .accessibilityLabel("No free messages left this month. Tap to see Plus.")
         } else {
-            pillLabel(
-                systemImage: "circlebadge.2",
-                tint: Color.Wellness.adaptiveSecondaryText
+            ChatTag(
+                text: CreditBalanceFormatter.balanceText(creditService.balance),
+                systemImage: "bubble.left.fill",
+                foreground: Color.V2.accent,
+                background: Color.V2.accentSoft
             )
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Credit balance: \(CreditBalanceFormatter.balanceText(creditService.balance))")
         }
     }
 
-    private func pillLabel(systemImage: String, tint: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(.system(size: 11, weight: .semibold))
-            Text(CreditBalanceFormatter.balanceText(creditService.balance))
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(Capsule())
-        .overlay(
-            Capsule().stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
-        )
-    }
-
-    /// Subtitle reflecting the current stress reading. Makes no claim about the
-    /// user's state, or the time of day, when there is no reading to base it on.
-    private var companionSubtitle: String {
-        guard let result = viewModel.stressResult else {
-            return "Water Otter · here to listen"
-        }
-        return "Water Otter · stress \(Int(result.level.rounded())) · \(result.category.displayName)"
-    }
-
     // MARK: - Message List
+
+    private static let bottomAnchor = "chat-bottom"
+
+    private var showsTypingDots: Bool {
+        viewModel.isLoading && viewModel.currentStreamingText.isEmpty
+    }
+
+    private var showsStreamingBubble: Bool {
+        viewModel.isLoading && !viewModel.currentStreamingText.isEmpty
+    }
 
     private var messageList: some View {
         ScrollViewReader { proxy in
@@ -240,27 +262,41 @@ struct ChatBottomSheetView: View {
                     }
 
                     ForEach(viewModel.messages) { message in
-                        MessageBubbleView(message: message, mood: viewModel.companionMood)
+                        MessageBubbleView(message: message)
                             .id(message.id)
                     }
 
-                    // Typing indicator
-                    if viewModel.isLoading && viewModel.currentStreamingText.isEmpty {
-                        HStack {
-                            typingIndicator
-                            Spacer()
+                    if showsTypingDots {
+                        ChatBubbleRow(isUser: false) {
+                            ChatBubble(isUser: false) {
+                                ChatTypingDots(accessibilityLabel: "Ripple is typing")
+                            }
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 4)
                     }
+
+                    if showsStreamingBubble {
+                        ChatBubbleRow(isUser: false) {
+                            ChatBubble(isUser: false) {
+                                Text(viewModel.currentStreamingText)
+                            }
+                        }
+                    }
+
+                    Color.clear
+                        .frame(height: 1)
+                        .id(Self.bottomAnchor)
                 }
                 .padding(.vertical, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
             .onChange(of: viewModel.messages.count) { _, _ in
-                scrollToLast(proxy)
+                scrollToBottom(proxy)
             }
             .onChange(of: viewModel.currentStreamingText) { _, _ in
-                scrollToLast(proxy)
+                scrollToBottom(proxy)
+            }
+            .onChange(of: viewModel.isLoading) { _, _ in
+                scrollToBottom(proxy)
             }
         }
     }
@@ -268,143 +304,78 @@ struct ChatBottomSheetView: View {
     // MARK: - Welcome Bubble
 
     private var welcomeBubble: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Hi, I'm Ripple — your water otter companion.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-
-            Text("I track your stress patterns and suggest quick resets. Ask me anything about your readings, or pick a quick reply below.")
-                .font(.system(size: 14))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .lineSpacing(3)
-        }
-        .frame(maxWidth: 260, alignment: .leading)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Streaming Bubble
-
-    private var streamingBubble: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(viewModel.currentStreamingText)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(Color.Wellness.adaptiveCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .frame(maxWidth: 260, alignment: .leading)
-
-            Spacer()
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Typing Indicator
-
-    private var typingIndicator: some View {
-        HStack(spacing: 4) {
-            ForEach(0..<3, id: \.self) { index in
-                Circle()
-                    .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
-                    .frame(width: 6, height: 6)
-                    .modifier(TypingDotAnimation(delay: Double(index) * 0.2))
+        ChatBubbleRow(isUser: false) {
+            ChatBubble(isUser: false) {
+                Text(welcomeText)
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var welcomeText: String {
+        guard let result = viewModel.stressResult else {
+            return "Hi, I'm Ripple. Ask me about your stress readings, or pick a suggestion below."
+        }
+        return "Hi, I'm Ripple. Your latest score is \(Int(result.level.rounded())) · \(result.category.displayName). What's on your mind?"
     }
 
     // MARK: - Quick Replies Section
 
+    @ViewBuilder
     private var quickRepliesSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        if !viewModel.quickReplies.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     ForEach(viewModel.quickReplies) { reply in
-                        Button {
-                            // Sends the chip's resolved prompt directly — the
-                            // long prompt must not echo into the composer.
+                        // Sends the chip's resolved prompt directly — the
+                        // long prompt must not echo into the composer.
+                        V2Chip(title: reply.title) {
                             viewModel.send(reply.prompt)
-                        } label: {
-                            Text(reply.title)
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundStyle(Color(hex: "#0288D1"))
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 7)
-                                .background(Color.Wellness.adaptiveCardBackground)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
-                                )
                         }
-                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, V2Metrics.margin)
             }
+            .padding(.bottom, 2)
         }
-        .padding(.vertical, 6)
     }
 
-    // MARK: - Error Banner
+    // MARK: - Out of Credits
 
-    private func errorBanner(_ message: String) -> some View {
-        Text(message)
-            .font(.system(size: 12))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.red.cornerRadius(8))
-            .padding(.horizontal, 16)
-    }
-
-    // MARK: - Composer
-
-    private var chatComposer: some View {
-        HStack(spacing: 8) {
-            // Input shell
-            TextField("Message Ripple…", text: $inputText, axis: .vertical)
-                .font(.system(size: 15))
-                .lineLimit(1...4)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .onSubmit { sendMessage() }
-                .background(Color.Wellness.adaptiveCardBackground)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.15), lineWidth: 1)
-                )
-
-            // Send button
-            Button {
-                sendMessage()
-            } label: {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(canSend ? Color(hex: "#0288D1") : Color.Wellness.adaptiveSecondaryText.opacity(0.3))
-                    .clipShape(Circle())
+    private var outOfCreditsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Out of free messages")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.V2.ink)
+            Text(CreditBalanceFormatter.outOfFreeMessagesText)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+            if let reset = CreditBalanceFormatter.resetDateText(creditService.balance) {
+                Text(reset)
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             }
-            .disabled(!canSend)
-            .accessibilityLabel("Send message")
+            HStack(spacing: 8) {
+                Button("Get Plus") {
+                    paywall.present(reason: .outOfCredits)
+                }
+                .buttonStyle(.v2(.primary, compact: true, fullWidth: false))
+                Button("Not now") { dismiss() }
+                    .buttonStyle(.v2(.ghost, compact: true, fullWidth: false))
+            }
+            .padding(.top, 4)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 10)
-        .padding(.bottom, 14)
-        .background(Color.Wellness.adaptiveBackground.opacity(0.92))
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .fill(Color.V2.plusBg)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .strokeBorder(Color.V2.plusLine, lineWidth: 1)
+        )
+        .padding(.horizontal, V2Metrics.margin)
+        .padding(.bottom, 8)
     }
 
     private var canSend: Bool {
@@ -414,24 +385,28 @@ struct ChatBottomSheetView: View {
     // MARK: - Unavailable View
 
     private var unavailableView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "brain.head.profile.fill")
-                .font(.system(size: 48))
-                .foregroundStyle(HomeCharacterDesignTokens.Ripple.primary.opacity(0.6))
+        ScrollView {
+            VStack(spacing: 14) {
+                StressBuddyIllustration(mood: .tired, size: 80)
+                    .frame(width: 112, height: 112)
+                    .background(Circle().fill(Color.V2.Companion.ripple.opacity(0.18)))
+                    .accessibilityHidden(true)
 
-            Text("AI Coaching is coming soon")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                Text("Ripple is resting")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                    .multilineTextAlignment(.center)
 
-            Text("Ripple's conversations arrive in our next update. Meanwhile, your stress readings and breathing exercises are fully available.")
-                .font(.system(size: 15))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            Spacer()
+                Text("Chat isn't available right now. Your stress readings and breathing exercises still work as usual.")
+                    .font(.callout)
+                    .foregroundStyle(Color.V2.ink2)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 56)
+            .frame(maxWidth: .infinity)
         }
-        .padding(.top, 60)
     }
 
     // MARK: - Helpers
@@ -443,10 +418,12 @@ struct ChatBottomSheetView: View {
         viewModel.send(text)
     }
 
-    private func scrollToLast(_ proxy: ScrollViewProxy) {
-        if let lastMessage = viewModel.messages.last {
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        if WellnessMotion.isMotionReduced(reduceMotionEnvironment: reduceMotion) {
+            proxy.scrollTo(Self.bottomAnchor, anchor: .bottom)
+        } else {
             withAnimation(.easeOut(duration: 0.2)) {
-                proxy.scrollTo(lastMessage.id, anchor: .bottom)
+                proxy.scrollTo(Self.bottomAnchor, anchor: .bottom)
             }
         }
     }
@@ -454,77 +431,36 @@ struct ChatBottomSheetView: View {
 
 // MARK: - Message Bubble View
 
-/// Single message bubble in the chat stream. Matching `09-chat.html`:
-/// - Assistant (from-them): surface bg, left-aligned, bottom-left small radius
-/// - User (from-me): gradient blue bg, right-aligned, bottom-right small radius
+/// Single message bubble in the chat stream (v2.css `.bubble`): assistant on
+/// `surface` to the left, user on `accent` to the right, time underneath.
 private struct MessageBubbleView: View {
     let message: ChatMessage
-    let mood: RippleMood
+
+    private var isUser: Bool { message.role == .user }
+
+    /// A reply that streamed only whitespace has nothing to show; drawing it
+    /// would leave an empty bubble in the stream.
+    private var hasVisibleText: Bool {
+        !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
-        HStack {
-            if message.role == .user { Spacer(minLength: 60) }
+        if hasVisibleText {
+            bubble
+        }
+    }
 
-            VStack(
-                alignment: message.role == .user ? .trailing : .leading,
-                spacing: 4
-            ) {
-                Text(message.content)
-                    .font(.system(size: 14))
-                    .foregroundStyle(message.role == .user ? .white : Color.Wellness.adaptivePrimaryText)
-                    .lineSpacing(2)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(
-                        message.role == .user
-                        ? AnyShapeStyle(
-                            LinearGradient(
-                                colors: [Color(hex: "#4FC3F7"), Color(hex: "#0288D1")],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                        : AnyShapeStyle(Color.Wellness.adaptiveCardBackground)
-                    )
-                    .clipShape(
-                        RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    )
-                    .frame(maxWidth: 260, alignment: message.role == .user ? .trailing : .leading)
-
-                // Timestamp
-                Text(timestampText)
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.7))
+    private var bubble: some View {
+        ChatBubbleRow(isUser: isUser) {
+            VStack(alignment: isUser ? .trailing : .leading, spacing: 4) {
+                ChatBubble(isUser: isUser) {
+                    Text(message.content)
+                }
+                Text(message.timestamp, style: .time)
+                    .font(.caption2)
+                    .foregroundStyle(Color.V2.ink3)
                     .padding(.horizontal, 4)
             }
-
-            if message.role == .assistant { Spacer(minLength: 60) }
         }
-        .padding(.horizontal, 16)
-    }
-
-    private var timestampText: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: message.timestamp)
-    }
-}
-
-// MARK: - Typing Dot Animation
-
-private struct TypingDotAnimation: ViewModifier {
-    let delay: Double
-    @State private var isAnimating = false
-
-    func body(content: Content) -> some View {
-        content
-            .offset(y: isAnimating ? -4 : 4)
-            .animation(
-                .easeInOut(duration: 0.5)
-                    .repeatForever(autoreverses: true)
-                    .delay(delay),
-                value: isAnimating
-            )
-            .startMotionIfAllowed { isAnimating = true }
     }
 }

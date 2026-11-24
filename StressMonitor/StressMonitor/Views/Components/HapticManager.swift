@@ -1,13 +1,35 @@
 import UIKit
 import CoreHaptics
 
+/// The user's Haptics setting. Stored inverted ("disabled") so a fresh
+/// install, with nothing saved, has haptics on.
+enum HapticPreference {
+    nonisolated static let disabledKey = "appearance.hapticsDisabled"
+
+    nonisolated static func isEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        !defaults.bool(forKey: disabledKey)
+    }
+
+    nonisolated static func setEnabled(_ enabled: Bool, in defaults: UserDefaults = .standard) {
+        defaults.set(!enabled, forKey: disabledKey)
+    }
+}
+
 @MainActor
 final class HapticManager {
     static let shared = HapticManager()
 
     private var engine: CHHapticEngine?
+    private let hardwareSupportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
+
+    /// True when the device can play haptics and the user has not turned
+    /// them off in Settings. Every feedback method checks this.
     private var supportsHaptics: Bool {
-        CHHapticEngine.capabilitiesForHardware().supportsHaptics
+        Self.shouldPlay(hardwareSupportsHaptics: hardwareSupportsHaptics, defaults: .standard)
+    }
+
+    nonisolated static func shouldPlay(hardwareSupportsHaptics: Bool, defaults: UserDefaults) -> Bool {
+        hardwareSupportsHaptics && HapticPreference.isEnabled(in: defaults)
     }
 
     private init() {
@@ -15,7 +37,7 @@ final class HapticManager {
     }
 
     private func setupHapticEngine() {
-        guard supportsHaptics else { return }
+        guard hardwareSupportsHaptics else { return }
 
         do {
             engine = try CHHapticEngine()

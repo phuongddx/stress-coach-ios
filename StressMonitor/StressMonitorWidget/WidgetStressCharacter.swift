@@ -29,6 +29,19 @@ enum WidgetStressTier: Int, CaseIterable, Sendable {
         }
     }
 
+    /// The companion face for a displayed category, so the face always
+    /// matches the tier label beside it (the score bands in
+    /// `StressResult.category(for:)` differ from `from(level:)`).
+    static func from(category: StressCategory) -> WidgetStressTier {
+        switch category {
+        case .relaxed:  return .resting
+        case .mild:     return .calm
+        case .moderate: return .balanced
+        case .high:     return .tense
+        case .severe:   return .overwhelmed
+        }
+    }
+
     var emoji: String {
         switch self {
         case .resting:     return "😴"
@@ -62,16 +75,17 @@ enum WidgetStressTier: Int, CaseIterable, Sendable {
 
 // MARK: - WidgetPalette
 
-/// Colour ramp synced with `HomeCharacterDesignTokens` (iOS) and `StressCharacterPalette` (watch).
+/// Companion colour ramp, re-pointed at the UI V2 companion tints and surfaces
+/// (Theme/WidgetV2Tokens.swift). Companion tints are for backgrounds only.
 enum WidgetPalette {
-    static let ripple     = Color(hex: "#4FC3F7")
-    static let blossom    = Color(hex: "#A5D6A7")
-    static let lumi       = Color(hex: "#7986CB")
-    static let ember      = Color(hex: "#FFAB91")
-    static let zephyr     = Color(hex: "#B39DDB")
-    static let darkCanvas = Color(hex: "#0A0A0F")
-    static let darkCard   = Color(hex: "#1A1A2E")
-    static let mutedInk   = Color(hex: "#777986")
+    static let ripple     = Color.V2.Companion.ripple
+    static let blossom    = Color.V2.Companion.blossom
+    static let lumi       = Color.V2.Companion.lumi
+    static let ember      = Color.V2.Companion.ember
+    static let zephyr     = Color.V2.Companion.zephyr
+    static let darkCanvas = Color.V2.bg
+    static let darkCard   = Color.V2.surface
+    static let mutedInk   = Color.V2.ink3
 }
 
 // MARK: - WidgetCharacterFace

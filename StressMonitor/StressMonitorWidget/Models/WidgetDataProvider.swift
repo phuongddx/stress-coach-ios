@@ -197,23 +197,16 @@ public enum StressCategory: String, Codable, Sendable {
     case high
     case severe
 
-    public var color: String {
-        switch self {
-        case .relaxed: return "#34C759"
-        case .mild: return "#007AFF"
-        case .moderate: return "#FFD60A"
-        case .high: return "#FF9500"
-        case .severe: return "#FF3B30"
-        }
-    }
+    // Tier colours (`color` for text, `fillColor` for shapes) live in the
+    // token layer: Theme/WidgetV2Tokens.swift.
 
     public var icon: String {
         switch self {
         case .relaxed: return "leaf.fill"
         case .mild: return "circle.fill"
         case .moderate: return "triangle.fill"
-        case .high: return "exclamationmark.triangle.fill"
-        case .severe: return "exclamationmark.octagon.fill"
+        case .high: return "square.fill"
+        case .severe: return "octagon.fill"
         }
     }
 
@@ -221,7 +214,7 @@ public enum StressCategory: String, Codable, Sendable {
         switch self {
         case .relaxed: return "Relaxed"
         case .mild: return "Mild"
-        case .moderate: return "Moderate"
+        case .moderate: return "Elevated"
         case .high: return "High"
         case .severe: return "Severe"
         }

@@ -7,7 +7,7 @@ import SwiftUI
 /// Renders a 7-row (days of week) by N-column (weeks) grid of cells
 /// coloured by stress level. Empty cells (no reading) are hairlined. Day
 /// labels appear down the left edge; week labels can be derived from the
-/// data range. Today's cell is outlined in accent-strong.
+/// data range. Today's cell is outlined in ink.
 ///
 /// The colour map uses the 5-tier stress scale so the heatmap doubles as
 /// a tier overview at a glance (WCAG dual-coding: colour + tier glyph
@@ -22,17 +22,16 @@ struct CalendarHeatmapView: View {
     var showsDayLabels: Bool = true
 
     private let calendar = Calendar.current
-    private let cellSize: CGFloat = 10
+    private let cellSize: CGFloat = 12
     private let cellSpacing: CGFloat = 2
 
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             if let summary = headerSummary {
                 Text(summary)
-                    .font(.system(size: 8.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                    .tracking(0.05 * 8.5)
-                    .foregroundStyle(WatchDesignTokens.muted)
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink3)
+                    .lineLimit(2)
             }
 
             HStack(alignment: .top, spacing: 6) {
@@ -78,7 +77,7 @@ struct CalendarHeatmapView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .stroke(
-                        isToday ? WatchDesignTokens.accentStrong : .clear,
+                        isToday ? WatchV2.ink : .clear,
                         lineWidth: isToday ? 1.2 : 0
                     )
             )
@@ -87,8 +86,8 @@ struct CalendarHeatmapView: View {
     }
 
     private func cellFill(category: StressCategory?, isEmpty: Bool) -> Color {
-        if isEmpty { return WatchDesignTokens.surfaceSecondary }
-        return (category ?? .relaxed).color.opacity(0.85)
+        if isEmpty { return WatchV2.surface2 }
+        return (category ?? .relaxed).fillColor
     }
 
     // MARK: - Day labels
@@ -97,9 +96,11 @@ struct CalendarHeatmapView: View {
         VStack(spacing: cellSpacing) {
             ForEach(dayLabels, id: \.self) { label in
                 Text(label)
-                    .font(.system(size: 7, weight: .regular, design: .monospaced)) // dated exception 2026-09-05: day-column labels aligned to fixed 10pt heatmap cells (D-09)
-                    .foregroundStyle(WatchDesignTokens.muted)
-                    .frame(width: 8, height: cellSize)
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(width: 10, height: cellSize)
             }
         }
     }

@@ -1,74 +1,63 @@
 import SwiftUI
 
-/// Single pricing tier in the paywall grid.
+/// Single pricing tier in the paywall list (UI V2 plan card).
 ///
-/// Shows a shimmering `SkeletonBlock` while prices are still resolving so the
-/// layout doesn't jump when `StoreKitService.availablePlans` returns. Once a
-/// plan is available the card renders name, the StoreKit price for the billing
-/// period (annual adds a smaller per-month equivalent) and the savings label.
+/// Shows a `V2Skeleton` while prices are still resolving so the layout
+/// doesn't jump when `StoreKitService.availablePlans` returns. Once a plan is
+/// available the card renders a radio, the plan name with its savings tag, a
+/// one-line summary and the StoreKit price for the billing period.
 struct PlanCard: View {
     let plan: SubscriptionPlan?
     let isSelected: Bool
     let isLoading: Bool
+    /// Trial length label from StoreKit (e.g. the annual intro offer); nil
+    /// when no trial is on offer for this plan.
+    let trialPeriodUnit: String?
     let onSelect: () -> Void
 
-    init(plan: SubscriptionPlan?, isSelected: Bool, isLoading: Bool, onSelect: @escaping () -> Void) {
+    init(
+        plan: SubscriptionPlan?,
+        isSelected: Bool,
+        isLoading: Bool,
+        trialPeriodUnit: String? = nil,
+        onSelect: @escaping () -> Void
+    ) {
         self.plan = plan
         self.isSelected = isSelected
         self.isLoading = isLoading
+        self.trialPeriodUnit = trialPeriodUnit
         self.onSelect = onSelect
+    }
+
+    private var shape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
     }
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(spacing: 10) {
+            Group {
                 if isLoading || plan == nil {
                     skeletonContent
                 } else {
                     planContent
                 }
             }
-            .padding(.horizontal, 15)
-            .padding(.vertical, 15)
-            .frame(maxWidth: .infinity)
-            .background(Color.iapCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 23))
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(shape.fill(Color.V2.surface))
             .overlay(
-                RoundedRectangle(cornerRadius: 23)
-                    .stroke(isSelected ? Color.iapAmber : Color.iapIconBorder.opacity(0.15), lineWidth: 1.4)
+                shape.strokeBorder(
+                    isSelected ? Color.V2.accent : Color.V2.line2,
+                    lineWidth: isSelected ? 2 : 1
+                )
             )
-            .shadow(
-                color: isSelected
-                    ? Color(hex: "FFAE3B").opacity(0.16)
-                    : Color.black.opacity(0.04),
-                radius: isSelected ? 12 : 8,
-                y: isSelected ? 6 : 3
-            )
-            .overlay(alignment: .top) {
-                if let plan, plan.isBestValue, isSelected {
-                    Text("Best Value")
-                        .font(Typography.iapBadge)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.iapAmber))
-                        .shadow(color: Color(hex: "FFAE3B").opacity(0.26), radius: 6, y: 3)
-                        .offset(y: -13)
-                } else if let plan, plan.subtitle == "Most popular" {
-                    Text("Most Popular")
-                        .font(Typography.iapBadge)
-                        .foregroundStyle(Color.iapHeaderTeal)
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(Color.iapPillBackground))
-                        .overlay(Capsule().stroke(Color.iapHeaderTeal.opacity(0.3), lineWidth: 1))
-                        .offset(y: -13)
-                }
-            }
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
         .disabled(isLoading || plan == nil)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Content
@@ -76,90 +65,95 @@ struct PlanCard: View {
     @ViewBuilder
     private var planContent: some View {
         if let plan {
-            HStack(alignment: .top) {
-                // Radio
-                ZStack {
-                    Circle()
-                        .stroke(
-                            isSelected ? Color.iapAmber : Color.iapTextSecondary.opacity(0.35),
-                            lineWidth: 2
-                        )
-                        .frame(width: 22, height: 22)
-                    if isSelected {
-                        Circle().fill(Color.iapAmber).frame(width: 10, height: 10)
-                    }
-                }
-                .padding(.top, 2)
+            HStack(alignment: .center, spacing: 12) {
+                radio
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(plan.displayName)
-                        .font(Typography.iapPlanName)
-                        .tracking(-0.03 * 17)
-                        .foregroundStyle(Color.iapTextPrimary)
-
-                    if let subtitle = plan.subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(Typography.iapPlanSubtitle)
-                            .foregroundStyle(Color.iapTextSecondary)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { nameText(plan); badge(plan) }
+                        VStack(alignment: .leading, spacing: 4) { nameText(plan); badge(plan) }
                     }
+                    Text(summary(for: plan))
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.leading, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 1) {
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(plan.priceDisplay)
-                            .font(Typography.iapPrice)
-                            .tracking(-0.045 * 22)
-                            .foregroundStyle(Color.iapTextPrimary)
-                        Text(plan.periodUnitDisplay)
-                            .font(Typography.iapPerMonth)
-                            .foregroundStyle(Color.iapTextSecondary)
-                    }
-                    if let monthly = plan.monthlyEquivalentDisplay {
-                        Text("\u{2248} \(monthly)/month")
-                            .font(Typography.iapPlanFooter)
-                            .foregroundStyle(Color.iapTextSecondary)
-                    }
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(plan.priceDisplay)
+                        .font(.v2Number(.headline))
+                        .foregroundStyle(Color.V2.ink)
+                    Text(plan.periodUnitDisplay)
+                        .font(.caption)
+                        .foregroundStyle(Color.V2.ink3)
                 }
-            }
-
-            HStack {
-                Text(leftFooter(for: plan))
-                    .font(Typography.iapPlanFooter)
-                    .foregroundStyle(footerColor(for: plan))
-                Spacer()
-                Text(plan.billingSummary ?? "")
-                    .font(Typography.iapPlanFooter)
-                    .foregroundStyle(footerColor(for: plan))
+                .fixedSize()
             }
         }
     }
 
-    private var skeletonContent: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Circle().fill(Color.iapIconBorder.opacity(0.15)).frame(width: 22, height: 22)
-                SkeletonBlock(height: 14).frame(width: 90)
-                Spacer()
-                SkeletonBlock(height: 22).frame(width: 70)
-            }
-            SkeletonBlock(height: 10).frame(width: 140)
+    private func nameText(_ plan: SubscriptionPlan) -> some View {
+        Text(plan.displayName)
+            .font(.headline)
+            .foregroundStyle(Color.V2.ink)
+    }
+
+    @ViewBuilder
+    private func badge(_ plan: SubscriptionPlan) -> some View {
+        if let tag = plan.savingsDisplay ?? (plan.isBestValue ? "Best value" : nil) {
+            Text(tag)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.V2.accent)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(Color.V2.accentSoft))
+                .fixedSize()
         }
+    }
+
+    private var radio: some View {
+        ZStack {
+            Circle()
+                .strokeBorder(isSelected ? Color.V2.accent : Color.V2.ink3, lineWidth: 2)
+                .frame(width: 22, height: 22)
+            if isSelected {
+                Circle().fill(Color.V2.accent).frame(width: 12, height: 12)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private var skeletonContent: some View {
+        HStack(spacing: 12) {
+            Circle().fill(Color.V2.surface2).frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 8) {
+                V2Skeleton(width: 110, height: 16)
+                V2Skeleton(width: 170, height: 12)
+            }
+            Spacer(minLength: 0)
+            V2Skeleton(width: 64, height: 20)
+        }
+        .frame(minHeight: 44)
     }
 
     // MARK: - Derived
 
-    private func leftFooter(for plan: SubscriptionPlan) -> String {
-        switch plan.period {
-        case .annual:  return plan.savingsDisplay ?? ""
-        case .monthly: return "No commitment"
+    /// One line under the plan name, built only from StoreKit-derived values.
+    private func summary(for plan: SubscriptionPlan) -> String {
+        var parts: [String] = []
+        if let trialPeriodUnit {
+            parts.append("\(trialPeriodUnit) free trial")
         }
-    }
-
-    private func footerColor(for plan: SubscriptionPlan) -> Color {
-        plan.period == .annual ? Color.iapSavingsGreen : Color.iapTextSecondary
+        if let monthly = plan.monthlyEquivalentDisplay {
+            parts.append("\u{2248}\u{00A0}\(monthly)/month")
+        } else if let billing = plan.billingSummary {
+            parts.append(billing)
+        }
+        if plan.period == .monthly {
+            parts.append("No commitment")
+        }
+        return parts.joined(separator: " \u{00B7} ")
     }
 
     private var accessibilityLabel: String {
@@ -172,19 +166,23 @@ struct PlanCard: View {
         if let monthly = plan.monthlyEquivalentDisplay {
             label += ", about \(monthly) per month"
         }
+        if let trialPeriodUnit {
+            label += ", \(trialPeriodUnit) free trial"
+        }
         return label + selected
     }
 }
 
 #if DEBUG
 #Preview {
-    VStack(spacing: 16) {
-        PlanCard(plan: PlanCard.previewAnnual, isSelected: true, isLoading: false, onSelect: {})
+    VStack(spacing: 12) {
+        PlanCard(plan: PlanCard.previewAnnual, isSelected: true, isLoading: false,
+                 trialPeriodUnit: PlanCard.previewAnnual.introOfferPeriodUnit, onSelect: {})
         PlanCard(plan: PlanCard.previewMonthly, isSelected: false, isLoading: false, onSelect: {})
         PlanCard(plan: nil, isSelected: false, isLoading: true, onSelect: {})
     }
     .padding()
-    .background(Color(hex: "F5F2EC"))
+    .background(Color.V2.bg)
 }
 
 private extension PlanCard {

@@ -2,11 +2,11 @@ import SwiftUI
 
 // MARK: - Character Grid Card
 
-/// Grid tile for a character in the collection, matching `16-characters.html`.
+/// Grid tile for a character in the collection (UI V2, `S.characters`).
 ///
-/// Renders a glow background, procedural character art, name, element label,
-/// an unlock status badge (FREE / PLUS / 30-DAY STREAK), and evolution stage dots.
-/// Locked characters are visually desaturated with a lock overlay.
+/// Renders a companion-tinted halo, the character art (unchanged), name,
+/// element subtitle, a status tag (Active / Free / PLUS / 30-day streak) and
+/// the stage or streak line. Locked characters dim only the art block.
 struct CharacterGridCard: View {
     let creature: CharacterCreature
     let unlock: CharacterUnlock?
@@ -20,72 +20,61 @@ struct CharacterGridCard: View {
 
     var body: some View {
         VStack(spacing: 6) {
-            // Character art with glow background. Locked dimming is scoped to
-            // the illustration block only — card text always renders at full
-            // token contrast.
+            // Character art on a companion tint. Locked dimming is scoped to
+            // the illustration block only; card text keeps full token contrast.
             ZStack {
                 Circle()
-                    .fill(creature.element.primaryColor.opacity(0.55))
-                    .frame(width: 80, height: 80)
-                    .blur(radius: 20)
-                    .offset(y: -12)
+                    .fill(creature.element.v2Tint.opacity(0.22))
+                    .frame(width: 88, height: 88)
 
-                if isUnlocked {
-                    StressBuddyIllustration(
-                        characterId: creature.id,
-                        evolution: currentStage,
-                        mood: mood,
-                        size: 72
-                    )
-                } else {
-                    StressBuddyIllustration(
-                        characterId: creature.id,
-                        evolution: .droplet,
-                        mood: mood,
-                        size: 72
-                    )
-                    .overlay {
-                        Image(systemName: AppIconSystem.System.locked.sfSymbol)
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                            .frame(width: 32, height: 32)
-                            .background(.thinMaterial, in: Circle())
-                    }
-                }
+                StressBuddyIllustration(
+                    characterId: creature.id,
+                    evolution: isUnlocked ? currentStage : .droplet,
+                    mood: mood,
+                    size: 72
+                )
+                .opacity(isUnlocked ? 1.0 : 0.65)
+                .saturation(isUnlocked ? 1.0 : 0.5)
             }
             .frame(height: 92)
-            .opacity(isUnlocked ? 1.0 : 0.65)
-            .saturation(isUnlocked ? 1.0 : 0.5)
+            .overlay(alignment: .bottomTrailing) {
+                if !isUnlocked {
+                    Image(systemName: AppIconSystem.System.locked.sfSymbol)
+                        .font(.footnote.weight(.bold))
+                        .foregroundStyle(Color.V2.ink2)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.V2.surface2))
+                        .overlay(Circle().strokeBorder(Color.V2.line, lineWidth: 0.5))
+                        .offset(x: -8, y: -2)
+                }
+            }
 
-            // Name
             Text(creature.displayName)
-                .font(.system(size: 17, weight: .bold, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+                .multilineTextAlignment(.center)
 
-            // Element subtitle
-            Text(creature.subtitle.uppercased())
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.6)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+            Text(creature.subtitle)
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink3)
+                .multilineTextAlignment(.center)
 
-            // Status badge
             statusBadge
                 .padding(.top, 2)
 
-            // Stage / streak info
             stageLabel
-                .font(.system(size: 11))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 12)
         .padding(.top, 16)
         .padding(.bottom, 14)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .v2CardBackground()
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(isActive ? creature.element.primaryColor : Color.clear, lineWidth: 2)
+            RoundedRectangle(cornerRadius: V2Metrics.radiusLG, style: .continuous)
+                .strokeBorder(isActive ? Color.V2.accent : Color.clear, lineWidth: 2)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
@@ -97,34 +86,18 @@ struct CharacterGridCard: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        HStack(spacing: 5) {
-            if isStreakGated {
-                Image(systemName: AppIconSystem.Metric.streak.sfSymbol)
-                    .font(.system(size: 9))
-                Text(isUnlocked ? "UNLOCKED" : "30-DAY STREAK")
-                    .font(.system(size: 10, weight: .semibold))
-            } else if isPremium {
-                Image(systemName: AppIconSystem.System.premium.sfSymbol)
-                    .font(.system(size: 9))
-                Text("PLUS")
-                    .font(.system(size: 10, weight: .semibold))
-            } else {
-                Image(systemName: AppIconSystem.System.success.sfSymbol)
-                    .font(.system(size: 9))
-                Text(isActive ? "FREE · ACTIVE" : "FREE")
-                    .font(.system(size: 10, weight: .semibold))
-            }
+        if isActive {
+            CharacterTag(title: "Active", style: .accent)
+        } else if isStreakGated {
+            CharacterTag(
+                title: isUnlocked ? "Unlocked" : "\(creature.streakRequired)-day streak",
+                systemImage: AppIconSystem.Metric.streak.sfSymbol
+            )
+        } else if isPremium {
+            V2PlusPill(showsLock: !isUnlocked)
+        } else {
+            CharacterTag(title: "Free")
         }
-        .foregroundStyle(badgeColor)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 3)
-        .background(badgeColor.opacity(0.14), in: Capsule())
-    }
-
-    private var badgeColor: Color {
-        if isStreakGated { return Color(hex: "#7B86CB") }
-        if isPremium { return Color(hex: "#FE9901") }
-        return Color(hex: "#34C759")
     }
 
     // MARK: - Stage Label
@@ -155,5 +128,46 @@ struct CharacterGridCard: View {
 
     private var accessibilityValue: String {
         "Evolution stage \(currentStage.sortOrder + 1) of \(EvolutionStage.allCases.count)"
+    }
+}
+
+// MARK: - Character Tag
+
+/// Small status tag used on companion cards (prototype `.tag` / `.tag.acc`).
+struct CharacterTag: View {
+    enum Style { case neutral, accent }
+
+    let title: String
+    var systemImage: String? = nil
+    var style: Style = .neutral
+
+    var body: some View {
+        HStack(spacing: 4) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .imageScale(.small)
+            }
+            Text(title)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(style == .accent ? Color.V2.accent : Color.V2.ink2)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(style == .accent ? Color.V2.accentSoft : Color.V2.surface2))
+    }
+}
+
+// MARK: - Companion Tint
+
+extension CharacterElement {
+    /// V2 companion tint for halos and progress (backgrounds only, never text).
+    var v2Tint: Color {
+        switch self {
+        case .water: return Color.V2.Companion.ripple
+        case .earth: return Color.V2.Companion.blossom
+        case .fire: return Color.V2.Companion.ember
+        case .air: return Color.V2.Companion.zephyr
+        case .moon: return Color.V2.Companion.lumi
+        }
     }
 }

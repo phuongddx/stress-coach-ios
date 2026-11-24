@@ -5,6 +5,8 @@ enum PlusPillMode {
     case tryFree
 }
 
+/// Plus pill on the Settings hero card (UI V2 `.pluspill`): `plusBg` capsule
+/// with `plus` text and a `plusLine` hairline. A 44 pt hit area.
 struct PlusPill: View {
     var mode: PlusPillMode = .labelOnly
     var onTap: (() -> Void)? = nil
@@ -26,15 +28,13 @@ struct PlusPill: View {
         switch mode {
         case .labelOnly:
             Text("PLUS")
-                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                .font(.caption.weight(.bold))
                 .tracking(0.6)
-                .foregroundStyle(Color.premiumGold)
-                .textCase(.uppercase)
+                .foregroundStyle(Color.V2.plus)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
-                .background(Color.premiumGold.opacity(0.14))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.premiumGold.opacity(0.32), lineWidth: 1))
+                .background(Capsule().fill(Color.V2.plusBg))
+                .overlay(Capsule().strokeBorder(Color.V2.plusLine, lineWidth: 0.5))
 
         case .tryFree:
             HStack(spacing: 6) {
@@ -43,18 +43,17 @@ struct PlusPill: View {
                     .resizable()
                     .scaledToFit()
                     .frame(width: 12, height: 12)
+                    .accessibilityHidden(true)
                 Text("Plus")
-                    .font(.system(size: 13, weight: .heavy, design: .rounded))
+                    .font(.subheadline.weight(.bold))
                 Text("Try free ›")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.premiumGold.opacity(0.85))
+                    .font(.caption.weight(.semibold))
             }
-            .foregroundStyle(Color.premiumGold)
+            .foregroundStyle(Color.V2.plus)
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .background(Color.premiumGold.opacity(0.14))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.premiumGold.opacity(0.32), lineWidth: 1))
+            .background(Capsule().fill(Color.V2.plusBg))
+            .overlay(Capsule().strokeBorder(Color.V2.plusLine, lineWidth: 0.5))
         }
     }
 
@@ -72,5 +71,5 @@ struct PlusPill: View {
         PlusPill(mode: .tryFree)
     }
     .padding()
-    .background(Color.appBackground)
+    .background(Color.V2.bg)
 }

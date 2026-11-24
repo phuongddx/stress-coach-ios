@@ -1,90 +1,69 @@
 import SwiftUI
 
-/// Post-session summary screen — redesigned per `14-breathing-summary.html`.
+/// Post-session summary screen (UI V2).
 ///
-/// Light surface with:
-/// - Complete checkmark badge + hero text
-/// - 2-card stat grid (HRV before / HRV after with delta) and the HRV
-///   across-session chart, shown only when HealthKit returned both samples
-/// - 2-tile effect row (cycles / duration)
-/// - Ripple serene note card
-/// - CTA: Back to Home
+/// - Happy Ripple, "Nice and steady" and a one-line recap
+/// - Vitals: Time and Cycles
+/// - HRV before / after with the change, the HRV across-session chart (Plus;
+///   the lock lives inside `BeforeAfterHRVChart`) and a "Why HRV changes
+///   after breathing" sources row — only when HealthKit returned both
+///   samples
+/// - Ripple note
+/// - Done (primary) and Share (ghost)
+///
+/// Spec reference: ui-v2-design/screens.js `S.summary`.
 struct BreathingSummaryView: View {
     let result: BreathingSessionResult
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// Sheet, not a push: this screen hides its back button and owns its own
     /// dismissal, so it must not append to a navigation path it does not own.
     @State private var showsSources = false
 
-    // Design tokens from app.css
-    private let accent = Color(hex: "#4FC3F7")
-    private let accentStrong = Color(hex: "#0288D1")
-    private let surface = Color.white
-    private let fg = Color(hex: "#101223")
-    private let fgSecondary = Color(hex: "#3C3C43")
-    private let muted = Color(hex: "#777986")
-    private let separator = Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.12)
-    private let success = Color(hex: "#34C759")
-    private let hrvColor = Color(hex: "#34D399")
-    private let warn = Color(hex: "#FF9500")
-
     var body: some View {
-        ScrollView(showsIndicators: false) {
+        ScrollView {
             VStack(spacing: 16) {
-                // Complete mark + hero
-                completeMark
-                summaryHero
+                hero
+
+                vitalsRow
 
                 if let before = result.preSessionHRV, let after = result.postSessionHRV {
                     statGrid(before: before, after: after)
 
-                    BeforeAfterHRVChart(before: before, after: after)
-                        .padding(16)
-                        .overlay(alignment: .topTrailing) {
-                            ScienceInfoButton(topic: .breathing) { _ in
-                                showsSources = true
-                            }
-                            .padding(.trailing, 10)
-                            .padding(.top, 6)
-                        }
-                        .background(RoundedRectangle(cornerRadius: 18).fill(surface))
-                        .padding(.horizontal, 24)
+                    V2Card {
+                        BeforeAfterHRVChart(before: before, after: after)
+                    }
+
+                    sourcesRow
                 }
 
-                // Effect tiles
-                effectRow
-
-                // Ripple note
                 rippleNote
 
-                // CTAs
                 ctaRow
                     .padding(.top, 4)
             }
+            .padding(.horizontal, V2Metrics.margin)
             .padding(.vertical, 16)
         }
-        .background(Color(hex: "#F2F2F7"))
+        .background(Color.V2.bg.ignoresSafeArea())
+        .accessibleDynamicType()
         .onAppear { HapticManager.shared.success() }
         .navigationBarBackButtonHidden(true)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: { dismiss() }) {
                     Image(systemName: AppIconSystem.Nav.back.sfSymbol)
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundStyle(accentStrong)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
+                        .frame(minWidth: V2Metrics.minTouchTarget, minHeight: V2Metrics.minTouchTarget)
                 }
+                .accessibilityLabel("Back")
             }
             ToolbarItem(placement: .principal) {
-                Text("Session Complete")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(fg)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { shareResult() }) {
-                    Text("Share")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(accentStrong)
-                }
+                Text("Session complete")
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
             }
         }
         .sheet(isPresented: $showsSources) {
@@ -94,44 +73,36 @@ struct BreathingSummaryView: View {
         }
     }
 
-    // MARK: - Complete Mark
+    // MARK: - Hero
 
-    private var completeMark: some View {
-        ZStack {
-            Circle()
-                .fill(LinearGradient(colors: [accent, success], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .frame(width: 80, height: 80)
-                .shadow(color: success.opacity(0.4), radius: 12, x: 0, y: 6)
-            Image(systemName: "checkmark")
-                .font(.system(size: 36, weight: .bold))
-                .foregroundStyle(.white)
-        }
-        .padding(.top, 12)
-    }
+    private var hero: some View {
+        VStack(spacing: 8) {
+            StressBuddyIllustration(mood: .happy, size: 96)
+                .frame(width: 96, height: 96)
+                .accessibilityHidden(true)
 
-    // MARK: - Summary Hero
-
-    private var summaryHero: some View {
-        VStack(spacing: 6) {
-            Text("Beautifully done.")
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .tracking(-0.02 * 28)
-                .foregroundStyle(fg)
-            Text(heroDetail)
-                .font(.system(size: 15))
-                .foregroundStyle(fgSecondary)
+            Text("Nice and steady")
+                .font(.title.weight(.bold))
+                .foregroundStyle(Color.V2.ink)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 260)
+                .accessibilityAddTraits(.isHeader)
+
+            Text(heroDetail)
+                .font(.callout)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 320)
                 .fixedSize(horizontal: false, vertical: true)
         }
+        .padding(.top, 8)
     }
 
     private var heroDetail: String {
-        let cycles = result.cyclesCompleted == 1 ? "1 breathing cycle" : "\(result.cyclesCompleted) breathing cycles"
+        let cycles = result.cyclesCompleted == 1 ? "1 cycle" : "\(result.cyclesCompleted) cycles"
         guard let improvement = result.improvement, improvement > 0 else {
-            return "You completed \(cycles)."
+            return "You finished \(cycles) of box breathing."
         }
-        return "You completed \(cycles). Your HRV rose during the session."
+        return "You finished \(cycles) of box breathing. Your HRV rose during the session."
     }
 
     /// Signed change, e.g. "+12 ms · +23%" or "-4 ms · -6%".
@@ -142,96 +113,13 @@ struct BreathingSummaryView: View {
         return delta + String(format: " · %+d%%", Int(percent.rounded()))
     }
 
-    // MARK: - Stat Grid (Before / After)
+    // MARK: - Vitals
 
-    private func statGrid(before: Double, after: Double) -> some View {
-        HStack(spacing: 8) {
-            // Before card
-            VStack(alignment: .leading, spacing: 4) {
-                Text("HRV BEFORE")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(muted)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(Int(before))")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(hrvColor)
-                    Text("ms")
-                        .font(.system(size: 13))
-                        .foregroundStyle(muted)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(surface))
-
-            // After card
-            VStack(alignment: .leading, spacing: 4) {
-                Text("HRV AFTER")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.6)
-                    .foregroundStyle(muted)
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text("\(Int(after))")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(success)
-                    Text("ms")
-                        .font(.system(size: 13))
-                        .foregroundStyle(muted)
-                }
-                if let hrvDeltaText {
-                    Text(hrvDeltaText)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(after >= before ? success : warn)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
-            .background(RoundedRectangle(cornerRadius: 14).fill(surface))
+    private var vitalsRow: some View {
+        adaptiveRow {
+            SummaryVital(label: "Time", value: durationLabel, unit: nil)
+            SummaryVital(label: "Cycles", value: "\(result.cyclesCompleted)", unit: nil)
         }
-        .padding(.horizontal, 24)
-    }
-
-    // MARK: - Effect Row
-
-    private var effectRow: some View {
-        HStack(spacing: 8) {
-            effectTile(
-                value: "\(result.cyclesCompleted)",
-                suffix: nil,
-                label: "Cycles",
-                color: accentStrong
-            )
-            effectTile(
-                value: durationLabel,
-                suffix: nil,
-                label: "Duration",
-                color: success
-            )
-        }
-        .padding(.horizontal, 24)
-    }
-
-    private func effectTile(value: String, suffix: String?, label: String, color: Color) -> some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(color)
-                if let suffix {
-                    Text(suffix)
-                        .font(.system(size: 13))
-                        .foregroundStyle(muted)
-                }
-            }
-            Text(label.uppercased())
-                .font(.system(size: 10, weight: .medium, design: .monospaced))
-                .tracking(0.6)
-                .foregroundStyle(muted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(RoundedRectangle(cornerRadius: 14).fill(surface))
     }
 
     private var durationLabel: String {
@@ -240,57 +128,94 @@ struct BreathingSummaryView: View {
         return String(format: "%d:%02d", mins, secs)
     }
 
+    // MARK: - Stat Grid (Before / After)
+
+    private func statGrid(before: Double, after: Double) -> some View {
+        adaptiveRow {
+            SummaryVital(label: "HRV before", value: "\(Int(before))", unit: "ms")
+            SummaryVital(label: "HRV after", value: "\(Int(after))", unit: "ms") {
+                if let hrvDeltaText {
+                    V2DeltaPill(text: hrvDeltaText, isUp: after >= before, isGood: after >= before)
+                }
+            }
+        }
+    }
+
+    /// Side by side, stacked at accessibility sizes.
+    @ViewBuilder
+    private func adaptiveRow<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 8) { content() }
+        } else {
+            HStack(alignment: .top, spacing: 8) { content() }
+        }
+    }
+
+    // MARK: - Sources
+
+    private var sourcesRow: some View {
+        Button {
+            showsSources = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "info.circle")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+                    .accessibilityHidden(true)
+                Text("Why HRV changes after breathing")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.V2.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Sources")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.accent)
+            }
+            .padding(.horizontal, V2Metrics.margin)
+            .frame(minHeight: V2Metrics.minTouchTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .v2CardBackground(.flat)
+        .accessibilityLabel("Why HRV changes after breathing. Sources")
+    }
+
     // MARK: - Ripple Note
 
     private var rippleNote: some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(accent.opacity(0.14))
+        V2Card(style: .tint) {
+            HStack(alignment: .top, spacing: 12) {
+                StressBuddyIllustration(mood: .serene, size: 36)
                     .frame(width: 36, height: 36)
-                StressBuddyIllustration(mood: .serene, size: 28)
-            }
-            .frame(width: 36, height: 36)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Ripple says: ")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(accentStrong)
-                + Text("Nice work taking a few minutes for yourself. Come back whenever you need a reset.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(fgSecondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Ripple")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
+                    Text("Nice work taking a few minutes for yourself. Come back whenever you need a reset.")
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 18)
-                .fill(
-                    LinearGradient(
-                        colors: [accent.opacity(0.10), Color(red: 165/255, green: 214/255, blue: 167/255).opacity(0.10)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(separator, lineWidth: 1))
-        )
-        .padding(.horizontal, 24)
         .accessibilityElement(children: .combine)
     }
 
     // MARK: - CTAs
 
     private var ctaRow: some View {
-        Button(action: { dismiss() }) {
-            Text("Back to Home")
-                .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(RoundedRectangle(cornerRadius: 14).fill(accent))
+        VStack(spacing: 4) {
+            Button(action: { dismiss() }) {
+                Text("Done")
+            }
+            .buttonStyle(.v2(.primary))
+
+            Button(action: { shareResult() }) {
+                Text("Share")
+            }
+            .buttonStyle(.v2(.ghost, compact: true))
         }
-        .padding(.horizontal, 24)
     }
 
     // MARK: - Share
@@ -316,4 +241,60 @@ struct BreathingSummaryView: View {
             rootVC.present(activityVC, animated: true)
         }
     }
+}
+
+// MARK: - Vital tile
+
+/// UI V2 `.vit`: a surface card with a footnote label and a number.
+private struct SummaryVital<Accessory: View>: View {
+    let label: String
+    let value: String
+    let unit: String?
+    let accessory: Accessory
+
+    init(label: String, value: String, unit: String?, @ViewBuilder accessory: () -> Accessory = { EmptyView() }) {
+        self.label = label
+        self.value = value
+        self.unit = unit
+        self.accessory = accessory()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(value)
+                    .font(.v2Number(.title2, weight: .bold))
+                    .foregroundStyle(Color.V2.ink)
+                if let unit {
+                    Text(unit)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Color.V2.ink3)
+                }
+            }
+            accessory
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .fill(Color.V2.surface)
+        )
+        .accessibilityElement(children: .combine)
+    }
+}
+
+#Preview("With HRV") {
+    NavigationStack {
+        BreathingSummaryView(result: BreathingSessionResult(preSessionHRV: 42, postSessionHRV: 51, duration: 120, cyclesCompleted: 7))
+    }
+}
+
+#Preview("No HRV · dark") {
+    NavigationStack {
+        BreathingSummaryView(result: BreathingSessionResult(preSessionHRV: nil, postSessionHRV: nil, duration: 120, cyclesCompleted: 7))
+    }
+    .preferredColorScheme(.dark)
 }

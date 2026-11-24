@@ -2,18 +2,15 @@ import SwiftUI
 
 // MARK: - HabitRingView
 
-/// Circular progress ring for a single daily habit.
+/// Circular progress ring for a single daily habit (UI V2).
 ///
-/// Renders the habit icon centered, a tier-coloured progress arc bounded
-/// by a hairline track, and a `current / goal` count beneath the icon.
-/// Designed for the Logging tab where 3 habit rings sit side-by-side.
-///
-/// The arc fill uses the Ripple accent ramp so all habits read as a
-/// single positive-progress family (no per-habit colours). Colour is
-/// always paired with the numeric ratio for WCAG compliance.
+/// A `surface2` track, an accent progress arc (lime once the goal is
+/// reached) and the habit icon in the centre. The `current/goal` count is
+/// drawn by the caller beneath the ring (`WatchHabit.displayRatio`) so the
+/// ring interior never needs a fixed-size font.
 struct HabitRingView: View {
     let habit: WatchHabit
-    var size: CGFloat = 76
+    var size: CGFloat = 44
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -23,16 +20,6 @@ struct HabitRingView: View {
         return CGFloat(min(max(habit.currentValue / goal, 0), 1))
     }
     private var isComplete: Bool { habit.currentValue >= habit.goalValue }
-    private var displayCurrent: String {
-        habit.type == .hydration
-            ? String(format: "%.1f", habit.currentValue)
-            : "\(Int(habit.currentValue))"
-    }
-    private var displayGoal: String {
-        habit.type == .hydration
-            ? String(format: "%.1f", habit.goalValue)
-            : "\(Int(habit.goalValue))"
-    }
 
     var body: some View {
         ZStack {
@@ -49,7 +36,7 @@ struct HabitRingView: View {
 
     private var track: some View {
         Circle()
-            .stroke(WatchDesignTokens.separator, lineWidth: ringWidth)
+            .stroke(WatchV2.surface2, lineWidth: ringWidth)
     }
 
     private var progressArc: some View {
@@ -67,29 +54,38 @@ struct HabitRingView: View {
     }
 
     private var centerStack: some View {
-        VStack(spacing: 1) {
-            Image(systemName: habit.type.icon)
-                .font(.system(size: size * 0.22, weight: .semibold)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                .foregroundStyle(isComplete ? WatchDesignTokens.accentStrong : WatchDesignTokens.ink)
-            Text("\(displayCurrent)/\(displayGoal)")
-                .font(.system(size: size * 0.16, weight: .semibold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                .foregroundStyle(WatchDesignTokens.inkSecondary)
-                .minimumScaleFactor(0.7) // dated exception 2026-09-05: ring-interior count; slot geometry is proportional to ring size
-                .lineLimit(1)
-        }
+        Image(systemName: habit.type.icon)
+            .font(.footnote.weight(.semibold))
+            .imageScale(.small)
+            .foregroundStyle(isComplete ? WatchV2.lime : WatchV2.ink)
     }
 
     // MARK: - Helpers
 
     private var arcColor: Color {
-        isComplete ? WatchDesignTokens.accentStrong : WatchDesignTokens.accent
+        isComplete ? WatchV2.lime : WatchV2.accent
     }
 
     private var accessibilitySummary: String {
         let pct = Int(fraction * 100)
         let status = isComplete ? ", goal reached" : ""
-        return "\(habit.type.displayName), \(displayCurrent) of \(displayGoal) \(habit.type.unit)\(status), \(pct) percent."
+        return "\(habit.type.displayName), \(habit.displayCurrent) of \(habit.displayGoal) \(habit.type.unit)\(status), \(pct) percent."
     }
+}
+
+// MARK: - Display formatting
+
+extension WatchHabit {
+    var displayCurrent: String {
+        type == .hydration ? String(format: "%.1f", currentValue) : "\(Int(currentValue))"
+    }
+
+    var displayGoal: String {
+        type == .hydration ? String(format: "%.1f", goalValue) : "\(Int(goalValue))"
+    }
+
+    /// "1.2/2.0", "1/3", …
+    var displayRatio: String { "\(displayCurrent)/\(displayGoal)" }
 }
 
 #if DEBUG
@@ -108,6 +104,6 @@ private struct HabitRingPreviewData {
         }
     }
     .padding()
-    .background(WatchDesignTokens.canvas)
+    .background(WatchV2.canvas)
 }
 #endif

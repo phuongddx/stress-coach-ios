@@ -1,75 +1,52 @@
 import SwiftUI
 
-/// Ripple's voice — the AI insight card that sits right under the hero.
+/// Ripple's voice (UI V2): the companion on the left, a "Ripple" label in the
+/// accent colour with the age of the reading, the insight message, and an
+/// optional "Ask Ripple" button.
 ///
-/// Per the 04-home spec the status → AI summary flow: a Ripple avatar on the
-/// left, a "Ripple · <age of the reading>" eyebrow, the insight message (which may
-/// emphasize a fragment), and an optional "Ask Ripple" link.
-///
-/// Spec reference: design/screens/04-home.html — `.ai-insight`.
+/// Spec reference: ui-v2-design/screens.js `rippleCard`.
 struct RippleInsightCard: View {
     let insight: AIInsight
     var onAskRipple: (() -> Void)?
-    /// When the reading behind this insight was taken; nil omits the age from the eyebrow.
+    /// When the reading behind this insight was taken; nil omits the age from the label.
     var generatedAt: Date?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            avatar
+        V2Card {
+            HStack(alignment: .top, spacing: 12) {
+                StressBuddyIllustration(mood: .happy, size: 44)
+                    .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(eyebrow)
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(label)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.V2.accent)
 
-                Text(insight.message)
-                    .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(insight.message)
+                        .font(.callout)
+                        .foregroundStyle(Color.V2.ink)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                if onAskRipple != nil {
-                    Button {
-                        onAskRipple?()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text("Ask Ripple")
-                                .font(.system(size: 13, weight: .semibold))
-                            Image(systemName: AppIconSystem.Nav.forward.sfSymbol)
-                                .font(.system(size: 10, weight: .bold))
-                        }
-                        .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
-                        .padding(.top, 4)
+                    if let onAskRipple {
+                        Button("Ask Ripple", action: onAskRipple)
+                            .buttonStyle(.v2(.secondary, compact: true, fullWidth: false))
+                            .padding(.top, 8)
                     }
-                    .buttonStyle(.plain)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            Spacer(minLength: 0)
         }
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Ripple insight. \(insight.message)")
     }
 
-    private var eyebrow: String {
-        guard let generatedAt else { return "RIPPLE" }
+    private var label: String {
+        guard let generatedAt else { return "Ripple" }
         let formatter = RelativeDateTimeFormatter()
         formatter.dateTimeStyle = .named
         formatter.unitsStyle = .abbreviated
-        return "RIPPLE · \(formatter.localizedString(for: generatedAt, relativeTo: Date()).uppercased())"
-    }
-
-    private var avatar: some View {
-        ZStack {
-            Circle()
-                .fill(HomeCharacterDesignTokens.Ripple.primary.opacity(0.14))
-            StressBuddyIllustration(mood: .happy, size: 28)
-        }
-        .frame(width: 36, height: 36)
-        .accessibilityHidden(true)
+        return "Ripple · \(formatter.localizedString(for: generatedAt, relativeTo: Date()))"
     }
 }
 
@@ -105,5 +82,5 @@ struct AIInsight: Sendable {
         )
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

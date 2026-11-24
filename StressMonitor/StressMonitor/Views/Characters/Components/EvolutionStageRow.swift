@@ -2,10 +2,10 @@ import SwiftUI
 
 // MARK: - Evolution Stage Row
 
-/// Horizontal strip of 3 evolution stage cards, matching `17-character-detail.html`.
+/// Evolution stages as a grouped list (UI V2, `S.charDetail` "Evolution").
 ///
-/// Each card shows a small character glyph, stage name, and requirement text.
-/// Unlocked stages get a colored border; locked stages are faded.
+/// Each row shows a status tile, the element-specific stage name and its
+/// requirement. The current stage of an unlocked companion carries a "Now" tag.
 struct EvolutionStageRow: View {
     let creature: CharacterCreature
     let unlock: CharacterUnlock?
@@ -14,65 +14,55 @@ struct EvolutionStageRow: View {
     private var isUnlocked: Bool { unlock?.isUnlocked ?? false }
 
     var body: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 0) {
             ForEach(Array(EvolutionStage.allCases.enumerated()), id: \.element) { index, stage in
-                stageCard(stage: stage, index: index)
+                if index > 0 {
+                    Rectangle()
+                        .fill(Color.V2.line)
+                        .frame(height: 0.5)
+                        .padding(.leading, 60)
+                }
+                stageRow(stage: stage, index: index)
             }
         }
+        .v2CardBackground()
     }
 
     @ViewBuilder
-    private func stageCard(stage: EvolutionStage, index: Int) -> some View {
+    private func stageRow(stage: EvolutionStage, index: Int) -> some View {
         let isThisUnlocked = isUnlocked && currentStage.sortOrder >= stage.sortOrder
+        let isCurrent = isUnlocked && currentStage == stage
         let requirement = creature.evolutionRequirement(for: stage)
 
-        VStack(spacing: 6) {
-            // Mini character circle
-            ZStack {
-                Circle()
-                    .fill(isThisUnlocked
-                          ? creature.element.primaryColor
-                          : creature.element.primaryColor.opacity(0.18))
-                    .frame(width: 40, height: 40)
+        HStack(spacing: 12) {
+            Image(systemName: isThisUnlocked ? "checkmark" : AppIconSystem.System.locked.sfSymbol)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(isThisUnlocked ? Color.V2.onAccent : Color.V2.ink2)
+                .frame(width: 32, height: 32)
+                .background(
+                    RoundedRectangle(cornerRadius: V2Metrics.radiusXS, style: .continuous)
+                        .fill(isThisUnlocked ? Color.V2.accent : Color.V2.surface3)
+                )
+                .accessibilityHidden(true)
 
-                if isThisUnlocked {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.white)
-                } else {
-                    Image(systemName: AppIconSystem.System.locked.sfSymbol)
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(stageName(for: stage, index: index))
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                Text(stageRequirementText(stage: stage, requirement: requirement, isThisUnlocked: isThisUnlocked))
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .accessibilityHidden(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Stage name
-            Text(stageName(for: stage, index: index))
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7) // dated exception 2026-09-05: N-across stage name cannot wrap; fixed font
-
-            // Requirement
-            Text(stageRequirementText(stage: stage, requirement: requirement, isThisUnlocked: isThisUnlocked))
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.7) // dated exception 2026-09-05: last-resort clamp after 2-line wrap; fixed font
+            if isCurrent {
+                CharacterTag(title: "Now", style: .accent)
+            }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 8)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isThisUnlocked ? creature.element.primaryColor : Color.clear, lineWidth: 2)
-        }
-        .opacity(isThisUnlocked ? 1.0 : 0.5)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(minHeight: V2Metrics.minTouchTarget)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(stageName(for: stage, index: index)), \(isThisUnlocked ? "unlocked" : "locked")")
     }
@@ -99,15 +89,15 @@ struct EvolutionStageRow: View {
     ) -> String {
         if isThisUnlocked {
             switch stage {
-            case .droplet: return "DAY 1 · ACTIVE"
-            case .ripple:  return "DAY 30"
-            case .tidal:   return "DAY 90"
+            case .droplet: return "Where every companion starts"
+            case .ripple:  return "Reached on day 30"
+            case .tidal:   return "Reached on day 90"
             }
         }
         switch stage {
-        case .droplet: return "DAY 1"
-        case .ripple:  return "\(requirement.streakDays) DAYS + \(requirement.sessionsCompleted) BREATHING SESSIONS"
-        case .tidal:   return "\(requirement.streakDays) DAYS"
+        case .droplet: return "Where every companion starts"
+        case .ripple:  return "\(requirement.streakDays)-day streak + \(requirement.sessionsCompleted) breathing sessions"
+        case .tidal:   return "\(requirement.streakDays)-day streak"
         }
     }
 }

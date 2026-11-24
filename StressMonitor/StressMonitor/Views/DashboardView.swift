@@ -29,6 +29,8 @@ struct DashboardView: View {
         }
     }
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         Group {
             if viewModel.isPermissionRequired {
@@ -39,21 +41,8 @@ struct DashboardView: View {
                 readyStateView
             }
         }
-        .background(HomeCharacterDesignTokens.homeBackground.ignoresSafeArea())
+        .background(Color.V2.bg.ignoresSafeArea())
         .accessibleDynamicType()
-        .alert("Couldn't load health data", isPresented: .constant(viewModel.errorMessage != nil)) {
-            Button("Try Again") {
-                viewModel.clearError()
-                Task { await viewModel.loadCurrentStress() }
-            }
-            Button("Cancel", role: .cancel) {
-                viewModel.clearError()
-            }
-        } message: {
-            if let error = viewModel.errorMessage {
-                Text(error)
-            }
-        }
         .task {
             if !appeared {
                 appeared = true
@@ -77,20 +66,50 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Inline error
+
+    /// Load failures show inline at the top of Home (V2 error card) rather
+    /// than in a modal alert. Same actions: retry reloads, dismiss clears.
+    @ViewBuilder
+    private var errorBanner: some View {
+        if let error = viewModel.errorMessage {
+            V2ErrorCard(
+                title: "Couldn't load health data",
+                message: error,
+                onRetry: {
+                    viewModel.clearError()
+                    Task { await viewModel.loadCurrentStress() }
+                },
+                onDismiss: { viewModel.clearError() }
+            )
+        }
+    }
+
+    private var header: some View {
+        HomeHeaderBar(
+            date: Date(),
+            bioAge: viewModel.bioAgeResult?.estimatedAge,
+            streakDays: viewModel.streakDays
+        )
+    }
+
     // MARK: - Permission Required (HealthKit notDetermined / denied)
 
     private var permissionStateView: some View {
         ScrollView {
             VStack(spacing: 16) {
+                header
+                errorBanner
                 PermissionCardView(
                     permissionType: .healthKit,
                     isLoading: viewModel.isRequestingAccess,
                     onGrantAccess: { Task { await viewModel.requestHealthKitAccess() } }
                 )
-                .padding(.horizontal, 16)
-                .padding(.top, 24)
+                disclaimer
             }
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
     }
 
@@ -98,21 +117,32 @@ struct DashboardView: View {
 
     private var readingStateView: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                NoDataCard(dataType: .stress, onAction: { Task { await viewModel.loadCurrentStress() } })
-                    .padding(.horizontal, 16)
-                    .padding(.top, 24)
-
-                SkeletonBlock(height: 180)
-                    .padding(.horizontal, 16)
-                SkeletonBlock(height: 90)
-                    .padding(.horizontal, 16)
-                SkeletonBlock(height: 90)
-                    .padding(.horizontal, 16)
-                SkeletonBlock(height: 140)
-                    .padding(.horizontal, 16)
+            VStack(spacing: 12) {
+                header
+                errorBanner
+                V2Card {
+                    VStack(spacing: 12) {
+                        V2Skeleton(width: 170, height: 170, cornerRadius: 85)
+                        V2Skeleton(width: 120, height: 14)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                SkeletonBlock(height: 84)
+                HStack(spacing: 8) {
+                    SkeletonBlock(height: 76)
+                    SkeletonBlock(height: 76)
+                    SkeletonBlock(height: 76)
+                }
+                SkeletonBlock(height: 150)
+                Text("Reading Apple Health…")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
+                    .padding(.top, 4)
+                    .accessibilityAddTraits(.updatesFrequently)
             }
-            .padding(.bottom, 16)
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
     }
 
@@ -120,29 +150,27 @@ struct DashboardView: View {
 
     private var readyStateView: some View {
         ScrollView {
-            LazyVStack(spacing: 22) {
+            LazyVStack(spacing: 16) {
                 dashboardContent(viewModel.currentStress)
-
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 16)
+            .padding(.horizontal, V2Metrics.margin)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
     }
 
-    // MARK: - Dashboard Content (9 sections, Home tab)
+    // MARK: - Dashboard Content (Home tab)
 
     @ViewBuilder
     private func dashboardContent(_ stress: StressResult?) -> some View {
-        // 1. Date stamp + bio-age / streak chips (compact header, no greeting)
-        HomeHeaderBar(
-            date: Date(),
-            bioAge: viewModel.bioAgeResult?.estimatedAge,
-            streakDays: viewModel.streakDays
-        )
-        .opacity(appearAnimation ? 1 : 0)
+        // 1. Date + bio-age / streak tags, then the greeting
+        header
+            .opacity(appearAnimation ? 1 : 0)
 
-        // 2. Hero — semicircle gauge + score + Ripple inside + state label
+        // 1b. Load error, inline
+        errorBanner
+
+        // 2. Hero — V2 gauge + Ripple in the gauge opening + substate/tags
         Button {
             guard let stress else { return }
             HapticManager.shared.buttonPress()
@@ -157,7 +185,7 @@ struct DashboardView: View {
                 factorCount: factorCount(for: stress)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(HeroCardButtonStyle())
         .disabled(stress == nil)
         .accessibilityLabel("View full result")
         // Sits outside the card's Button so the two taps never nest: the card
@@ -166,14 +194,10 @@ struct DashboardView: View {
             ScienceInfoButton(topic: .stressScore) { topic in
                 router.homePath.append(Route.scienceSources(topic: topic))
             }
-            .padding(.trailing, 12)
-            .padding(.top, 10)
+            .padding(.trailing, 8)
+            .padding(.top, 6)
         }
         .opacity(appearAnimation ? 1 : 0)
-        // 2b. Server coach score — daily score computed on the server from
-        // uploaded health summaries, under the local reading
-        ServerScoreCard()
-            .opacity(appearAnimation ? 1 : 0)
 
         // 3. AI insight — Ripple's voice right under the hero
         if let insight = viewModel.aiInsight {
@@ -181,7 +205,7 @@ struct DashboardView: View {
                 .opacity(appearAnimation ? 1 : 0)
         }
 
-        // 4. Vitals triplet — HRV / Heart / Breath (color-coded, trend lines)
+        // 4. Vitals — HRV / Heart / Breath tiles
         VitalsTriplet(
             hrvValue: stress.map { "\(Int($0.hrv.rounded()))" } ?? "—",
             hrvTrend: deltaLabel(viewModel.hrvDeltaVsWeeklyAverage),
@@ -192,10 +216,16 @@ struct DashboardView: View {
         )
         .opacity(appearAnimation ? 1 : 0)
 
-        // 5. Mood check-in chips (Calm / Focused / Tense / Wired / Fried)
+        // 4b. Server coach score — daily score computed on the server from
+        // uploaded health summaries
+        ServerScoreCard()
+            .opacity(appearAnimation ? 1 : 0)
+
+        // 5. Mood check-in (Calm / Focused / Tense / Wired / Fried)
         MoodCheckInView(selected: viewModel.mood?.level) { level in
             viewModel.setMood(level)
         }
+        .padding(.top, 8)
         .opacity(appearAnimation ? 1 : 0)
 
         // 6. Health data — Exercise / Sleep / Daylight (behavioral signals)
@@ -207,19 +237,25 @@ struct DashboardView: View {
         )
         .opacity(appearAnimation ? 1 : 0)
 
-        // 7. Quick actions — Box Breathing + Mini Walk (mid-screen)
+        // 7. Quick reset — Box Breathing + Mini Walk
         QuickActionGrid(first: .boxBreathing, second: .miniWalk)
+            .padding(.top, 8)
             .opacity(appearAnimation ? 1 : 0)
 
-        // 8. Stress over time — 7-day bar chart + tier legend
-        StressOverTimeChart(
-            data: viewModel.weeklyStressPoints,
-            onOpenHistory: { router.homePath.append(Route.history) }
-        )
-            .plusLocked(.homeStressOverTime)
-            .opacity(appearAnimation ? 1 : 0)
+        // 8. Stress over time — 7-day bar chart + tier legend. The section
+        // header (with the History link) stays outside the Plus lock.
+        VStack(alignment: .leading, spacing: 8) {
+            V2SectionHeader(title: "Stress over time", actionTitle: "History") {
+                HapticManager.shared.buttonPress()
+                router.homePath.append(Route.history)
+            }
+            StressOverTimeChart(data: viewModel.weeklyStressPoints)
+                .plusLocked(.homeStressOverTime)
+        }
+        .padding(.top, 8)
+        .opacity(appearAnimation ? 1 : 0)
 
-        // 9. Premium upsell — frosted glass banner (full-screen paywall).
+        // 9. Premium upsell (full-screen paywall).
         // Hidden while purchases are postponed, so the dashboard never
         // references purchasable content. Plus members never see it.
         if PurchaseAvailability.isEnabled && !PremiumState.shared.isPremiumUser {
@@ -229,21 +265,27 @@ struct DashboardView: View {
                 PremiumBanner(trialPeriodUnit: (injectedPlusAccess ?? .shared).trialPeriodUnit)
             }
             .buttonStyle(.plain)
+            .padding(.top, 8)
             .opacity(appearAnimation ? 1 : 0)
         }
+
+        disclaimer
+            .padding(.top, 8)
+    }
+
+    private var disclaimer: some View {
+        Text("Stress AI Coach is a wellness app, not a medical device. It does not diagnose or treat any condition.")
+            .font(.caption)
+            .foregroundStyle(Color.V2.ink3)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 8)
     }
 
     // MARK: - Derivation helpers
 
     private func substate(for stress: StressResult?) -> String {
-        guard let stress else { return "Waiting for a reading" }
-        switch stress.category {
-        case .relaxed:   return "Calm · recovered"
-        case .mild:      return "Focused · steady"
-        case .moderate:  return "Tense · busy"
-        case .high:      return "Wired · push back"
-        case .severe:    return "Fried · reset now"
-        }
+        stress?.category.v2Substate ?? "Waiting for a reading"
     }
 
     private func deltaLabel(_ delta: Int?) -> String? {
@@ -293,8 +335,12 @@ struct DashboardView: View {
         await viewModel.loadDashboardData()
         viewModel.observeHeartRate()
 
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+        if reduceMotion {
             appearAnimation = true
+        } else {
+            withAnimation(.easeOut(duration: 0.4).delay(0.1)) {
+                appearAnimation = true
+            }
         }
     }
 }
@@ -326,4 +372,13 @@ struct DashboardView: View {
     }
     .environment(PaywallController())
     .preferredColorScheme(.dark)
+}
+
+/// Hero card tap style: a light press dim, and no disabled fade, so the
+/// no-reading card keeps full contrast while it can't be opened.
+private struct HeroCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.85 : 1)
+    }
 }

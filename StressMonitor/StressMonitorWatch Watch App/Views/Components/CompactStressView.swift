@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// Compact circular stress indicator used by complications and inline
-/// previews. Light-theme aware: tier-coloured ring + numeric score +
-/// tier glyph label.
+/// Compact circular stress indicator (UI V2): the shared 240° gauge with the
+/// score in the centre and the tier as colour + shape + name.
 struct CompactStressView: View {
     let stressLevel: Double
     var category: StressCategory { StressCategory.category(for: stressLevel) }
@@ -10,42 +9,22 @@ struct CompactStressView: View {
     var showsScore: Bool = true
     var showsLabel: Bool = true
 
-    private var ringWidth: CGFloat { max(4, size * 0.08) }
-
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(WatchDesignTokens.separator, lineWidth: ringWidth)
-
-            Circle()
-                .trim(from: 0, to: fraction)
-                .stroke(
-                    category.color,
-                    style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.2), value: fraction)
-
+        WatchStressGauge(score: stressLevel, lineWidth: max(4, size * 0.08)) {
             VStack(spacing: 2) {
                 if showsScore {
                     Text("\(Int(stressLevel))")
-                        .font(.system(size: size * 0.30, weight: .bold, design: .rounded).monospacedDigit()) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                        .foregroundStyle(category.inkColor)
+                        .font(.v2Number(.title3, weight: .bold))
+                        .foregroundStyle(WatchV2.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                 }
                 if showsLabel {
-                    Text(category.displayName)
-                        .font(.system(size: size * 0.11, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                        .foregroundStyle(WatchDesignTokens.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7) // dated exception 2026-09-05: ring-interior label; slot geometry is proportional to ring size
+                    WatchTierBadge(category: category, font: .caption2.weight(.semibold))
                 }
             }
         }
         .frame(width: size, height: size)
-    }
-
-    private var fraction: CGFloat {
-        CGFloat(min(max(stressLevel, 0), 100) / 100.0)
     }
 }
 

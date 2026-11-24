@@ -153,79 +153,67 @@ struct ContrastComplianceTests {
     // MARK: - Distribution Segment Label Text Pairs (>= 4.5:1)
     //
     // Each `DistributionBar` segment renders an 11pt semibold "NN%" label —
-    // normal-size text, not large text — so every fill/text pairing must
-    // clear 4.5:1, matching `DistributionBar.labelTextColor(for:)`.
+    // normal-size text, not large text — in `onFillColor` on the tier's
+    // `fillColor`, so every pairing must clear 4.5:1.
 
-    @Test("Black label text on the relaxed distribution-bar segment passes 4.5:1 in light mode")
-    func blackOnRelaxedDistributionSegmentLight() {
+    @Test(
+        "Segment label text passes 4.5:1 on every tier fill in both appearances",
+        arguments: StressCategory.allCases, [UIUserInterfaceStyle.light, .dark]
+    )
+    func onFillLabelOnTierFill(category: StressCategory, style: UIUserInterfaceStyle) {
         let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.relaxed.color, .light)
+            resolved(category.onFillColor, style),
+            on: resolved(category.fillColor, style)
         )
-        #expect(ratio >= 4.5)
+        #expect(ratio >= 4.5, "\(category) \(style == .dark ? "dark" : "light"): \(ratio)")
     }
 
-    @Test("Black label text on the relaxed distribution-bar segment passes 4.5:1 in dark mode")
-    func blackOnRelaxedDistributionSegmentDark() {
-        let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.relaxed.color, .dark)
-        )
-        #expect(ratio >= 4.5)
+    // MARK: - UI V2 Token Pairs (>= 4.5:1)
+
+    @Test(
+        "Tier text colours pass 4.5:1 on the V2 canvas and card surface",
+        arguments: StressCategory.allCases, [UIUserInterfaceStyle.light, .dark]
+    )
+    func tierTextOnV2Surfaces(category: StressCategory, style: UIUserInterfaceStyle) {
+        for background in [Color.V2.bg, Color.V2.surface] {
+            let ratio = contrastRatio(resolved(category.color, style), on: resolved(background, style))
+            #expect(ratio >= 4.5, "\(category): \(ratio)")
+        }
     }
 
-    @Test("Black label text on the mild distribution-bar segment passes 4.5:1 in light mode")
-    func blackOnMildDistributionSegmentLight() {
-        let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.mild.color, .light)
-        )
-        #expect(ratio >= 4.5)
+    @Test(
+        "V2 ink, accent and danger text pass 4.5:1 on canvas, surface and surface2",
+        arguments: [UIUserInterfaceStyle.light, .dark]
+    )
+    func v2TextOnSurfaces(style: UIUserInterfaceStyle) {
+        let texts: [(String, Color)] = [
+            ("ink", Color.V2.ink), ("ink2", Color.V2.ink2), ("ink3", Color.V2.ink3),
+            ("accent", Color.V2.accent), ("danger", Color.V2.danger)
+        ]
+        for (name, text) in texts {
+            for background in [Color.V2.bg, Color.V2.surface, Color.V2.surface2] {
+                let ratio = contrastRatio(resolved(text, style), on: resolved(background, style))
+                #expect(ratio >= 4.5, "\(name): \(ratio)")
+            }
+        }
     }
 
-    @Test("Black label text on the mild distribution-bar segment passes 4.5:1 in dark mode")
-    func blackOnMildDistributionSegmentDark() {
-        let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.mild.color, .dark)
-        )
-        #expect(ratio >= 4.5)
-    }
-
-    @Test("White label text on the moderate distribution-bar segment passes 4.5:1 in light mode")
-    func whiteOnModerateDistributionSegmentLight() {
-        let ratio = contrastRatio(
-            UIColor.white,
-            on: resolved(StressCategory.moderate.color, .light)
-        )
-        #expect(ratio >= 4.5)
-    }
-
-    @Test("Black label text on the moderate distribution-bar segment passes 4.5:1 in dark mode")
-    func blackOnModerateDistributionSegmentDark() {
-        let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.moderate.color, .dark)
-        )
-        #expect(ratio >= 4.5)
-    }
-
-    @Test("White label text on the high distribution-bar segment passes 4.5:1 in light mode")
-    func whiteOnHighDistributionSegmentLight() {
-        let ratio = contrastRatio(
-            UIColor.white,
-            on: resolved(StressCategory.high.color, .light)
-        )
-        #expect(ratio >= 4.5)
-    }
-
-    @Test("Black label text on the high distribution-bar segment passes 4.5:1 in dark mode")
-    func blackOnHighDistributionSegmentDark() {
-        let ratio = contrastRatio(
-            UIColor.black,
-            on: resolved(StressCategory.high.color, .dark)
-        )
-        #expect(ratio >= 4.5)
+    @Test(
+        "V2 on-colours pass 4.5:1 on their fills",
+        arguments: [UIUserInterfaceStyle.light, .dark]
+    )
+    func v2OnColoursOnFills(style: UIUserInterfaceStyle) {
+        let pairs: [(String, Color, Color)] = [
+            ("onAccent/accent", Color.V2.onAccent, Color.V2.accent),
+            ("accent/accentSoft", Color.V2.accent, Color.V2.accentSoft),
+            ("onLime/lime", Color.V2.onLime, Color.V2.lime),
+            ("plus/plusBg", Color.V2.plus, Color.V2.plusBg),
+            ("ink/accentTint", Color.V2.ink, Color.V2.accentTint)
+        ]
+        for (name, text, fill) in pairs {
+            let ratio = contrastRatio(resolved(text, style), on: resolved(fill, style))
+            #expect(ratio >= 4.5, "\(name): \(ratio)")
+        }
     }
 
     // MARK: - UI / Large-Text Accent Pairs (>= 3:1)

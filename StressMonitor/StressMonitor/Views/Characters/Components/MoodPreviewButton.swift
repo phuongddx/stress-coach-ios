@@ -2,18 +2,23 @@ import SwiftUI
 
 // MARK: - Mood Preview Grid
 
-/// 5-cell mood grid matching `17-character-detail.html`.
+/// 5-cell mood grid (UI V2, `S.charDetail` "Moods").
 ///
-/// Shows 5 stress-level mood cells (0–25, 26–50, 51–75, 76–90, 91+)
-/// each with a colored face circle and SF Symbol expression.
-/// Tapping a cell previews that mood on the character hero.
+/// Shows the five stress tiers, each as a tier-filled face with its shape
+/// and score range. Tapping a cell previews that mood on the character hero.
 struct MoodPreviewGrid: View {
     let creature: CharacterCreature
     @Binding var selectedMood: RippleMood
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(StressMoodCell.allCases.enumerated()), id: \.element) { _, cell in
+        let columns = dynamicTypeSize.isAccessibilitySize
+            ? Array(repeating: GridItem(.flexible(), spacing: 6), count: 2)
+            : Array(repeating: GridItem(.flexible(), spacing: 6), count: 5)
+        LazyVGrid(columns: columns, spacing: 6) {
+            ForEach(StressMoodCell.allCases, id: \.self) { cell in
                 moodCell(cell)
             }
         }
@@ -23,43 +28,48 @@ struct MoodPreviewGrid: View {
     private func moodCell(_ cell: StressMoodCell) -> some View {
         let isSelected = cell.mood == selectedMood
 
-        VStack(spacing: 4) {
-            // Face circle with SF Symbol expression
-            ZStack {
-                Circle()
-                    .fill(cell.color)
-                    .frame(width: 28, height: 28)
-
-                Image(systemName: cell.symbol)
-                    .font(.system(size: 14))
-                    .foregroundStyle(.white)
-            }
-            .overlay {
-                if isSelected {
-                    Circle()
-                        .stroke(creature.element.primaryColor, lineWidth: 2)
-                        .frame(width: 32, height: 32)
+        Button {
+            if reduceMotion {
+                selectedMood = cell.mood
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
+                    selectedMood = cell.mood
                 }
             }
-
-            Text(cell.rangeLabel)
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .tracking(0.4)
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(minHeight: 64)
-        .padding(.vertical, 8)
-        .background(cell.color.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .contentShape(RoundedRectangle(cornerRadius: 12))
-        .onTapGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.82)) {
-                selectedMood = cell.mood
-            }
             HapticManager.shared.buttonPress()
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: cell.symbol)
+                    .font(.subheadline)
+                    .foregroundStyle(cell.category.onFillColor)
+                    .frame(width: 30, height: 30)
+                    .background(Circle().fill(cell.category.fillColor))
+
+                Text(cell.label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Text(cell.rangeLabel)
+                    .font(.v2Number(.caption2))
+                    .foregroundStyle(Color.V2.ink3)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 72)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                    .fill(isSelected ? Color.V2.accentSoft : Color.V2.surface2)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                    .strokeBorder(isSelected ? Color.V2.accent : Color.clear, lineWidth: 1.5)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: V2Metrics.radiusSM))
         }
-        .accessibilityElement(children: .combine)
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(cell.label), range \(cell.rangeLabel)")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -85,13 +95,14 @@ enum StressMoodCell: String, CaseIterable {
         }
     }
 
-    var color: Color {
+    /// Stress tier this cell previews; colours come from the V2 tier tokens.
+    var category: StressCategory {
         switch self {
-        case .relaxed:  return Color(hex: "#34C759")
-        case .mild:     return Color(hex: "#007AFF")
-        case .moderate: return Color(hex: "#FFD60A")
-        case .high:     return Color(hex: "#FF9500")
-        case .severe:   return Color(hex: "#FF3B30")
+        case .relaxed:  return .relaxed
+        case .mild:     return .mild
+        case .moderate: return .moderate
+        case .high:     return .high
+        case .severe:   return .severe
         }
     }
 
@@ -116,13 +127,5 @@ enum StressMoodCell: String, CaseIterable {
         }
     }
 
-    var label: String {
-        switch self {
-        case .relaxed:  return "Relaxed"
-        case .mild:     return "Mild"
-        case .moderate: return "Moderate"
-        case .high:     return "High"
-        case .severe:   return "Severe"
-        }
-    }
+    var label: String { category.displayName }
 }

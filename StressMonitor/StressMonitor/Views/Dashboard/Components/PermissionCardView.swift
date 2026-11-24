@@ -26,7 +26,7 @@ struct PermissionCardView: View {
 
         var title: String {
             switch self {
-            case .healthKit: return "Health Access Required"
+            case .healthKit: return "Connect Apple Health to see your score"
             case .heartRate: return "Heart Rate Access Needed"
             case .hrv: return "HRV Access Needed"
             }
@@ -35,7 +35,7 @@ struct PermissionCardView: View {
         var description: String {
             switch self {
             case .healthKit:
-                return "StressMonitor needs access to read your health data for stress calculations. Your data stays private on your device."
+                return "Your score is built from HRV, heart rate, sleep, activity and recovery. StressMonitor only reads your health data, and nothing leaves your iPhone without your consent."
             case .heartRate:
                 return "Heart rate data is essential for accurate stress calculation. Grant access to enable monitoring."
             case .hrv:
@@ -45,62 +45,50 @@ struct PermissionCardView: View {
     }
 
     var body: some View {
-        VStack(spacing: Spacing.lg) {
-            // Icon with rounded-square container
-            ZStack {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.error.opacity(0.15))
-                    .frame(width: 64, height: 64)
+        VStack(spacing: 12) {
+            StressBuddyIllustration(mood: .tired, size: 72)
+                .frame(width: 72, height: 72)
+                .accessibilityHidden(true)
 
-                Image(systemName: permissionType.icon)
-                    .font(.system(size: 28))
-                    .foregroundColor(.error)
-            }
-            .accessibilityHidden(true)
+            Text(permissionType.title)
+                .font(.headline)
+                .foregroundStyle(Color.V2.ink)
+                .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
 
-            // Text content
-            VStack(spacing: Spacing.sm) {
-                Text(permissionType.title)
-                    .font(Typography.headline)
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
+            Text(permissionType.description)
+                .font(.subheadline)
+                .foregroundStyle(Color.V2.ink2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
-                Text(permissionType.description)
-                    .font(Typography.subheadline)
-                    .foregroundColor(.oledTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // CTA buttons
-            VStack(spacing: Spacing.md) {
+            VStack(spacing: 8) {
                 Button(action: onGrantAccess) {
-                    HStack {
+                    HStack(spacing: 8) {
                         if isLoading {
                             ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .tint(Color.V2.onAccent)
                         }
                         Text("Grant Access to Health")
                     }
-                    .font(Typography.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(isLoading ? Color.gray : Color.primaryGreen)
-                    .cornerRadius(26)
                 }
+                .buttonStyle(.v2(.primary))
                 .disabled(isLoading)
-                .buttonStyle(ScaleButtonStyle())
                 .accessibilityLabel("Grant access to Health data")
 
-                SecondaryButton(title: "Open Settings", action: openSettings)
+                Button("Open Settings", action: openSettings)
+                    .buttonStyle(.v2(.ghost))
                     .accessibilityLabel("Open device Settings")
             }
+            .padding(.top, 8)
         }
-        .padding(Spacing.cardPadding)
-        .background(embedded ? Color.clear : Color.oledCardBackground)
-        .cornerRadius(embedded ? 0 : Spacing.settingsCardRadius)
-        .shadow(embedded ? ShadowDefinition(color: .clear, radius: 0, x: 0, y: 0) : AppShadow.elevated)
+        .padding(embedded ? 0 : 20)
+        .frame(maxWidth: .infinity)
+        .background {
+            if !embedded {
+                Color.clear.v2CardBackground()
+            }
+        }
     }
 
     private func openSettings() {
@@ -114,7 +102,7 @@ struct PermissionCardView: View {
 
 #Preview("Permission Card - Default") {
     ZStack {
-        Color.oledBackground.ignoresSafeArea()
+        Color.V2.bg.ignoresSafeArea()
 
         VStack(spacing: 20) {
             PermissionCardView(
@@ -133,7 +121,7 @@ struct PermissionCardView: View {
 
 #Preview("Permission Card - Loading") {
     ZStack {
-        Color.oledBackground.ignoresSafeArea()
+        Color.V2.bg.ignoresSafeArea()
 
         PermissionCardView(
             permissionType: .healthKit,

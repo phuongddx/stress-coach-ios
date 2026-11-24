@@ -4,10 +4,9 @@ import SwiftUI
 
 /// Background rendering style for the watch face / Home canvas.
 ///
-/// Four styles are retained from the previous design, but each is reworked
-/// for the LIGHT theme: every treatment is a soft, low-opacity tint wash
-/// over the iOS grouped background (`--bg #F2F2F7`).  No mesh gradients,
-/// no dark canvas — the watch app reads as a sibling of the iOS app.
+/// Four styles are retained from the previous design. Every treatment is a
+/// soft, low-opacity companion tint wash over the true-black V2 canvas.
+/// No mesh gradients.
 enum WatchFaceBackgroundStyle: String, CaseIterable, Codable, Sendable {
     /// Flat soft tint — subtle, battery-friendly.
     case solid
@@ -75,7 +74,7 @@ enum WatchFaceTheme: String, CaseIterable, Codable, Sendable {
 /// Renders the chosen background treatment as a SwiftUI `View`.
 ///
 /// All styles are deliberately restrained — low-opacity tints over the
-/// light canvas.  Used in-app (Home, Settings preview) and as
+/// black canvas.  Used in-app (Home, Settings preview) and as
 /// `containerBackground` content for complications (where watchOS
 /// overlays its own dark complication canvas by platform contract).
 struct WatchFaceBackgroundView: View {

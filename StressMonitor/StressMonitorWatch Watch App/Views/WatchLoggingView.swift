@@ -9,25 +9,23 @@ import SwiftUI
 ///  - 3 habit rings (hydration, caffeine, sunlight) in an HStack
 ///  - A compact mood picker row with 5 SF Symbol buttons
 ///
-/// All colours and spacing come from `WatchDesignTokens` so this screen
-/// reads as a sibling of the Home and History canvases. Habits owned by
+/// UI V2: 44 pt habit rings on `surface` cards, 32 pt mood wells with
+/// 44 pt hit areas, text styles throughout. Habits owned by
 /// `WatchHabitViewModel`, mood owned by `WatchMoodViewModel`.
 struct WatchLoggingView: View {
     @State private var habitViewModel = WatchHabitViewModel()
     @State private var moodViewModel = WatchMoodViewModel()
     @State private var selectedMood: WatchMood?
 
-    @ScaledMetric(relativeTo: .body) private var bodyScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
     var body: some View {
         ScrollView {
-            VStack(spacing: WatchDesignTokens.Spacing.sm) {
+            VStack(alignment: .leading, spacing: 10) {
                 header
                 habitsSection
                 moodSection
             }
-            .padding(.horizontal, WatchDesignTokens.contentSidePadding)
-            .padding(.top, 4)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
             .padding(.bottom, 12)
         }
         .background(WatchDesignTokens.canvas.ignoresSafeArea())
@@ -42,34 +40,29 @@ struct WatchLoggingView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             Text("Today")
-                .font(.system(size: 17 * bodyScale, weight: .bold, design: .rounded))
-                .tracking(-0.02 * 17)
-                .foregroundStyle(WatchDesignTokens.ink)
+                .font(.headline)
+                .foregroundStyle(WatchV2.ink)
             Spacer(minLength: 0)
             Text(headerDate)
-                .font(.system(size: 8.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 8.5)
-                .foregroundStyle(WatchDesignTokens.muted)
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
         }
         .frame(maxWidth: .infinity)
     }
 
     private var headerDate: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEE · MMM d"
-        return fmt.string(from: Date()).uppercased()
+        Date().formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 
     // MARK: - Habits
 
     private var habitsSection: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("HABITS")
-                .font(.system(size: 8.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 8.5)
-                .foregroundStyle(WatchDesignTokens.muted)
+            Text("Habits")
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
 
-            HStack(spacing: WatchDesignTokens.Spacing.xs) {
+            HStack(spacing: 4) {
                 ForEach(HabitType.allCases) { type in
                     if let habit = habitViewModel.habit(for: type) {
                         habitCard(habit)
@@ -85,35 +78,31 @@ struct WatchLoggingView: View {
         Button {
             if isManual { habitViewModel.logManual(habit.type, amount: 1) }
         } label: {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 if habit.hasDisplayValue {
-                    HabitRingView(habit: habit, size: 60)
+                    HabitRingView(habit: habit)
                 } else {
                     emptyHabitRing(habit)
                 }
-                Text(habit.type.displayName.uppercased())
-                    .font(.system(size: 7, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: 3-across habit-card single-word micro-label — cannot wrap
-                    .tracking(0.06 * 7)
-                    .foregroundStyle(WatchDesignTokens.muted)
+                Text(habit.type.displayName)
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink2)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7) // dated exception 2026-09-05: 3-across card label cannot wrap; shrink keeps it visible
-                if isManual {
-                    Text("+1")
-                        .font(.system(size: 7.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                        .tracking(0.04 * 7.5)
-                        .foregroundStyle(Color(hex: "#FE9901"))
-                } else {
-                    Text("AUTO")
-                        .font(.system(size: 7 * caption2Scale, weight: .semibold, design: .monospaced))
-                        .tracking(0.04 * 7)
-                        .foregroundStyle(WatchDesignTokens.mutedSystem)
-                }
+                    .minimumScaleFactor(0.7)
+                Text(habit.hasDisplayValue ? habit.displayRatio : "—")
+                    .font(.v2Number(.caption2))
+                    .foregroundStyle(WatchV2.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                Text(isManual ? "+1" : "Auto")
+                    .font(.caption2.weight(isManual ? .bold : .regular))
+                    .foregroundStyle(isManual ? WatchV2.accent : WatchV2.ink3)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: WatchV2.minHitTarget)
+            .padding(.vertical, 6)
             .background(
-                RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                    .fill(WatchDesignTokens.surface)
+                RoundedRectangle(cornerRadius: WatchV2.radiusCard, style: .continuous)
+                    .fill(WatchV2.surface)
             )
         }
         .buttonStyle(.plain)
@@ -125,18 +114,14 @@ struct WatchLoggingView: View {
 
     /// Stand-in for the ring of an AUTO habit HealthKit has not reported.
     private func emptyHabitRing(_ habit: WatchHabit) -> some View {
-        let size: CGFloat = 60
+        let size: CGFloat = 44
         return ZStack {
             Circle()
-                .stroke(WatchDesignTokens.separator, lineWidth: max(5, size * 0.085))
-            VStack(spacing: 1) {
-                Image(systemName: habit.type.icon)
-                    .font(.system(size: size * 0.22, weight: .semibold)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                    .foregroundStyle(WatchDesignTokens.ink)
-                Text("—")
-                    .font(.system(size: size * 0.16, weight: .semibold, design: .rounded)) // dated exception 2026-09-05: ring geometry — font proportional to ring diameter
-                    .foregroundStyle(WatchDesignTokens.inkSecondary)
-            }
+                .stroke(WatchV2.surface2, lineWidth: max(5, size * 0.085))
+            Image(systemName: habit.type.icon)
+                .font(.footnote.weight(.semibold))
+                .imageScale(.small)
+                .foregroundStyle(WatchV2.ink3)
         }
         .frame(width: size, height: size)
     }
@@ -145,10 +130,9 @@ struct WatchLoggingView: View {
 
     private var moodSection: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("MOOD")
-                .font(.system(size: 8.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 8.5)
-                .foregroundStyle(WatchDesignTokens.muted)
+            Text("How do you feel?")
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
 
             MoodPickerRow(
                 selectedMood: $selectedMood,

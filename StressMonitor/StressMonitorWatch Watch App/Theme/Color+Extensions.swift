@@ -30,22 +30,21 @@ extension Color {
     }
 
     /// Adaptive light/dark colour.  watchOS does not expose
-    /// `UIColor(dynamicProvider:)`, so we resolve to the light variant —
-    /// the watch app targets the iOS light design system.  The dark
-    /// argument is retained for API symmetry with the iOS app.
+    /// `UIColor(dynamicProvider:)`, and the watch app is dark-only (UI V2),
+    /// so this resolves to the dark variant. The light argument is retained
+    /// for API symmetry with the iOS app.
     init(light: Color, dark: Color) {
-        self = light
+        self = dark
     }
 
-    // MARK: - Stress-scale convenience accessors (iOS-aligned)
+    // MARK: - Stress-scale convenience accessors (UI V2 dark tiers)
 
-    /// 5-tier stress scale, light-set hexes mirrored from the iOS app's
-    /// `StressCategory.color` (no shared framework — mirror convention).
-    static let stressRelaxed  = Color(hex: "#00A000")
-    static let stressMild     = Color(hex: "#007AFF")
-    static let stressModerate = Color(hex: "#8A5A00")
-    static let stressHigh     = Color(hex: "#B25400")
-    static let stressSevere   = Color(hex: "#FF3B30")
+    /// 5-tier stress scale — V2 dark tier colours (text == fill).
+    static let stressRelaxed  = WatchV2.tierRelaxed
+    static let stressMild     = WatchV2.tierMild
+    static let stressModerate = WatchV2.tierElevated
+    static let stressHigh     = WatchV2.tierHigh
+    static let stressSevere   = WatchV2.tierSevere
 
     /// Resolve the stress colour for a raw 0–100+ level.
     static func stressColor(for level: Double) -> Color {

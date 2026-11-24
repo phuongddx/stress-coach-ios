@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// Watch **History** screen — 7-day stress log.
+/// Watch **History** screen — 7-day stress log (UI V2).
 ///
-/// Light canvas with:
-///  - 3 stat cards (Avg / Best / Peak) showing numeric scores in tier colours
-///  - A 7-day bar chart (tier-coloured bars, today outlined in accent-strong)
-///  - A grouped reading list with 3pt tier bars, SF Pro Rounded scores, and
-///    SF Mono timestamps
-///  - An empty state featuring the Ripple otter + a "Measure Now" pill
+/// True-black canvas, scrolled with the Digital Crown:
+///  - "This week · avg" — the one number for this glance, with its tier
+///    (colour + shape + name), above a 7-day bar chart in tier fills
+///  - Best / Peak rows, each with the tier shape and name
+///  - A heatmap card and the recent-readings list (number · tier · time)
+///  - An empty state featuring the companion + a "Measure Now" button
 struct WatchHistoryView: View {
     @Bindable var viewModel: WatchStressViewModel
 
@@ -18,9 +18,6 @@ struct WatchHistoryView: View {
         self.readings = WatchSharedDataStore.shared.history7Days
     }
 
-    @ScaledMetric(relativeTo: .body) private var bodyScale: CGFloat = 1
-    @ScaledMetric(relativeTo: .caption2) private var caption2Scale: CGFloat = 1
-    @ScaledMetric(relativeTo: .footnote) private var footnoteScale: CGFloat = 1
     var body: some View {
         Group {
             if readings.isEmpty {
@@ -39,34 +36,79 @@ struct WatchHistoryView: View {
 
     private var filledContent: some View {
         ScrollView {
-            VStack(spacing: WatchDesignTokens.Spacing.sm) {
-                statRow
-                chartCard
+            VStack(spacing: 8) {
+                weekCard
+                rangeCard
                 heatmapCard
                 readingList
             }
-            .padding(.horizontal, WatchDesignTokens.contentSidePadding)
-            .padding(.top, 4)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
             .padding(.bottom, 10)
         }
+    }
+
+    // MARK: - Week summary + chart
+
+    private var weekCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("This week · avg")
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(stats.avg)")
+                    .font(.v2Number(.title2, weight: .bold))
+                    .foregroundStyle(WatchV2.ink)
+                WatchTierBadge(category: stats.avgCategory, font: .footnote.weight(.semibold))
+            }
+            .accessibilityElement(children: .combine)
+            StressBarChart(entries: chartEntries)
+                .frame(height: 64)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardShape.fill(WatchV2.surface))
+    }
+
+    // MARK: - Best / Peak
+
+    private var rangeCard: some View {
+        VStack(spacing: 0) {
+            rangeRow(label: "Best", value: stats.best, category: stats.bestCategory)
+            Divider().overlay(WatchV2.line)
+            rangeRow(label: "Peak", value: stats.peak, category: stats.peakCategory)
+        }
+        .padding(.horizontal, 10)
+        .background(cardShape.fill(WatchV2.surface))
+    }
+
+    private func rangeRow(label: String, value: Int, category: StressCategory) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(WatchV2.ink2)
+            Spacer(minLength: 4)
+            Text("\(value)")
+                .font(.v2Number(.headline))
+                .foregroundStyle(WatchV2.ink)
+            WatchTierBadge(category: category, font: .caption2.weight(.semibold))
+        }
+        .frame(minHeight: 36)
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Heatmap
 
     private var heatmapCard: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("HEATMAP")
-                .font(.system(size: 8.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.06 * 8.5)
-                .foregroundStyle(WatchDesignTokens.muted)
+            Text("Heatmap")
+                .font(.caption2)
+                .foregroundStyle(WatchV2.ink3)
             CalendarHeatmapView(readings: heatmapReadings)
         }
-        .padding(WatchDesignTokens.Spacing.xs)
+        .padding(10)
         .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
+        .background(cardShape.fill(WatchV2.surface))
     }
 
     /// Adapt `SharedReading` list into the `WatchStressMeasurement` shape
@@ -81,103 +123,44 @@ struct WatchHistoryView: View {
             )}
     }
 
-    // MARK: - Stat row (Avg / Best / Peak)
-
-    private var statRow: some View {
-        HStack(spacing: 4) {
-            statCard(value: stats.avg, label: "Avg", category: stats.avgCategory)
-            statCard(value: stats.best, label: "Best", category: stats.bestCategory)
-            statCard(value: stats.peak, label: "Peak", category: stats.peakCategory)
-        }
-    }
-
-    private func statCard(value: Int, label: String, category: StressCategory) -> some View {
-        VStack(spacing: 3) {
-            Text("\(value)")
-                .font(.system(size: 18 * bodyScale, weight: .bold, design: .rounded).monospacedDigit())
-                .tracking(-0.02 * 18)
-                .foregroundStyle(category.inkColor)
-            Text(label.uppercased())
-                .font(.system(size: 7, weight: .semibold, design: .monospaced)) // dated exception 2026-09-05: 3-across stat-card micro-label — single word cannot wrap
-                .tracking(0.08 * 7)
-                .foregroundStyle(WatchDesignTokens.muted)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 7)
-        .background(
-            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
-    }
-
-    // MARK: - Bar chart card
-
-    private var chartCard: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("WEEKLY TREND")
-                .font(.system(size: 7.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.08 * 7.5)
-                .foregroundStyle(WatchDesignTokens.muted)
-            StressBarChart(entries: chartEntries)
-                .frame(height: 48)
-                .padding(.horizontal, 2)
-        }
-        .padding(WatchDesignTokens.Spacing.xs)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
-    }
-
-    // MARK: - Reading list (grouped-list lineage)
+    // MARK: - Reading list
 
     private var readingList: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(readings.prefix(8).enumerated()), id: \.element.id) { idx, reading in
+        VStack(spacing: 4) {
+            ForEach(readings.prefix(8), id: \.id) { reading in
                 readingRow(reading)
-                if idx < min(readings.count, 8) - 1 {
-                    Divider()
-                        .frame(height: WatchDesignTokens.hairlineThickness)
-                        .background(WatchDesignTokens.separator)
-                }
             }
         }
-        .padding(.horizontal, WatchDesignTokens.Spacing.xs)
-        .background(
-            RoundedRectangle(cornerRadius: WatchDesignTokens.radiusCard, style: .continuous)
-                .fill(WatchDesignTokens.surface)
-        )
     }
 
     private func readingRow(_ reading: SharedReading) -> some View {
         let category = StressCategory.category(for: reading.level)
         return HStack(spacing: 8) {
-            // 3pt tier bar
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(category.color)
-                .frame(width: 3, height: 22)
-
             Text("\(Int(reading.level))")
-                .font(.system(size: 14 * footnoteScale, weight: .bold, design: .rounded).monospacedDigit())
-                .tracking(-0.02 * 14)
+                .font(.v2Number(.headline, weight: .bold))
                 .foregroundStyle(category.inkColor)
-                .frame(minWidth: 22, alignment: .leading)
+                .frame(minWidth: 26, alignment: .leading)
 
-            Text(category.displayName)
-                .font(.system(size: 10 * caption2Scale, weight: .semibold, design: .default))
-                .foregroundStyle(WatchDesignTokens.inkSecondary)
+            VStack(alignment: .leading, spacing: 0) {
+                WatchTierBadge(category: category, font: .footnote.weight(.semibold))
+                Text(timeLabel(for: reading.timestamp))
+                    .font(.caption2)
+                    .foregroundStyle(WatchV2.ink3)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
 
             Spacer(minLength: 0)
-
-            Text(timeLabel(for: reading.timestamp))
-                .font(.system(size: 7.5 * caption2Scale, weight: .semibold, design: .monospaced))
-                .tracking(0.04 * 7.5)
-                .foregroundStyle(WatchDesignTokens.muted)
         }
-        .padding(.vertical, 3)
+        .padding(.horizontal, 10)
+        .frame(minHeight: 40)
+        .background(cardShape.fill(WatchV2.surface))
         .accessibilityElement()
         .accessibilityLabel("\(category.displayName), score \(Int(reading.level)), \(timeLabel(for: reading.timestamp))")
+    }
+
+    private var cardShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: WatchV2.radiusCard, style: .continuous)
     }
 
     // MARK: - Empty state
@@ -187,11 +170,11 @@ struct WatchHistoryView: View {
             Spacer(minLength: 0)
             CharacterFaceView(creature: .ripple, category: nil, size: 48, showsHalo: true)
             Text("No readings yet")
-                .font(.system(size: 11 * caption2Scale, weight: .semibold, design: .default))
-                .foregroundStyle(WatchDesignTokens.ink)
+                .font(.headline)
+                .foregroundStyle(WatchV2.ink)
             Text("Take your first measurement to start tracking.")
-                .font(.system(size: 10 * caption2Scale, weight: .regular, design: .default))
-                .foregroundStyle(WatchDesignTokens.muted)
+                .font(.footnote)
+                .foregroundStyle(WatchV2.ink3)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 8)
             Spacer(minLength: 0)
@@ -199,19 +182,18 @@ struct WatchHistoryView: View {
                 Task { await viewModel.measureStress() }
             } label: {
                 Text("Measure Now")
-                    .font(.system(size: 12 * footnoteScale, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(.headline)
+                    .foregroundStyle(WatchV2.onAccent)
                     .frame(maxWidth: .infinity)
-                    .frame(minHeight: 34)
-                    .background(
-                        Capsule(style: .continuous)
-                            .fill(WatchDesignTokens.accentStrong)
-                    )
+                    .frame(minHeight: 36)
+                    .background(Capsule(style: .continuous).fill(WatchV2.accent))
+                    .padding(.vertical, 4)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, WatchDesignTokens.contentSidePadding)
-        .padding(.bottom, 10)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Derivations

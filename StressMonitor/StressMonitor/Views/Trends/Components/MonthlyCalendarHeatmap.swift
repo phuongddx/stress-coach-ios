@@ -1,11 +1,12 @@
 import SwiftUI
 
-/// Monthly calendar heatmap matching `06-trends.html` section 4.
+/// Monthly heatmap (UI V2, ui-v2-design/screens.js `S.trends` heat).
 ///
-/// Renders a full month as a Monday-anchored 7-column grid of circular cells.
-/// Each day that has stress data is filled with its stress-tier color
-/// (Relaxed / Mild / Moderate / High). Today is outlined with the accent ring.
-/// Future days are dimmed. Empty leading/trailing cells are transparent.
+/// Renders a full month as a Monday-anchored 7-column grid of rounded cells.
+/// Each day that has stress data is filled with its tier fill colour
+/// (Relaxed / Mild / Elevated / High) and the date in the matching on-fill
+/// colour. Today gets an `ink` outline. Future days are faint, empty
+/// leading/trailing cells are transparent.
 struct MonthlyCalendarHeatmap: View {
     /// Maps start-of-day → average stress level (0–100).
     let dailyLevels: [Date: Double]
@@ -49,18 +50,21 @@ struct MonthlyCalendarHeatmap: View {
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 5), count: 7)
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     // MARK: - Body
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 Text(monthSymbol)
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
-                Spacer()
-                Text("daily score")
-                    .font(.system(size: 11, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
+                    .accessibilityAddTraits(.isHeader)
+                Spacer(minLength: 8)
+                Text("daily average")
+                    .font(.footnote)
+                    .foregroundStyle(Color.V2.ink3)
             }
 
             weekdayHeader
@@ -73,14 +77,9 @@ struct MonthlyCalendarHeatmap: View {
 
             legend
         }
-        .padding(16)
+        .padding(V2Metrics.margin)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.Wellness.adaptiveCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.08), lineWidth: 1)
-        )
+        .v2CardBackground()
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Monthly stress calendar for \(monthSymbol).")
     }
@@ -89,15 +88,15 @@ struct MonthlyCalendarHeatmap: View {
 
     private var weekdayHeader: some View {
         LazyVGrid(columns: columns, spacing: 5) {
-            ForEach(["M", "T", "W", "T", "F", "S", "S"], id: \.self) { symbol in
+            ForEach(Array(["M", "T", "W", "T", "F", "S", "S"].enumerated()), id: \.offset) { _, symbol in
                 Text(symbol)
-                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.55))
-                    .tracking(0.6)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, 2)
             }
         }
+        .accessibilityHidden(true)
     }
 
     // MARK: - Cell
@@ -117,19 +116,21 @@ struct MonthlyCalendarHeatmap: View {
             let tier = level.map { stressTier(for: $0) }
 
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(cellBackground(tier: tier, isFuture: isFuture))
 
                 Text("\(day)")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
+                    .font(.v2Number(.caption2, weight: .medium))
                     .foregroundStyle(cellTextColor(tier: tier, isFuture: isFuture))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
             }
             .aspectRatio(1, contentMode: .fit)
             .overlay(
-                Circle()
-                    .stroke(
-                        isToday ? Color(hex: "#0288D1") : Color.clear,
-                        lineWidth: 2
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(
+                        isToday ? Color.V2.ink : (isFuture ? Color.V2.line2 : Color.clear),
+                        lineWidth: isToday ? 2 : 1
                     )
             )
             .accessibilityLabel(accessibilityLabel(for: day, tier: tier, isToday: isToday, isFuture: isFuture))
@@ -152,47 +153,54 @@ struct MonthlyCalendarHeatmap: View {
 
     private func cellBackground(tier: StressCategory?, isFuture: Bool) -> Color {
         if isFuture {
-            return Color.Wellness.adaptiveSecondaryText.opacity(0.04)
+            return Color.clear
         }
         if let tier {
-            return tier.color
+            return tier.fillColor
         }
-        return Color.Wellness.adaptiveSecondaryText.opacity(0.06)
+        return Color.V2.surface2
     }
 
     private func cellTextColor(tier: StressCategory?, isFuture: Bool) -> Color {
         if isFuture {
-            return Color.Wellness.adaptiveSecondaryText.opacity(0.32)
+            return Color.V2.ink3
         }
         if let tier {
-            // Moderate is yellow → use dark text for contrast.
-            return tier == .moderate ? Color.black.opacity(0.55) : Color.white
+            return tier.onFillColor
         }
-        return Color.black.opacity(0.55)
+        return Color.V2.ink2
     }
 
     // MARK: - Legend
 
     private var legend: some View {
-        HStack(spacing: 10) {
-            legendDot(color: StressCategory.relaxed.color, label: "Relaxed")
-            legendDot(color: StressCategory.mild.color, label: "Mild")
-            legendDot(color: StressCategory.moderate.color, label: "Moderate")
-            legendDot(color: StressCategory.high.color, label: "High")
-            legendDot(color: Color.Wellness.adaptiveSecondaryText.opacity(0.18), label: "Upcoming")
-            Spacer(minLength: 0)
+        let columns = dynamicTypeSize.isAccessibilitySize
+            ? [GridItem(.flexible(), alignment: .leading)]
+            : Array(repeating: GridItem(.flexible(), spacing: 8, alignment: .leading), count: 3)
+        return LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+            ForEach([StressCategory.relaxed, .mild, .moderate, .high], id: \.self) { tier in
+                legendItem(label: tier.displayName) {
+                    Image(systemName: tier.icon)
+                        .font(.caption2)
+                        .foregroundStyle(tier.fillColor)
+                }
+            }
+            legendItem(label: "Upcoming") {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .strokeBorder(Color.V2.line2, lineWidth: 1)
+                    .frame(width: 10, height: 10)
+            }
         }
         .padding(.top, 4)
     }
 
-    private func legendDot(color: Color, label: String) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 9, height: 9)
+    private func legendItem<Marker: View>(label: String, @ViewBuilder marker: () -> Marker) -> some View {
+        HStack(spacing: 6) {
+            marker()
+                .accessibilityHidden(true)
             Text(label)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText.opacity(0.6))
+                .font(.caption)
+                .foregroundStyle(Color.V2.ink2)
         }
     }
 
@@ -226,5 +234,5 @@ struct MonthlyCalendarHeatmap: View {
         Spacer()
     }
     .padding()
-    .background(Color.Wellness.adaptiveBackground)
+    .background(Color.V2.bg)
 }

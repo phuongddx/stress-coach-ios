@@ -33,11 +33,11 @@ extension Color {
 
     // MARK: - Stress Level Colors
 
-    static let stressRelaxed = Color(light: Color(hex: "#00A000"), dark: Color(hex: "#30D158"))
-    static let stressMild = Color(light: Color(hex: "#007AFF"), dark: Color(hex: "#0A84FF"))
-    static let stressModerate = Color(light: Color(hex: "#8A5A00"), dark: Color(hex: "#FFD60A"))
-    static let stressHigh = Color(light: Color(hex: "#B25400"), dark: Color(hex: "#FF9F0A"))
-    static let stressSevere = Color(light: Color(hex: "#FF3B30"), dark: Color(hex: "#FF453A"))
+    static let stressRelaxed = StressCategory.relaxed.color
+    static let stressMild = StressCategory.mild.color
+    static let stressModerate = StressCategory.moderate.color
+    static let stressHigh = StressCategory.high.color
+    static let stressSevere = StressCategory.severe.color
 
     // MARK: - Chart Accents
 
@@ -113,11 +113,11 @@ extension Color {
 
     /// App-wide grouped-list background (#F2F2F7 in light, system black in dark).
     /// Matches iOS Settings canvas.
-    static let appBackground = Color(light: Color(hex: "F2F2F7"), dark: Color(hex: "000000"))
+    static let appBackground = Color.V2.bg
 
     /// Settings background (light: warm cream #FFFDF6, dark canvas #121212 —
     /// unified with the adaptive canvas)
-    static let settingsBackground = Color(light: Color(hex: "FFFDF6"), dark: Color(hex: "121212"))
+    static let settingsBackground = Color.V2.bg
     /// Ripple blue accent - #0891B2. Fill-safe: white text on this value
     /// passes 3:1 in both appearances. The legacy fixed #4FC3F7 must never
     /// carry white text as a fill in either appearance (2.00:1).
@@ -136,7 +136,7 @@ extension Color {
     /// Descriptive text — alias of the adaptive secondary text token
     static var textDescriptive: Color { Color.Wellness.adaptiveSecondaryText }
     /// Light border - #DBDBDB
-    static let borderLight = Color(light: Color(hex: "DBDBDB"), dark: Color(hex: "38383A"))
+    static let borderLight = Color.V2.line2
     /// Widget border - #C0C0C0
     static let widgetBorder = Color(light: Color(hex: "C0C0C0"), dark: Color(hex: "48484A"))
     /// Settings card shadow color - #18274B

@@ -10,6 +10,8 @@ struct MeHeroCard: View {
     var email: String? = nil
     var onPlusTap: (() -> Void)? = nil
 
+    @ScaledMetric(relativeTo: .title2) private var avatarSize: CGFloat = 52
+
     private var initial: String {
         String(displayName.trimmingCharacters(in: .whitespaces).prefix(1)).uppercased()
     }
@@ -23,36 +25,39 @@ struct MeHeroCard: View {
         }
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     private var headerRow: some View {
-        HStack(spacing: 14) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 10))
+            : AnyLayout(HStackLayout(spacing: 14))
+        return layout {
             ZStack {
                 Circle()
-                    .fill(HomeCharacterDesignTokens.Ripple.primary.opacity(0.14))
+                    .fill(Color.V2.accentSoft)
                 Text(initial)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundStyle(HomeCharacterDesignTokens.Ripple.deep)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(Color.V2.accent)
             }
-            .frame(width: 52, height: 52)
-            .overlay(
-                Circle()
-                    .stroke(Color.Wellness.adaptiveSecondaryText.opacity(0.18), lineWidth: 0.5)
-            )
+            .frame(width: avatarSize, height: avatarSize)
             .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(displayName)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                    .font(.headline)
+                    .foregroundStyle(Color.V2.ink)
                 if let email {
                     Text(email)
-                        .font(.system(size: 13, weight: .regular))
-                        .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                        .font(.subheadline)
+                        .foregroundStyle(Color.V2.ink3)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
             }
 
-            Spacer(minLength: 8)
+            if !dynamicTypeSize.isAccessibilitySize {
+                Spacer(minLength: 8)
+            }
 
             // Omitted when the owner supplies no tap handler — the upsell has
             // nowhere to go, so it must not render.
@@ -65,19 +70,20 @@ struct MeHeroCard: View {
     }
 
     private var metricRow: some View {
-        HStack(spacing: 0) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        return layout {
             metricCell(
                 value: bioAge.map { "\($0)" } ?? "—",
                 label: "Bio",
                 accessibilityValue: bioAge.map { "\($0) years" } ?? "unknown"
             )
-            hairlineDivider
             metricCell(
                 value: stressText,
                 label: stressLabel,
                 accessibilityValue: stressText
             )
-            hairlineDivider
             metricCell(
                 value: "\(streakDays)d",
                 label: "Streak",
@@ -89,23 +95,22 @@ struct MeHeroCard: View {
     private func metricCell(value: String, label: String, accessibilityValue: String) -> some View {
         VStack(spacing: 3) {
             Text(value)
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
-                .foregroundStyle(Color.Wellness.adaptivePrimaryText)
+                .font(.v2Number(.title2))
+                .foregroundStyle(Color.V2.ink)
             Text(label)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.Wellness.adaptiveSecondaryText)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.V2.ink3)
                 .textCase(.uppercase)
+                .multilineTextAlignment(.center)
         }
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusSM, style: .continuous)
+                .fill(Color.V2.surface2)
+        )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) \(accessibilityValue)")
-    }
-
-    private var hairlineDivider: some View {
-        Rectangle()
-            .fill(Color.Wellness.adaptiveSecondaryText.opacity(0.18))
-            .frame(width: 0.5, height: 32)
-            .accessibilityHidden(true)
     }
 
     private var stressText: String {
@@ -125,5 +130,5 @@ struct MeHeroCard: View {
         MeHeroCard(displayName: "Guest")
     }
     .padding()
-    .background(Color.appBackground)
+    .background(Color.V2.bg)
 }
