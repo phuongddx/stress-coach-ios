@@ -69,7 +69,7 @@ public struct MediumWidgetView: View {
 
     private var historyColumn: some View {
         let readings = widgetRecentReadings(entry.history, limit: 12)
-        let tier = entry.latestStress.map { WidgetStressTier.from(level: $0.level) } ?? .resting
+        let tier = entry.latestStress.map { WidgetStressTier.from(category: $0.stressCategory) } ?? .resting
 
         return VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center) {

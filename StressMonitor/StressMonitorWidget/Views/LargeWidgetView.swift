@@ -55,7 +55,7 @@ public struct LargeWidgetView: View {
         let category = stress.stressCategory
 
         HStack(alignment: .center, spacing: 12) {
-            WidgetCompanionBadge(tier: WidgetStressTier.from(level: stress.level), size: 64)
+            WidgetCompanionBadge(tier: WidgetStressTier.from(category: category), size: 64)
             VStack(alignment: .leading, spacing: 2) {
                 WidgetScoreText(level: stress.level)
                 WidgetTierLabel(category: category, font: .headline)

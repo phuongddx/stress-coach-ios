@@ -29,6 +29,19 @@ enum WidgetStressTier: Int, CaseIterable, Sendable {
         }
     }
 
+    /// The companion face for a displayed category, so the face always
+    /// matches the tier label beside it (the score bands in
+    /// `StressResult.category(for:)` differ from `from(level:)`).
+    static func from(category: StressCategory) -> WidgetStressTier {
+        switch category {
+        case .relaxed:  return .resting
+        case .mild:     return .calm
+        case .moderate: return .balanced
+        case .high:     return .tense
+        case .severe:   return .overwhelmed
+        }
+    }
+
     var emoji: String {
         switch self {
         case .resting:     return "😴"

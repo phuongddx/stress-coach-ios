@@ -146,6 +146,11 @@ struct WatchBreatheView: View {
     }
 
     /// 0…1 fill for a phase segment, derived from the countdown.
+    ///
+    /// With motion, each tick animates linearly over the next second
+    /// (`tickAnimation`), so the target leads by one tick and the bar lands
+    /// on it as that second ends. With Reduce Motion the fill steps, so it
+    /// shows elapsed seconds only and the segment fills when the phase ends.
     private func phaseProgress(for p: Phase) -> CGFloat {
         switch dotStatus(for: p) {
         case .upcoming: return 0
@@ -153,7 +158,8 @@ struct WatchBreatheView: View {
         case .active:
             let total = Double(duration(of: p))
             guard total > 0 else { return 0 }
-            return CGFloat(min(1, max(0, (total - Double(secondsLeft) + 1) / total)))
+            let lead: Double = reduceMotion ? 0 : 1
+            return CGFloat(min(1, max(0, (total - Double(secondsLeft) + lead) / total)))
         }
     }
 

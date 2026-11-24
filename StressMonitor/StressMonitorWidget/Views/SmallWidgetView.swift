@@ -52,7 +52,7 @@ public struct SmallWidgetView: View {
             HStack(alignment: .center, spacing: 6) {
                 WidgetScoreText(level: stress.level)
                 Spacer(minLength: 0)
-                WidgetCompanionBadge(tier: WidgetStressTier.from(level: stress.level), size: 44)
+                WidgetCompanionBadge(tier: WidgetStressTier.from(category: stress.stressCategory), size: 44)
             }
             .opacity(isStale ? 0.6 : 1)
 
