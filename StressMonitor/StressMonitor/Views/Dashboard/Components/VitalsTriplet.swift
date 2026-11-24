@@ -4,11 +4,10 @@ import SwiftUI
 
 /// Three-column vitals row: HRV / Heart Rate / Respiratory Rate.
 ///
-/// Each column shows a large value with unit, a label, and a small trend
-/// context line so the number isn't naked. Separators between columns match
-/// the spec's `.vitals` grid with `::before` divider lines.
+/// Each tile shows a label, the value with its unit, and a small trend line.
+/// Tiles stack vertically at accessibility text sizes.
 ///
-/// Spec reference: design/screens/04-home.html — `.vitals`.
+/// Spec reference: ui-v2-design/screens.js `S.home` `.vit` tiles.
 struct VitalsTriplet: View {
     let hrvValue: String
     let hrvUnit: String
@@ -46,73 +45,60 @@ struct VitalsTriplet: View {
         self.rrTrendGood = rrTrendGood
     }
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 0) {
-            vitalColumn(
-                value: hrvValue, unit: hrvUnit, label: "HRV",
-                trend: hrvTrend, trendGood: hrvTrendGood,
-                accent: Color(hex: "34D399")
-            )
-            divider
-            vitalColumn(
-                value: hrValue, unit: hrUnit, label: "Heart",
-                trend: hrTrend, trendGood: hrTrendGood,
-                accent: Color(hex: "F87171")
-            )
-            divider
-            vitalColumn(
-                value: rrValue, unit: rrUnit, label: "Breath",
-                trend: rrTrend, trendGood: rrTrendGood,
-                accent: Color.stressMild
-            )
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+        layout {
+            vitalTile(value: hrvValue, unit: hrvUnit, label: "HRV", trend: hrvTrend, trendGood: hrvTrendGood)
+            vitalTile(value: hrValue, unit: hrUnit, label: "Heart rate", trend: hrTrend, trendGood: hrTrendGood)
+            vitalTile(value: rrValue, unit: rrUnit, label: "Breath", trend: rrTrend, trendGood: rrTrendGood)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 8)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Vitals: HRV \(hrvValue) \(hrvUnit), Heart rate \(hrValue) \(hrUnit), Respiratory rate \(rrValue) \(rrUnit)")
     }
 
-    // MARK: - Column
+    // MARK: - Tile
 
-    private func vitalColumn(
+    private func vitalTile(
         value: String, unit: String, label: String,
-        trend: String?, trendGood: Bool, accent: Color
+        trend: String?, trendGood: Bool
     ) -> some View {
-        VStack(spacing: 7) {
+        let isEmpty = value == "—" || value == "--"
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(label)
+                .font(.footnote)
+                .foregroundStyle(Color.V2.ink3)
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .tracking(-0.5)
-                    .foregroundStyle(accent)
-                Text(unit)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Color(hex: "777986"))
+                    .font(.v2Number(.title2))
+                    .foregroundStyle(isEmpty ? Color.V2.ink3 : Color.V2.ink)
+                if !isEmpty {
+                    Text(unit)
+                        .font(.caption)
+                        .foregroundStyle(Color.V2.ink2)
+                }
             }
-
-            Text(label)
-                .font(.system(size: 9, weight: .medium, design: .monospaced))
-                .tracking(0.9)
-                .textCase(.uppercase)
-                .foregroundStyle(Color(hex: "777986"))
-
-            if let trend {
-                Text(trend)
-                    .font(.system(size: 10))
-                    .foregroundStyle(trendGood ? Color.stressRelaxed : Color(hex: "777986"))
-            } else {
-                Text("")
-                    .font(.system(size: 10))
-            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            Text(trend ?? " ")
+                .font(.caption)
+                .foregroundStyle(trendGood ? StressCategory.relaxed.color : Color.V2.ink3)
+                .lineLimit(1)
+                .accessibilityHidden(trend == nil)
         }
-        .frame(maxWidth: .infinity)
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(Color(hex: "3C3C43").opacity(0.12))
-            .frame(width: 1, height: 50)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .fill(Color.V2.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: V2Metrics.radiusMD, style: .continuous)
+                .strokeBorder(Color.V2.line, lineWidth: 0.5)
+        )
     }
 }
 
@@ -128,7 +114,7 @@ struct VitalsTriplet: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }
 
 #Preview("VitalsTriplet — No Data") {
@@ -141,5 +127,5 @@ struct VitalsTriplet: View {
         Spacer()
     }
     .padding()
-    .background(HomeCharacterDesignTokens.homeBackground)
+    .background(Color.V2.bg)
 }

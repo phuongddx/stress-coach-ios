@@ -9,57 +9,58 @@ struct ServerScoreCard: View {
     @State private var failed = false
     @State private var loading = true
 
+    /// Server levels mapped onto the V2 tier text colours.
     private var levelColor: Color {
         switch score?.level {
-        case "low": return .green
-        case "moderate": return .orange
-        case "high": return .red
-        default: return .secondary
+        case "low": return StressCategory.relaxed.color
+        case "moderate": return StressCategory.moderate.color
+        case "high": return StressCategory.high.color
+        default: return Color.V2.ink2
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Coach Score")
-                    .font(.headline)
-                Spacer()
-                if loading { ProgressView() }
-            }
-            if let score {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("\(score.score)")
-                        .font(.system(size: 44, weight: .bold))
-                        .foregroundStyle(levelColor)
-                    VStack(alignment: .leading) {
-                        Text(score.level.capitalized)
-                            .font(.title3)
-                            .foregroundStyle(levelColor)
-                        Text(score.localDate)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+        V2Card {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("Coach Score")
+                        .font(.headline)
+                        .foregroundStyle(Color.V2.ink)
+                    Spacer()
+                    if loading { ProgressView() }
                 }
-                if !score.factors.isEmpty {
-                    ForEach(score.factors, id: \.self) { factor in
-                        Label(factor, systemImage: "circle.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
+                if let score {
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text("\(score.score)")
+                            .font(.v2Number(.largeTitle, weight: .bold))
+                            .foregroundStyle(Color.V2.ink)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(score.level.capitalized)
+                                .font(.headline)
+                                .foregroundStyle(levelColor)
+                            Text(score.localDate)
+                                .font(.caption)
+                                .foregroundStyle(Color.V2.ink3)
+                        }
                     }
+                    if !score.factors.isEmpty {
+                        ForEach(score.factors, id: \.self) { factor in
+                            Label(factor, systemImage: "circle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(Color.V2.ink2)
+                        }
+                    }
+                } else if failed {
+                    Text("Server score unavailable.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink2)
+                } else if !loading {
+                    Text("No server score yet — sync starts after you allow health data.")
+                        .font(.footnote)
+                        .foregroundStyle(Color.V2.ink2)
                 }
-            } else if failed {
-                Text("Server score unavailable.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else if !loading {
-                Text("No server score yet — sync starts after you allow health data.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .background(Color.Wellness.adaptiveCardBackground.opacity(0.92))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .task {
             do {
                 score = try await StressAPIClient().fetchStressScores().first

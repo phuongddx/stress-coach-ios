@@ -53,38 +53,15 @@ struct NoDataCard: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Icon
-            Image(systemName: dataType.icon)
-                .font(.system(size: 36, weight: .light))
-                .foregroundColor(.oledTextSecondary)
-                .accessibilityHidden(true)
-
-            // Text content
-            VStack(spacing: 6) {
-                Text(dataType.title)
-                    .font(.headline)
-                    .foregroundColor(.white)
-
-                Text(dataType.description)
-                    .font(.caption)
-                    .foregroundColor(.oledTextSecondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            // Action button
-            Button(action: onAction) {
-                Text(dataType.actionTitle)
-                    .font(.subheadline.bold())
-                    .foregroundColor(.primaryBlue)
-            }
-            .minimumTouchTarget(DesignTokens.Layout.minTouchTarget)
+        V2Card {
+            V2StateView(
+                systemImage: dataType.icon,
+                title: dataType.title,
+                message: dataType.description,
+                actionTitle: dataType.actionTitle,
+                action: onAction
+            )
         }
-        .padding(24)
-        .frame(maxWidth: .infinity)
-        .background(Color.oledCardBackground)
-        .cornerRadius(16)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(dataType.title). \(dataType.description)")
         .accessibilityHint("Double tap to \(dataType.actionTitle.lowercased())")
@@ -102,5 +79,5 @@ struct NoDataCard: View {
         }
         .padding()
     }
-    .background(Color.oledBackground)
+    .background(Color.V2.bg)
 }
