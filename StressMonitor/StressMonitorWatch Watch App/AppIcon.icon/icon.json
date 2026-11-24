@@ -1,0 +1,99 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.86667,0.92157,0.79216,1.00000",
+          "srgb:0.74902,0.86275,0.68235,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.14118,0.26667,0.23137,1.00000",
+          "srgb:0.10196,0.20000,0.17255,1.00000"
+        ]
+      }
+    },
+    {
+      "appearance": "tinted",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.16471,0.16471,0.16471,1.00000",
+          "srgb:0.10196,0.10196,0.10196,1.00000"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Water",
+      "layers": [
+        {
+          "name": "water",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "water-light.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "water-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "water-tinted.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": true
+    },
+    {
+      "name": "Otter",
+      "layers": [
+        {
+          "name": "otter",
+          "glass": false,
+          "image-name-specializations": [
+            {
+              "value": "otter-light.svg"
+            },
+            {
+              "appearance": "dark",
+              "value": "otter-dark.svg"
+            },
+            {
+              "appearance": "tinted",
+              "value": "otter-tinted.svg"
+            }
+          ]
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.5
+      },
+      "specular": true
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ]
+  }
+}
