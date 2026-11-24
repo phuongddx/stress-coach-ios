@@ -65,6 +65,7 @@ struct RippleRecommendationCard: View {
             }
             .buttonStyle(.v2(.ghost, compact: true, fullWidth: fullWidth))
             .background(Capsule().fill(Color.V2.surface))
+            .accessibilityIdentifier("action.card.talkToRipple")
         }
     }
 

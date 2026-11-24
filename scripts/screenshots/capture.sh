@@ -5,7 +5,7 @@
 #
 # The simulator must be booted. The app is launched in demo mode (simulated
 # HealthKit data, DEBUG builds only) with onboarding marked done, then each
-# screen is opened through its accessibility label and captured.
+# screen is opened through its accessibility identifier or label and captured.
 #
 #   OUT_DIR   where the PNGs go             (default docs/screenshots)
 #   WIDTH     width of the saved PNGs in px (default: the simulator's own pixels)
@@ -66,24 +66,23 @@ shot() {
   echo "captured $OUT_DIR/$1.png"
 }
 
-# allow_health: accept the system's Health Access sheet if it is showing: tap
-# "Turn On All", then "Allow", found by their labels. The app may ask twice on a
-# fresh simulator: at launch, and for the habit types when Action first opens.
-# When the sheet is not up, nothing is tapped, so no tap can land on the app.
-allow_health() {
-  local deadline=$((SECONDS + ${1:-10}))
-  until ui | python3 "$HERE/axe_ui.py" has "Turn On All"; do
+# open_tab <name>: tap a tab bar item and wait until that tab is selected.
+open_tab() {
+  local deadline=$((SECONDS + 15))
+  tap "$1" --lowest
+  until ui | python3 "$HERE/axe_ui.py" selected "$1"; do
     if [ "$SECONDS" -ge "$deadline" ]; then
-      echo "no Health Access sheet; nothing tapped"
-      return 0
+      echo "error: the \"$1\" tab did not open" >&2
+      dump "tab-$1"
+      return 1
     fi
     sleep 1
   done
-  tap "Turn On All"
-  wait_for "Allow" 10
-  tap "Allow" --lowest
-  sleep 2
 }
+
+# The system Health Access sheet runs in another process, so AXe cannot see it
+# or tap it. Demo mode never asks for Health access in DEBUG builds
+# (HealthKitManager.requestAuthorization), so the sheet does not appear here.
 
 launch() {
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
@@ -100,20 +99,22 @@ xcrun simctl ui "$UDID" appearance light
 xcrun simctl install "$UDID" "$APP"
 
 launch
-allow_health
 SETTLE=8 shot "1-home"        # demo data loads and the gauge animates in
 
-tap "Trends" --lowest
+open_tab "Trends"
 shot "2-trends"
 
-tap "Action" --lowest
-allow_health
-tap "Talk to Ripple"
+open_tab "Action"
+wait_for "action.card.talkToRipple" 20   # on Ripple's card, top of Action
+tap "action.card.talkToRipple"
+wait_for "Sees your scores" 20  # the Ripple chat sheet is up
 SETTLE=6 shot "3-chat"
 
 launch                        # drops the chat sheet
-tap "Action" --lowest
-tap "Box Breathing"
+open_tab "Action"
+wait_for "action.boxBreathing" 20
+tap "action.boxBreathing"
+wait_for "Breathe in, hold" 20  # the Box breathing intro
 shot "4-breathing"
 
 # 5-premium.png is not rebuilt: purchases are switched off in this build, so

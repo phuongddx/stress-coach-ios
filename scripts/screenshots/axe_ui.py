@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 """Find elements in the accessibility tree AXe reports, for capture.sh.
 
-    axe_ui.py has  <label>            exit 0 when an element has this label
-    axe_ui.py find <label> [--lowest] print "x y", the centre of the match
-    axe_ui.py list                    print every label with its frame
+    axe_ui.py has      <label>            exit 0 when an element has this label
+    axe_ui.py find     <label> [--lowest] print "x y", the centre of the match
+    axe_ui.py selected <label>            exit 0 when the lowest match is selected
+    axe_ui.py list                        print every label with its frame
 
-The tree is read from stdin (the JSON of `axe describe-ui`). `find` matches the
-label exactly, then as a prefix, and takes the first match in reading order, or
-the one lowest on screen with --lowest (a tab bar item shares its name with the
-screen's title).
+The tree is read from stdin (the JSON of `axe describe-ui`). A <label> matches
+an element's accessibility identifier (AXUniqueId) or its label exactly, then a
+label as a prefix. `find` takes the first match in reading order, or the one
+lowest on screen with --lowest (a tab bar item shares its name with the
+screen's title). `selected` reads AXValue, which is 1 on the selected tab.
 """
 import json
 import sys
@@ -28,6 +30,10 @@ def label_of(node):
     return (node.get("AXLabel") or node.get("label") or "").strip()
 
 
+def id_of(node):
+    return (node.get("AXUniqueId") or node.get("identifier") or "").strip()
+
+
 def frame_of(node):
     frame = node.get("frame") or node.get("AXFrame") or {}
     if not isinstance(frame, dict):
@@ -42,12 +48,13 @@ def frame_of(node):
 
 def matches(nodes, label):
     wanted = label.casefold()
-    exact = [n for n in nodes if label_of(n).casefold() == wanted]
+    exact = [n for n in nodes
+             if id_of(n) == label or label_of(n).casefold() == wanted]
     return exact or [n for n in nodes if label_of(n).casefold().startswith(wanted)]
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("has", "find", "list"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("has", "find", "selected", "list"):
         sys.exit(__doc__)
     command, args = sys.argv[1], sys.argv[2:]
     try:
@@ -57,10 +64,11 @@ def main():
 
     if command == "list":
         for node in nodes:
-            if label_of(node):
+            if label_of(node) or id_of(node):
                 x, y, w, h = frame_of(node)
                 kind = node.get("type") or node.get("role") or ""
-                print(f"{x:6.0f} {y:6.0f} {w:5.0f} {h:5.0f}  {kind:<22} {label_of(node)}")
+                ident = f"  [{id_of(node)}]" if id_of(node) else ""
+                print(f"{x:6.0f} {y:6.0f} {w:5.0f} {h:5.0f}  {kind:<22} {label_of(node)}{ident}")
         return
 
     if not args:
@@ -68,9 +76,14 @@ def main():
     found = matches(nodes, args[0])
     if not found:
         sys.exit(1)
+    if command == "selected":
+        # The tab's icon shares its label but has no value: read the button.
+        found = [n for n in found if n.get("AXValue") is not None] or found
+    if command == "find" and "--lowest" in args or command == "selected":
+        found.sort(key=lambda n: frame_of(n)[1], reverse=True)
+    if command == "selected":
+        sys.exit(0 if str(found[0].get("AXValue")) == "1" else 1)
     if command == "find":
-        if "--lowest" in args:
-            found.sort(key=lambda n: frame_of(n)[1], reverse=True)
         x, y, w, h = frame_of(found[0])
         print(f"{x + w / 2:.0f} {y + h / 2:.0f}")
 

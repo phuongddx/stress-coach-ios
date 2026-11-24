@@ -29,6 +29,11 @@ final class HealthKitManager: HealthKitServiceProtocol {
     }
 
     func requestAuthorization() async throws {
+        #if DEBUG
+        // Demo data is simulated, so there is nothing to read: skip the system
+        // Health Access sheet, which would otherwise cover the screenshot runs.
+        if DemoMode.isEnabled { return }
+        #endif
         let readTypes: Set<HKObjectType> = [
             hrvType, heartRateType, sleepType,
             stepCountType, activeEnergyType, appleStandTimeType,
