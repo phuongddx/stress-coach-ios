@@ -24,7 +24,9 @@ concurrency:
   cancel-in-progress: false   # never cancel an in-flight upload
 
 env:
-  XCODE_VERSION: "26.3"
+  # 27.1: the first SDK with the iPhone Duo APIs. An archive made with an
+  # older Xcode compiles the Duo code out (see AGENTS.md).
+  XCODE_VERSION: "27.1"
   SCHEME: "StressMonitor"
   PROJECT: "StressMonitor/StressMonitor.xcodeproj"
   LANG: "en_US.UTF-8"
@@ -33,7 +35,7 @@ env:
 jobs:
   testflight:
     name: Build and upload
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 45
     environment: production
 
