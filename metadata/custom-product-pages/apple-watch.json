@@ -1,0 +1,17 @@
+{
+  "name": "Apple Watch",
+  "purpose": "Ads aimed at Apple Watch owners. Opens on the Watch frame and the Watch screenshots.",
+  "locale": "en-US",
+  "promotionalText": "Your stress score, on your wrist. Apple Watch reads your HRV through the day, and Ripple helps you reset with a short breath when it climbs.",
+  "screenshots": {
+    "IPHONE_67": [
+      "metadata/screenshots/1.1.0/iphone-69/en-US/03-apple-watch.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/01-stress-score.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/02-ai-coach-ripple.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/04-trends.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/05-breathe.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/06-widgets.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/07-privacy.png"
+    ]
+  }
+}
