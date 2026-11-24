@@ -26,7 +26,7 @@ struct MiniWalkCompleteView: View {
 
             ScrollView {
                 VStack(spacing: 16) {
-                    StressBuddyIllustration(mood: .happy, size: 104)
+                    StressBuddyIllustration(mood: .happy, size: 104, pose: .walking)
                         .frame(width: 104, height: 104)
                         .padding(.top, 32)
                         .accessibilityHidden(true)

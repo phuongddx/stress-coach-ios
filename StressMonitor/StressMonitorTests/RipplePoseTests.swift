@@ -72,4 +72,13 @@ struct RipplePoseTests {
         #expect(view.resolvedPose == .thinking)
         #expect(StressBuddyIllustration(mood: .tired, size: 40).resolvedPose == .sleeping)
     }
+
+    @Test("Character detail tier cells preview their level pose")
+    func moodCellPreviewsLevelPose() {
+        #expect(StressMoodCell.severe.ripplePose == .severe)
+        #expect(StressMoodCell.moderate.ripplePose == .elevated)
+        #expect(StressMoodCell.ripplePose(for: StressMoodCell.severe.mood) == .severe)
+        #expect(StressMoodCell.ripplePose(for: StressMoodCell.mild.mood) == .mild)
+        #expect(StressMoodCell.ripplePose(for: .celebrating) == .celebrating)
+    }
 }

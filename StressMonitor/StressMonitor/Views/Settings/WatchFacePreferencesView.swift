@@ -89,6 +89,16 @@ struct WatchFacePreferencesView: View {
         }
     }
 
+    /// Ripple shows its v2 base pose; other companions keep their artwork.
+    @ViewBuilder
+    private func companionArt(for creature: CharacterCreature) -> some View {
+        if creature.id == "ripple" {
+            RippleV2Image(pose: .base, crop: .full, size: 48)
+        } else {
+            CharacterAssetResolver.characterView(for: creature.id, mood: currentMood, size: 48)
+        }
+    }
+
     private func companionOption(_ creature: CharacterCreature) -> some View {
         let isSelected = activeCompanionId == creature.id
         return Button {
@@ -101,7 +111,7 @@ struct WatchFacePreferencesView: View {
             HapticManager.shared.buttonPress()
         } label: {
             VStack(spacing: 6) {
-                CharacterAssetResolver.characterView(for: creature.id, mood: currentMood, size: 48)
+                companionArt(for: creature)
                     .frame(width: 56, height: 56)
                     .background(Circle().fill(Color.V2.surface2))
                 Text(creature.displayName)

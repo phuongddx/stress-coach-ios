@@ -83,9 +83,27 @@ struct MoodCheckInView: View {
     }
 
     private func face(for level: MoodLevel) -> some View {
-        StressBuddyIllustration(mood: rippleMood(for: level), size: 32)
+        // The button label names the mood, so the drawing stays hidden.
+        StressBuddyIllustration(
+            mood: rippleMood(for: level),
+            size: 32,
+            pose: ripplePose(for: level),
+            crop: .head,
+            lightChip: true
+        )
             .frame(width: 32, height: 32)
             .accessibilityHidden(true)
+    }
+
+    /// The five mood choices map in order onto Ripple's five level poses.
+    private func ripplePose(for level: MoodLevel) -> RipplePose {
+        switch level {
+        case .veryCalm:  return .relaxed
+        case .calm:      return .mild
+        case .neutral:   return .elevated
+        case .tense:     return .high
+        case .veryTense: return .severe
+        }
     }
 
     private func rippleMood(for level: MoodLevel) -> RippleMood {
