@@ -61,7 +61,7 @@ struct RectangularComplicationView: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            CharacterFaceView(creature: .ripple, category: data.isPlaceholder ? nil : data.category, size: 26, showsHalo: false)
+            RippleComplicationHead(category: data.isPlaceholder ? nil : data.category, size: 26)
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
