@@ -329,7 +329,7 @@ struct BreathingSessionView: View {
 
         Button(action: {
             HapticManager.shared.buttonPress()
-            vm.skipCycle()
+            continuity.skipBreathingCycle()
         }) {
             Text("Skip cycle")
         }

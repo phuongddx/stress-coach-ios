@@ -109,11 +109,23 @@ final class SceneContinuity {
         return session
     }
 
+    /// The state last sent to the Live Activity (kept for tests).
+    @ObservationIgnored private(set) var lastBreathingState: BreathingActivityAttributes.ContentState?
+
     /// The session changed phase, paused or resumed: refresh the Live
     /// Activity.
     func breathingDidChange() {
         guard let breathingSession else { return }
+        lastBreathingState = BreathingLiveActivityController.state(for: breathingSession)
         liveActivity?.update(for: breathingSession)
+    }
+
+    /// Skip cycle on the session screen. A skip from inhale runs all four
+    /// phases back to inhale, so no phase change is observed: refresh the
+    /// Live Activity here, as the cycle and the time left did change.
+    func skipBreathingCycle() {
+        breathingSession?.skipCycle()
+        breathingDidChange()
     }
 
     /// Pause / Resume and End from the Live Activity.

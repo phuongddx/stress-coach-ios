@@ -112,6 +112,26 @@ struct SceneContinuityTests {
         #expect(session.isActive == false)
     }
 
+    @Test("Skip cycle from inhale refreshes the Live Activity even though the phase ends where it began")
+    func testSkipBreathingCycle_FromInhale_RefreshesLiveActivity() {
+        let continuity = makeContinuity()
+        let session = attach(continuity)
+        #expect(session.boxPhase == .inhale)
+        continuity.breathingDidChange()
+        let before = continuity.lastBreathingState
+
+        continuity.skipBreathingCycle()
+
+        // Four phases later the phase is .inhale again, so no onChange fires;
+        // the cycle and the time left still moved and must reach the activity.
+        #expect(session.boxPhase == .inhale)
+        let after = continuity.lastBreathingState
+        #expect(after?.cycle == (before?.cycle ?? 0) + 1)
+        #expect(after?.secondsLeft == Int(session.remainingTime.rounded()))
+        #expect(after?.secondsLeft != before?.secondsLeft)
+        continuity.endBreathing()
+    }
+
     @Test("a Live Activity button posted through NotificationCenter is handled")
     func testLiveActivityCommand_ViaNotification() {
         let continuity = makeContinuity()
