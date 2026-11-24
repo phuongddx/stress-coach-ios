@@ -133,6 +133,7 @@ struct ActionView: View {
                     subtitle: "4-4-4-4 · 2 min",
                     route: .boxBreathing
                 )
+                .accessibilityIdentifier("action.boxBreathing")
             }
         }
     }
@@ -183,6 +184,7 @@ struct ActionView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Talk to Ripple. Work through what is on your mind")
                     .accessibilityHint("Double tap to open")
+                    .accessibilityIdentifier("action.reflect.talkToRipple")
                 } else {
                     ActionRowLabel(
                         icon: "bubble.left",

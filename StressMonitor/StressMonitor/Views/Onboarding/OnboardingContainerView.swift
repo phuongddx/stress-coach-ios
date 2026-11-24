@@ -38,6 +38,10 @@ struct OnboardingContainerView: View {
 
     @MainActor
     private func requestHealthKitIfNeeded() async {
+        #if DEBUG
+        // Demo data is simulated: never cover the app with the Health sheet.
+        if DemoMode.isEnabled { return }
+        #endif
         guard HKHealthStore.isHealthDataAvailable() else { return }
         let store = HKHealthStore()
         let hrvType = HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!

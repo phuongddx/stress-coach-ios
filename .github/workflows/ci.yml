@@ -14,11 +14,76 @@ jobs:
     name: Lint & Build
     uses: ./.github/workflows/_test.yml
 
+  # Compiles the Release configuration, which nothing else on GitHub builds.
+  # Catches Release-only compile errors before merge, such as a #Preview that
+  # uses a DEBUG-only symbol (Xcode Cloud Beta run 53 failed to archive on
+  # PlanCard.previewAnnual while the PR was green). Needs no secrets:
+  # GoogleService-Info.plist is optional at build time and signing is off.
+  release-build:
+    name: Release Build
+    runs-on: macos-15
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      XCODE_VERSION: "26.3"
+      SCHEME: "StressMonitor"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Restore Xcode caches
+        uses: ./.github/actions/xcode-cache
+        with:
+          job-key: release
+          # Release objects differ from main's Debug entry, so restoring it buys nothing.
+          compilation-cache: "false"
+
+      - name: Install xcbeautify
+        run: command -v xcbeautify || brew install xcbeautify
+
+      # Same guards as _test.yml Build Widget (iOS) and build.yml (watchOS):
+      # the StressMonitor scheme embeds the watch app, so xcodebuild needs the
+      # watchOS platform installed too.
+      - name: Ensure iOS and watchOS platforms
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "iOS"; then
+            echo "No eligible iOS platform found — downloading..."
+            xcodebuild -downloadPlatform iOS
+          fi
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            echo "watchOS Simulator runtime missing — downloading..."
+            xcodebuild -downloadPlatform watchOS
+          fi
+
+      - name: Build Release
+        run: |
+          set -o pipefail
+          # XCODE_CACHE_ARGS holds build settings; split them into words.
+          # shellcheck disable=SC2086
+          xcodebuild build \
+            -project StressMonitor/StressMonitor.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions
+
   # Posts only on failure (passing PRs stay quiet). Fork PRs get no secrets,
   # so the step skips itself when the webhook is empty.
   notify-failure:
     name: Notify Slack on failure
-    needs: build
+    needs: [build, release-build]
     if: failure()
     runs-on: ubuntu-latest
     env:

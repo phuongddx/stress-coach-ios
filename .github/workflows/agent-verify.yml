@@ -1,0 +1,173 @@
+name: Agent Verify
+
+# Cloud build, test and screenshot loop for coding agents, so they verify a
+# change on a GitHub-hosted macOS runner instead of building on the Mac.
+# Runs the same test flags as the PR gate (_test.yml Test), then optionally
+# captures demo-mode screenshots with AXe, and uploads both as artifacts.
+#
+# A push to agent/** runs the full suite with screenshots. To run by hand:
+#
+#   gh workflow run agent-verify.yml --ref <branch> \
+#     -f only_testing=StressMonitorTests/<Class>[/<method>] -f screenshots=true
+#   gh run watch <run id> --exit-status
+#   gh run download <run id> -n agent-xcresult -n agent-screenshots
+#
+# Public repo: logs and artifacts are public. No secrets are referenced and the
+# screenshots show demo-mode sample data only.
+
+on:
+  push:
+    branches: ["agent/**"]
+  workflow_dispatch:
+    inputs:
+      only_testing:
+        description: "Comma-separated Target/Class[/method] to pass as -only-testing (empty runs every test)"
+        type: string
+        default: ""
+      screenshots:
+        description: "Capture demo-mode screenshots with AXe"
+        type: boolean
+        default: true
+      device:
+        description: "Simulator device name"
+        type: string
+        default: "iPhone 16"
+
+concurrency:
+  group: agent-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  XCODE_VERSION: "26.3"
+  SCHEME: "StressMonitor"
+  DEVICE: ${{ inputs.device || 'iPhone 16' }}
+  SCREENSHOTS: ${{ github.event_name == 'push' || inputs.screenshots }}
+  ONLY_TESTING: ${{ inputs.only_testing }}
+  LANG: "en_US.UTF-8"
+
+jobs:
+  verify:
+    name: Verify (tests + screenshots)
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+          xcodebuild -version
+
+      - name: Restore Xcode caches
+        uses: ./.github/actions/xcode-cache
+        with:
+          job-key: agent-verify
+          restore-from: build   # restore main's Build entry; agent branches never save
+
+      - name: Install xcbeautify
+        run: command -v xcbeautify || brew install xcbeautify
+
+      # The scheme also builds the embedded Watch app (same guard as build.yml).
+      - name: Ensure watchOS Simulator runtime
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            echo "watchOS Simulator runtime missing — downloading..."
+            xcodebuild -downloadPlatform watchOS
+          fi
+
+      - name: Boot simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | jq -r --arg name "$DEVICE" '
+            [.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS-"))
+             | {runtime: (.key | capture("iOS-(?<v>[0-9-]+)$").v | split("-") | map(tonumber)),
+                device: (.value[] | select(.name == $name))}]
+            | sort_by(.runtime) | last | .device.udid // empty')
+          if [ -z "$UDID" ]; then
+            echo "error: no available simulator named \"$DEVICE\"" >&2
+            xcrun simctl list devices available
+            exit 1
+          fi
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          echo "UDID=$UDID" >> "$GITHUB_ENV"
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          ONLY=()
+          IFS=',' read -ra FILTERS <<< "$ONLY_TESTING"
+          for f in "${FILTERS[@]}"; do
+            f="${f#"${f%%[![:space:]]*}"}"
+            f="${f%"${f##*[![:space:]]}"}"
+            if [ -n "$f" ]; then ONLY+=("-only-testing:$f"); fi
+          done
+          if [ "${#ONLY[@]}" -gt 0 ]; then
+            echo "Running only: ${ONLY[*]}"
+          else
+            echo "Running every test"
+          fi
+          # XCODE_CACHE_ARGS holds build settings and must word-split.
+          # shellcheck disable=SC2086
+          xcodebuild test \
+            -project StressMonitor/StressMonitor.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,id=$UDID" \
+            -derivedDataPath build \
+            -resultBundlePath TestResults.xcresult \
+            -skipPackagePluginValidation \
+            -parallel-testing-enabled NO \
+            -maximum-concurrent-test-simulator-destinations 1 \
+            "${ONLY[@]}" \
+            $XCODE_CACHE_ARGS \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            | xcbeautify --renderer github-actions
+
+      - name: Summarize test results
+        if: always()
+        run: |
+          [ -d TestResults.xcresult ] || exit 0
+          xcrun xcresulttool get test-results summary --path TestResults.xcresult > summary.json
+          {
+            echo "### Agent Verify"
+            jq -r '"\(.result): \(.passedTests) passed, \(.failedTests) failed, \(.skippedTests) skipped of \(.totalTestCount)"' summary.json
+            echo
+            echo "Filter: ${ONLY_TESTING:-none (every test)} · Device: $DEVICE · Screenshots: $SCREENSHOTS"
+            echo
+            echo "Artifacts: \`agent-xcresult\`$([ "$SCREENSHOTS" = "true" ] && echo ", \`agent-screenshots\`")"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Install AXe
+        if: env.SCREENSHOTS == 'true'
+        run: |
+          brew install cameroncooke/axe/axe
+          axe --version
+
+      - name: Capture screenshots
+        if: env.SCREENSHOTS == 'true'
+        env:
+          OUT_DIR: build/agent-screenshots
+          DEBUG_DIR: build/agent-screenshots/debug
+        run: scripts/screenshots/capture.sh "$UDID" build/Build/Products/Debug-iphonesimulator/StressMonitor.app
+
+      - name: Upload xcresult
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-xcresult
+          path: TestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Upload screenshots
+        if: always() && env.SCREENSHOTS == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-screenshots
+          path: build/agent-screenshots
+          if-no-files-found: warn
+          retention-days: 7

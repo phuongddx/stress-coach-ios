@@ -33,15 +33,10 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
           xcodebuild -version
 
-      - name: Cache SPM Packages
-        uses: actions/cache@v4
+      - name: Xcode cache
+        uses: ./.github/actions/xcode-cache
         with:
-          path: |
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/checkouts
-            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages/repositories
-          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            spm-${{ runner.os }}-
+          job-key: build
 
       # The StressMonitor scheme embeds the watch app, so xcodebuild refuses to
       # build it without a watchOS simulator runtime installed.
@@ -55,11 +50,13 @@ jobs:
       - name: Build app and test target
         run: |
           set -o pipefail
+          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
           xcodebuild build-for-testing \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "$SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build \
             -skipPackagePluginValidation \
+            $XCODE_CACHE_ARGS \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO
