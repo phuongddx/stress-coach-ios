@@ -1,17 +1,18 @@
 import SwiftUI
+import WidgetKit
 
 // MARK: - StressTier (Widget)
 
-/// Five-band stress representation for the Ripple 💧 character.
+/// Five-band stress representation for the Ripple character.
 ///
 /// **Design rule:** never show a numeric stress score.
-/// The character's facial expression *is* the indicator.
+/// The character's pose (`WidgetRipplePose`) *is* the indicator.
 ///
-/// - 0…20  → 😴  "Resting"
-/// - 21…40 → 😊  "Calm"
-/// - 41…60 → 😐  "Balanced"
-/// - 61…80 → 😰  "Tense"
-/// - 81…100→ 🐚  "Overwhelmed"
+/// - 0…20  → "Resting"
+/// - 21…40 → "Calm"
+/// - 41…60 → "Balanced"
+/// - 61…80 → "Tense"
+/// - 81…100→ "Overwhelmed"
 enum WidgetStressTier: Int, CaseIterable, Sendable {
     case resting = 0
     case calm = 1
@@ -39,26 +40,6 @@ enum WidgetStressTier: Int, CaseIterable, Sendable {
         case .moderate: return .balanced
         case .high:     return .tense
         case .severe:   return .overwhelmed
-        }
-    }
-
-    var emoji: String {
-        switch self {
-        case .resting:     return "😴"
-        case .calm:        return "😊"
-        case .balanced:    return "😐"
-        case .tense:       return "😰"
-        case .overwhelmed: return "🐚"
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .resting:     return "Resting"
-        case .calm:        return "Calm"
-        case .balanced:    return "Balanced"
-        case .tense:       return "Tense"
-        case .overwhelmed: return "Overwhelmed"
         }
     }
 
@@ -91,12 +72,19 @@ enum WidgetPalette {
 // MARK: - WidgetCharacterFace
 
 /// Reusable Ripple character face for widgets.
-/// Shows emoji on an accent-coloured ring — **never a numeric score**.
+/// Shows the Ripple v2 head for the category on an accent-coloured ring —
+/// **never a numeric score**. `nil` (no reading yet) shows the base pose.
 struct WidgetCharacterFace: View {
-    let tier: WidgetStressTier
+    let category: StressCategory?
     var size: CGFloat = 64
     var showsRing: Bool = true
     var glow: Bool = false
+
+    private var tier: WidgetStressTier {
+        category.map { WidgetStressTier.from(category: $0) } ?? .resting
+    }
+
+    private var pose: WidgetRipplePose { WidgetRipplePose.from(category: category) }
 
     var body: some View {
         ZStack {
@@ -120,15 +108,23 @@ struct WidgetCharacterFace: View {
                     .blur(radius: size * 0.06)
             }
 
-            Text(tier.emoji)
-                .font(.system(size: emojiSize))
+            // Full colour in tinted / accented rendering (spec §4.4) so the
+            // face stays readable instead of being flattened to the tint.
+            Image(pose.headAssetName)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+                .scaledToFit()
+                .frame(width: headSize, height: headSize)
         }
         .frame(width: size, height: size)
-        .accessibilityLabel(tier.label)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(pose.accessibilityLabel)
     }
 
     private var ringWidth: CGFloat { max(3, size * 0.05) }
-    private var emojiSize: CGFloat { size * (showsRing ? 0.42 : 0.6) }
+    /// The head art reaches the corners of its 512 artboard (ears), so keep it
+    /// inside the ring / disc.
+    private var headSize: CGFloat { size * (showsRing ? 0.62 : 0.92) }
     private var fillFraction: CGFloat {
         CGFloat(tier.rawValue + 1) / CGFloat(WidgetStressTier.allCases.count)
     }
