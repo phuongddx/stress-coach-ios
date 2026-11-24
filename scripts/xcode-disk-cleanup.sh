@@ -107,10 +107,15 @@ fi
 echo
 
 # --- Old DerivedData folders ------------------------------------------------
-echo "== DerivedData folders not modified in $DAYS+ days =="
+# A rebuild writes under Build/ or Logs/ without touching the project folder's own
+# mtime, so a folder counts as old only when nothing inside it is newer either.
+echo "== DerivedData folders with nothing modified in $DAYS+ days =="
 if [[ -d "$DERIVED_DATA" ]]; then
   found=0
   while IFS= read -r -d '' entry; do
+    if [[ -n "$(find "$entry" ! -mtime +"$DAYS" -print -quit 2>/dev/null)" ]]; then
+      continue
+    fi
     found=1
     printf '  %-8s %s\n' "$(dir_size "$entry")" "$(basename "$entry")"
     if [[ $DELETE -eq 1 ]]; then
