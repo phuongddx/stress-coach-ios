@@ -1,0 +1,17 @@
+{
+  "name": "Breathe",
+  "purpose": "Search and ads around calm, relief and anxiety keywords. Opens on the 2-minute breathing frame.",
+  "locale": "en-US",
+  "promotionalText": "Feeling tense? Take two minutes. Follow a guided box breath with Ripple, then watch your stress score settle on iPhone and Apple Watch.",
+  "screenshots": {
+    "IPHONE_67": [
+      "metadata/screenshots/1.1.0/iphone-69/en-US/05-breathe.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/01-stress-score.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/02-ai-coach-ripple.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/03-apple-watch.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/04-trends.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/06-widgets.png",
+      "metadata/screenshots/1.1.0/iphone-69/en-US/07-privacy.png"
+    ]
+  }
+}
