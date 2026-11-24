@@ -1,90 +1,47 @@
 import SwiftUI
 
 // MARK: - Circular Stress View
-/// SwiftUI view component for circular stress display
-/// Provides a reusable view that can be used in both complications and the main app
+/// Reusable circular stress display (UI V2): the shared 240° gauge with the
+/// score in the centre and the tier shown as colour + shape + name.
 struct CircularStressView: View {
     let stressLevel: Double
     let category: StressCategory
     let showLabel: Bool
     let size: CGFloat
-    let characterEmoji: String?
 
     init(
         stressLevel: Double,
         category: StressCategory,
         showLabel: Bool = true,
-        size: CGFloat = 120,
-        characterEmoji: String? = nil
+        size: CGFloat = 120
     ) {
         self.stressLevel = stressLevel
         self.category = category
         self.showLabel = showLabel
         self.size = size
-        self.characterEmoji = characterEmoji
     }
 
     var body: some View {
-        ZStack {
-            // Background ring (full circle, subtle gray)
-            Circle()
-                .stroke(
-                    Color.gray.opacity(0.15),
-                    style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
-                )
-
-            // Stress level ring (color-coded, partial fill)
-            Circle()
-                .trim(from: 0, to: stressFraction)
-                .stroke(
-                    category.color,
-                    style: StrokeStyle(lineWidth: ringWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .animation(.spring(response: 0.6, dampingFraction: 0.8), value: stressFraction)
-
-            // Center content
-            VStack(spacing: verticalSpacing) {
-                if let characterEmoji {
-                    Text(characterEmoji)
-                        .font(.system(size: emojiSize)) // dated exception 2026-09-05: parametric accessory ring geometry — font proportional to slot size
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7) // dated exception 2026-09-05: accessory ring interior — slot cannot accommodate the ramp
-                }
-
-                // Stress level number
-                Text(stressLevelText)
-                    .font(.system(size: textSize, weight: .bold, design: .rounded)) // dated exception 2026-09-05: parametric accessory ring geometry — font proportional to slot size
-                    .foregroundColor(category.color)
+        WatchStressGauge(score: stressLevel, lineWidth: max(4, size * 0.08)) {
+            VStack(spacing: 2) {
+                Text("\(Int(stressLevel.rounded()))")
+                    .font(.v2Number(.title3, weight: .bold))
+                    .foregroundStyle(WatchV2.ink)
                     .contentTransition(.numericText(value: stressLevel))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
 
-                // Category label (optional)
                 if showLabel {
-                    Text(category.label)
-                        .font(.system(size: labelSize, weight: .medium)) // dated exception 2026-09-05: parametric accessory ring geometry — font proportional to slot size
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7) // dated exception 2026-09-05: accessory ring interior — slot cannot accommodate the ramp
+                    WatchTierBadge(category: category, font: .caption2.weight(.semibold))
+                } else {
+                    Image(systemName: category.icon)
+                        .font(.caption2)
+                        .imageScale(.small)
+                        .foregroundStyle(category.color)
                 }
             }
         }
         .frame(width: size, height: size)
-    }
-
-    // MARK: - Layout Constants
-    private var ringWidth: CGFloat { size * 0.08 }
-    private var textSize: CGFloat { size * 0.22 }
-    private var emojiSize: CGFloat { size * 0.18 }
-    private var labelSize: CGFloat { size * 0.10 }
-    private var verticalSpacing: CGFloat { size * 0.02 }
-
-    // MARK: - Computed Properties
-    private var stressFraction: CGFloat {
-        CGFloat(min(max(stressLevel, 0), 100) / 100.0)
-    }
-
-    private var stressLevelText: String {
-        "\(Int(stressLevel.rounded()))"
     }
 }
 

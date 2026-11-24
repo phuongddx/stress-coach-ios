@@ -4,8 +4,8 @@ import SwiftUI
 
 /// Compact 7-day stress bar chart (iOS DS §12 vocabulary).
 ///
-/// Hairline gridlines, tier-coloured rounded-top bars, today's bar
-/// outlined in accent-strong with a tinted fill.  Day labels in SF Mono.
+/// Hairline gridlines and rounded bars in the V2 tier fill colours. Today's
+/// day label is drawn in full ink; other labels in ink3.
 /// Each bar's fill colour is resolved from the per-day average using the
 /// 5-tier stress scale so the chart doubles as a week-at-a-glance read.
 struct StressBarChart: View {
@@ -14,8 +14,8 @@ struct StressBarChart: View {
     var todayIndex: Int { entries.count - 1 }
 
     /// Chart geometry (matches the watch design output).
-    private let barCornerRadius: CGFloat = 3
-    private let barWidth: CGFloat = 18
+    private let barCornerRadius: CGFloat = 4
+    private let maxBarWidth: CGFloat = 18
     private let gridlineTopOpacity: Double = 0.07
     private let baselineOpacity: Double = 0.12
 
@@ -41,13 +41,13 @@ struct StressBarChart: View {
         var topLine = Path()
         topLine.move(to: CGPoint(x: leftEdge, y: gridTop))
         topLine.addLine(to: CGPoint(x: rightEdge, y: gridTop))
-        ctx.stroke(topLine, with: .color(WatchDesignTokens.inkSecondary.opacity(gridlineTopOpacity)),
+        ctx.stroke(topLine, with: .color(WatchV2.ink.opacity(gridlineTopOpacity)),
                    lineWidth: 0.5)
 
         var midLine = Path()
         midLine.move(to: CGPoint(x: leftEdge, y: gridMid))
         midLine.addLine(to: CGPoint(x: rightEdge, y: gridMid))
-        ctx.stroke(midLine, with: .color(WatchDesignTokens.inkSecondary.opacity(gridlineTopOpacity)),
+        ctx.stroke(midLine, with: .color(WatchV2.ink.opacity(gridlineTopOpacity)),
                    lineWidth: 0.5)
 
         var baseLine = Path()
@@ -63,6 +63,7 @@ struct StressBarChart: View {
         let availableHeight = baseline - topLimit
         let count = CGFloat(entries.count)
         let slot = size.width / count
+        let barWidth = min(maxBarWidth, slot * 0.72)
         let xPadding: CGFloat = (slot - barWidth) / 2
 
         for (i, entry) in entries.enumerated() {
@@ -74,16 +75,7 @@ struct StressBarChart: View {
             let rect = CGRect(x: x, y: y, width: barWidth, height: h)
             let path = Path(roundedRect: rect, cornerRadius: barCornerRadius, style: .continuous)
             let category = StressCategory.category(for: level)
-            let isToday = i == todayIndex
-
-            if isToday {
-                // Today: tinted fill + accent-strong outline.
-                ctx.fill(path, with: .color(category.color.opacity(0.15)))
-                ctx.stroke(path, with: .color(WatchDesignTokens.accentStrong),
-                           lineWidth: 1.5)
-            } else {
-                ctx.fill(path, with: .color(category.color.opacity(0.92)))
-            }
+            ctx.fill(path, with: .color(category.fillColor))
         }
     }
 
@@ -93,13 +85,13 @@ struct StressBarChart: View {
         let slot = size.width / count
         for (i, entry) in entries.enumerated() {
             let isToday = i == todayIndex
-            let color = isToday ? WatchDesignTokens.accentStrong : WatchDesignTokens.muted
+            let color = isToday ? WatchV2.ink : WatchV2.ink3
             let resolved = ctx.resolve(
                 Text(entry.dayLabel)
-                    .font(.system(size: 7, design: .monospaced)) // dated exception 2026-09-05: canvas-drawn chart day label — geometry-derived (D-09)
+                    .font(isToday ? .caption2.weight(.bold) : .caption2)
                     .foregroundColor(color)
             )
-            let textSize = resolved.measure(in: CGSize(width: slot, height: 12))
+            let textSize = resolved.measure(in: CGSize(width: slot, height: size.height))
             let origin = CGPoint(
                 x: CGFloat(i) * slot + (slot - textSize.width) / 2,
                 y: baseline + 4
