@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Before/after HRV comparison chart matching the `.hrv-diff-chart` from
-/// `14-breathing-summary.html`.
+/// Before/after HRV comparison chart (UI V2 `S.summary`), drawn in
+/// `Color.V2` tokens for light and dark.
 ///
 /// Renders a smooth ascending path from `before` to `after` with a gradient
 /// fill underneath, a dashed baseline at the "before" level, and labelled
@@ -11,22 +11,20 @@ struct BeforeAfterHRVChart: View {
     var before: Double
     var after: Double
 
-    private let beforeColor = Color(hex: "#34D399")    // --hrv-color / success
-    private let mutedLabel = Color(hex: "#8E8E93")      // --muted-2
-    private let separatorColor = Color(red: 60/255, green: 60/255, blue: 67/255).opacity(0.12)
+    private let beforeColor = Color.V2.accent
+    private let mutedLabel = Color.V2.ink3
+    private let separatorColor = Color.V2.line2
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header row
             HStack {
                 Text("HRV across session")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color(hex: "#3C3C43"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.V2.ink)
                 Spacer()
-                Text("live")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .tracking(0.4)
-                    .textCase(.uppercase)
+                Text("Live")
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(mutedLabel)
             }
 
@@ -51,10 +49,11 @@ struct BeforeAfterHRVChart: View {
                     .stroke(separatorColor, style: StrokeStyle(lineWidth: 1, dash: [3, 3]))
 
                     // Before label
-                    Text("before \(Int(before))ms")
-                        .font(.system(size: 9))
+                    Text("before \(Int(before)) ms")
+                        .font(.caption2.monospacedDigit())
                         .foregroundStyle(mutedLabel)
-                        .position(x: 36, y: beforeY - 8)
+                        .fixedSize()
+                        .position(x: 40, y: beforeY - 10)
 
                     // Gradient fill under the curve
                     Path { p in
@@ -94,10 +93,11 @@ struct BeforeAfterHRVChart: View {
                         .position(x: w - 2, y: clampedAfterY)
 
                     // After label
-                    Text("\(Int(after))ms after")
-                        .font(.system(size: 9, weight: .bold))
+                    Text("\(Int(after)) ms after")
+                        .font(.caption2.weight(.bold).monospacedDigit())
                         .foregroundStyle(beforeColor)
-                        .position(x: w - 40, y: clampedAfterY - 10)
+                        .fixedSize()
+                        .position(x: w - 44, y: clampedAfterY - 12)
                 }
             }
             .frame(height: 120)
@@ -109,10 +109,9 @@ struct BeforeAfterHRVChart: View {
 }
 
 #Preview("BeforeAfterHRVChart") {
-    BeforeAfterHRVChart(before: 52, after: 68)
-        .padding(16)
-        .background(Color.white)
-        .cornerRadius(18)
-        .padding(40)
-        .background(Color(hex: "#F2F2F7"))
+    V2Card {
+        BeforeAfterHRVChart(before: 52, after: 68)
+    }
+    .padding(40)
+    .background(Color.V2.bg)
 }
