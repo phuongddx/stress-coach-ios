@@ -66,21 +66,31 @@ shot() {
   echo "captured $OUT_DIR/$1.png"
 }
 
-# allow_health: accept the system's Health Access sheet. It belongs to another
-# process, so it is not in the app's accessibility tree: tap "Turn On All", then
-# "Allow", where an iPhone 16 (393x852 pt) draws them. The app asks twice on a
+# allow_health: accept the system's Health Access sheet if it is showing: tap
+# "Turn On All", then "Allow", found by their labels. The app may ask twice on a
 # fresh simulator: at launch, and for the habit types when Action first opens.
+# When the sheet is not up, nothing is tapped, so no tap can land on the app.
 allow_health() {
-  sleep 5
-  axe tap -x 81 -y 476 --udid "$UDID" >/dev/null
-  sleep 1
-  axe tap -x 196 -y 727 --udid "$UDID" >/dev/null
+  local deadline=$((SECONDS + ${1:-10}))
+  until ui | python3 "$HERE/axe_ui.py" has "Turn On All"; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "no Health Access sheet; nothing tapped"
+      return 0
+    fi
+    sleep 1
+  done
+  tap "Turn On All"
+  wait_for "Allow" 10
+  tap "Allow" --lowest
   sleep 2
 }
 
 launch() {
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
-  xcrun simctl launch "$UDID" "$BUNDLE_ID" -demo-mode -hasCompletedOnboarding YES
+  # -didShowOnboardingPaywall YES (OnboardingPaywallGate.didShowKey): the
+  # one-time Plus paywall would otherwise cover Home on a fresh simulator.
+  xcrun simctl launch "$UDID" "$BUNDLE_ID" -demo-mode -hasCompletedOnboarding YES \
+    -didShowOnboardingPaywall YES
   wait_for "Trends" 90        # the tab bar is up
 }
 
