@@ -41,6 +41,8 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: release
+          # Release objects differ from main's Debug entry, so restoring it buys nothing.
+          compilation-cache: "false"
 
       - name: Install xcbeautify
         run: command -v xcbeautify || brew install xcbeautify

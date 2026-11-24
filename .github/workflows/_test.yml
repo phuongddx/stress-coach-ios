@@ -35,6 +35,7 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: lint-build
+          restore-from: build   # main saves only the Build job's entry
 
       - name: Run SwiftLint
         run: |
@@ -107,6 +108,7 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: watchos
+          compilation-cache: "false"   # short job; not worth an entry per main commit
 
       - name: Install xcpretty
         run: gem install xcpretty --no-document
@@ -147,6 +149,7 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: widget
+          compilation-cache: "false"   # short job; not worth an entry per main commit
 
       - name: Install xcpretty
         run: gem install xcpretty --no-document
@@ -193,6 +196,7 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: test
+          restore-from: build   # main saves only the Build job's entry
 
       # No CI-only test gate: the past CI host stall was a SwiftData
       # container-lifetime bug in test fixtures (now kept alive per test).

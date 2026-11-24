@@ -66,6 +66,7 @@ jobs:
         uses: ./.github/actions/xcode-cache
         with:
           job-key: agent-verify
+          restore-from: build   # restore main's Build entry; agent branches never save
 
       - name: Install xcbeautify
         run: command -v xcbeautify || brew install xcbeautify

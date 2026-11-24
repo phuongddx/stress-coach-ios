@@ -10,13 +10,25 @@ description: >-
 #       job-key: test
 #   - run: xcodebuild build ... -derivedDataPath build $XCODE_CACHE_ARGS ...
 #
-# Saving happens in the post steps of the nested actions/cache steps (only when
-# the job succeeds). Callers do nothing else.
+# SwiftPM is saved in the post step of the nested actions/cache step (only when the
+# job succeeds). The compilation cache is saved only on main (see below); on pull
+# requests and other branches it is restored, never saved. Callers do nothing else.
 
 inputs:
   job-key:
-    description: Unique per job (lint-build, watchos, widget, test, build, release, agent-verify). Scopes the compilation cache.
+    description: Names the job (lint-build, watchos, widget, test, build, release, agent-verify). Scopes the compilation cache entry this job saves on main.
     required: true
+  compilation-cache:
+    description: '"false" skips the compilation cache entirely (no restore, no save, no XCODE_CACHE_ARGS).'
+    required: false
+    default: "true"
+  restore-from:
+    description: >-
+      The job-key whose compilation cache this job restores. Defaults to job-key.
+      Only the Build job (build.yml) runs on pushes to main, so PR jobs restore
+      from "build", the one entry main keeps fresh.
+    required: false
+    default: ""
   derived-data-path:
     description: The -derivedDataPath the job passes to xcodebuild.
     required: false
@@ -31,7 +43,7 @@ outputs:
     # actions/cache (unlike actions/cache/restore) has no cache-matched-key output;
     # its cache-hit is "true" on an exact hit, "false" on a restore-keys match and
     # empty on a miss, so non-empty means something was restored.
-    value: ${{ steps.xcc.outputs.cache-hit != '' }}
+    value: ${{ steps.xcc.outputs.cache-hit != '' || steps.xcc-restore.outputs.cache-matched-key != '' }}
 
 runs:
   using: composite
@@ -65,16 +77,32 @@ runs:
     # SwiftPM package targets: the setting is passed on the command line, so it reaches
     # package targets too, but whether they produce cache hits on Xcode 26.3 is
     # unconfirmed (verify on first run).
-    - name: Cache compilation results
+    #
+    # Saved only on main (one entry per main commit, from the Build job); every other
+    # ref restores the newest main entry and saves nothing, so pull requests do not
+    # fill the repository's 10 GB cache with a few hundred MB per job per commit.
+    - name: Cache compilation results (main, restore and save)
       id: xcc
+      if: inputs.compilation-cache == 'true' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
       uses: actions/cache@v4
       with:
         path: ${{ inputs.derived-data-path }}/CompilationCache.noindex
         key: xcc-v1-${{ runner.os }}-${{ inputs.job-key }}-${{ github.sha }}
         restore-keys: |
-          xcc-v1-${{ runner.os }}-${{ inputs.job-key }}-
+          xcc-v1-${{ runner.os }}-${{ inputs.restore-from || inputs.job-key }}-
+
+    - name: Restore compilation results (other refs, restore only)
+      id: xcc-restore
+      if: inputs.compilation-cache == 'true' && !(github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ inputs.derived-data-path }}/CompilationCache.noindex
+        key: xcc-v1-${{ runner.os }}-${{ inputs.restore-from || inputs.job-key }}-${{ github.sha }}
+        restore-keys: |
+          xcc-v1-${{ runner.os }}-${{ inputs.restore-from || inputs.job-key }}-
 
     - name: Enable compilation caching
+      if: inputs.compilation-cache == 'true'
       shell: bash
       run: echo "XCODE_CACHE_ARGS=COMPILATION_CACHE_ENABLE_CACHING=YES" >> "$GITHUB_ENV"
     # --- end compilation cache ---
@@ -85,7 +113,11 @@ runs:
         DD: ${{ inputs.derived-data-path }}
         JOB_KEY: ${{ inputs.job-key }}
         SPM_HIT: ${{ steps.spm.outputs.cache-hit }}
+        XCC_ENABLED: ${{ inputs.compilation-cache }}
         XCC_HIT: ${{ steps.xcc.outputs.cache-hit }}
+        XCC_SAVES: ${{ steps.xcc.outcome == 'success' }}
+        XCC_RO_KEY: ${{ steps.xcc-restore.outputs.cache-matched-key }}
+        XCC_RO_PRIMARY: ${{ steps.xcc-restore.outputs.cache-primary-key }}
       run: |
         status() {
           case "$1" in
@@ -102,7 +134,15 @@ runs:
           echo "  SwiftPM:     $(status "$SPM_HIT")"
           echo "    $DD/SourcePackages/checkouts:     $(size "$DD/SourcePackages/checkouts")"
           echo "    $DD/SourcePackages/repositories:  $(size "$DD/SourcePackages/repositories")"
-          echo "  Compilation: $(status "$XCC_HIT")"
+          if [ "$XCC_ENABLED" != "true" ]; then
+            echo "  Compilation: off for this job"
+          elif [ "$XCC_SAVES" = "true" ]; then
+            echo "  Compilation: $(status "$XCC_HIT"); saves on success (main)"
+          elif [ -n "$XCC_RO_KEY" ]; then
+            echo "  Compilation: restored $XCC_RO_KEY (restore only)"
+          else
+            echo "  Compilation: miss, nothing on main yet (restore only, ${XCC_RO_PRIMARY%-*}-*)"
+          fi
           echo "    $DD/CompilationCache.noindex:     $(size "$DD/CompilationCache.noindex")"
           echo "  XCODE_CACHE_ARGS=${XCODE_CACHE_ARGS:-<empty>}"
         } | tee -a "$GITHUB_STEP_SUMMARY"
