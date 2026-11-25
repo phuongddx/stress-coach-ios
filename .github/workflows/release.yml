@@ -1,13 +1,11 @@
-name: App Store Release
+name: App Store Metadata Upload
+
+# Uploads listing text and screenshots (fastlane `release` lane, deliver with
+# submit_for_review: false). It never builds, attaches a build or submits for
+# review. Release flow: RELEASING.md.
 
 on:
   workflow_dispatch:
-    inputs:
-      submit_for_review:
-        description: "Submit for App Store review?"
-        required: false
-        default: true
-        type: boolean
 
 concurrency:
   group: release-${{ github.ref }}
@@ -18,7 +16,7 @@ env:
 
 jobs:
   release:
-    name: Submit to App Store
+    name: Upload App Store metadata
     runs-on: macos-15
     timeout-minutes: 20
     environment: production
@@ -39,7 +37,7 @@ jobs:
           bundle config path vendor/bundle
           bundle install --jobs 4 --retry 3
 
-      - name: Submit for App Store Review
+      - name: Upload metadata and screenshots
         env:
           APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -59,4 +57,4 @@ jobs:
 
       - name: Notify
         if: always()
-        run: echo "Release workflow completed. Check App Store Connect for review status."
+        run: echo "Metadata upload finished. Submit for review separately (RELEASING.md)."
