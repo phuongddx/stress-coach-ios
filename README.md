@@ -154,11 +154,12 @@ Select the **StressMonitor** scheme and press ⌘R. Without HealthKit history (f
 
 | Pipeline | Trigger | What it does |
 |---|---|---|
-| Xcode Cloud **Beta** and **Release** | Started by `cd-testflight` / tags `release*` | Archive and upload to TestFlight (internal / external testers), on Xcode "Latest Release". The old Xcode Cloud PR Gate is off; GitHub Actions gates pull requests. |
-| [`ci`](.github/workflows/ci.yml) | Pull request | SwiftLint, iOS, watchOS and widget builds, the test suite, and Release builds with Xcode 26.3 and 27.1 |
+| Xcode Cloud **Beta** | Started by `cd-testflight` (main), or any push to `release/*` | Archive and upload to TestFlight (internal group Qa). The old Xcode Cloud PR Gate is off; GitHub Actions gates pull requests. |
+| Xcode Cloud **Release** | Tags `v*` (e.g. `v1.1.0`) | App Store build (`APP_STORE_ELIGIBLE`), uploaded only. Submission is a separate step, see [RELEASING.md](RELEASING.md) |
+| [`ci`](.github/workflows/ci.yml) | Pull request into `main` or `release/**` | SwiftLint, iOS, watchOS and widget builds, the test suite, and Release builds with Xcode 26.3 and 27.1 |
 | [`cd-testflight`](.github/workflows/cd-testflight.yml) | Green `Build` on `main` | Starts Xcode Cloud Beta through the App Store Connect API and waits for the TestFlight build |
 | [`testflight`](.github/workflows/testflight.yml) | Manual | Emergency TestFlight build from GitHub Actions when Xcode Cloud cannot ship |
-| [`release`](.github/workflows/release.yml) | Manual | fastlane `release`: uploads listing text and screenshots for the latest TestFlight build; review is submitted by hand |
+| [`release`](.github/workflows/release.yml) | Manual | "App Store Metadata Upload": fastlane `release` uploads listing text and screenshots only; it never builds, attaches a build or submits |
 | [`screenshots`](.github/workflows/screenshots.yml) | Manual | Captures demo-mode screenshots in a simulator with AXe and opens a pull request |
 | [`agent-verify`](.github/workflows/agent-verify.yml) | Push to `agent/**` | Cloud build, tests and screenshots for coding agents |
 | [`xcodecloud-image-guard`](.github/workflows/xcodecloud-image-guard.yml) | Weekly | Checks every Xcode Cloud workflow's Xcode and macOS pairing is still valid |
