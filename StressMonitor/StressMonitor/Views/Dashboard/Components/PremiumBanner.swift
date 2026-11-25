@@ -11,7 +11,20 @@ struct PremiumBanner: View {
     /// Trial length from the annual product (e.g. "14-day"); nil hides trial copy.
     var trialPeriodUnit: String? = nil
 
-    private static let benefits = "Unlimited chat · all your charts · premium companions"
+    /// The one-line benefit summary. "Premium companions" appears only while
+    /// the Characters feature is on (`CharactersAvailability`).
+    static func benefits(_ availability: CharactersAvailability = .current) -> String {
+        availability == .enabled
+            ? "Unlimited chat · all your charts · premium companions"
+            : "Unlimited chat · all your charts · 30- and 90-day trends"
+    }
+
+    static func accessibilityLabel(_ availability: CharactersAvailability = .current) -> String {
+        let list = benefits(availability).replacingOccurrences(of: " · ", with: ", ")
+        return availability == .enabled
+            ? "StressMonitor Plus. Meet your full companion team. \(list)."
+            : "StressMonitor Plus. \(list)."
+    }
 
     private var trialLine: String? {
         trialPeriodUnit.map { "\($0) free trial" }
@@ -31,7 +44,7 @@ struct PremiumBanner: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("StressMonitor Plus. Meet your full companion team. \(Self.benefits.replacingOccurrences(of: " · ", with: ", ")).")
+        .accessibilityLabel(Self.accessibilityLabel())
         .accessibilityHint(accessibilityHintText)
     }
 
@@ -47,7 +60,7 @@ struct PremiumBanner: View {
                 Text("StressMonitor Plus")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.V2.ink)
-                Text(Self.benefits)
+                Text(Self.benefits())
                     .font(.footnote)
                     .foregroundStyle(Color.V2.ink2)
                     .fixedSize(horizontal: false, vertical: true)

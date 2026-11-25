@@ -200,10 +200,13 @@ struct MainTabView: View {
     private func restoreNavigationIfNeeded() {
         guard !didRestore else { return }
         didRestore = true
-        router.homePath = AppRouter.decodePath(homeData)
-        router.actionPath = AppRouter.decodePath(actionData)
-        router.trendsPath = AppRouter.decodePath(trendsData)
-        router.settingsPath = AppRouter.decodePath(settingsData)
+        // Drop screens hidden in this build (Characters) from paths saved by
+        // an earlier version.
+        let allows = CharactersAvailability.current.allows
+        router.homePath = AppRouter.decodePath(homeData, keeping: allows)
+        router.actionPath = AppRouter.decodePath(actionData, keeping: allows)
+        router.trendsPath = AppRouter.decodePath(trendsData, keeping: allows)
+        router.settingsPath = AppRouter.decodePath(settingsData, keeping: allows)
         if let raw = selectedTabData, let tab = TabItem(rawValue: raw) {
             router.selectedTab = tab
         }

@@ -3,14 +3,22 @@ import SwiftUI
 /// What Plus unlocks (UI V2): one card, an accent icon per row, a bold line
 /// and a one-sentence description.
 struct IAPBenefitsCard: View {
-    private struct Benefit: Identifiable {
+    struct Benefit: Identifiable, Equatable {
         let icon: String
         let title: String
         let description: String
         var id: String { title }
     }
 
-    private let benefits: [Benefit] = [
+    private let benefits = Self.benefits()
+
+    /// What Plus gives. The companions row appears only while the Characters
+    /// feature is on (`CharactersAvailability`).
+    static func benefits(_ availability: CharactersAvailability = .current) -> [Benefit] {
+        availability == .enabled ? coreBenefits + [companionsBenefit] : coreBenefits
+    }
+
+    private static let coreBenefits: [Benefit] = [
         Benefit(
             icon: "bubble.left.and.bubble.right.fill",
             title: "Unlimited AI chat",
@@ -25,13 +33,14 @@ struct IAPBenefitsCard: View {
             icon: "calendar",
             title: "30- and 90-day Trends",
             description: "Look past the last week and spot how your stress changes over months."
-        ),
-        Benefit(
-            icon: "face.smiling",
-            title: "Plus companions",
-            description: "Unlock Ember and Zephyr to join Ripple on your home screen. Lumi unlocks with a 30-day streak."
         )
     ]
+
+    private static let companionsBenefit = Benefit(
+        icon: "face.smiling",
+        title: "Plus companions",
+        description: "Unlock Ember and Zephyr to join Ripple on your home screen. Lumi unlocks with a 30-day streak."
+    )
 
     var body: some View {
         V2Card {

@@ -98,10 +98,14 @@ struct OnboardingSuccessView: View {
                     Text("Water Otter · your companion")
                         .font(.footnote)
                         .foregroundStyle(Color.V2.ink2)
-                    Text("Grows as you keep a streak: Droplet → Ripple → Tidal.")
-                        .font(.footnote)
-                        .foregroundStyle(Color.V2.ink)
-                        .padding(.top, 4)
+                    // Evolution stages are shown only on the Characters
+                    // screen, hidden in 1.1.0 (`CharactersAvailability`).
+                    if CharactersAvailability.isEnabled {
+                        Text("Grows as you keep a streak: Droplet → Ripple → Tidal.")
+                            .font(.footnote)
+                            .foregroundStyle(Color.V2.ink)
+                            .padding(.top, 4)
+                    }
                 }
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
