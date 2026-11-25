@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/readme/hero-dark.png">
-    <img src="docs/readme/hero-light.png" width="100%" alt="Stress AI Coach: Ripple, a kid in an otter onesie, floating calmly beside the app name and the tagline 'Know your stress level from your Apple Watch, and get a calm next step.'">
-  </picture>
+  <img src="docs/readme/share.jpg" width="100%" alt="Stress AI Coach: Ripple in a mint otter suit beside the tagline 'The stress monitor for iPhone and Apple Watch.'">
 </p>
 
 <p align="center">An iPhone and Apple Watch app that turns your heart-rate variability, sleep and activity into a personal stress score, then suggests a calm next step.</p>
