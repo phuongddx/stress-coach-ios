@@ -266,7 +266,7 @@ struct ChatBottomSheetView: View {
                 .foregroundStyle(Color.V2.ink)
                 .accessibilityAddTraits(.isHeader)
 
-            Text("Sees your scores, never raw health data")
+            Text("AI coach · sees your scores, never raw health data")
                 .font(.caption)
                 .foregroundStyle(Color.V2.ink3)
                 .fixedSize(horizontal: subtitleOnOneLine, vertical: true)

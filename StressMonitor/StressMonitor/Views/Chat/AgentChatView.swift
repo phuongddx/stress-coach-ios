@@ -69,7 +69,7 @@ struct AgentChatView: View {
                     .foregroundStyle(Color.V2.ink)
                     .multilineTextAlignment(.center)
 
-                Text("Longer answers that look across your trends. It sees your derived scores only, and it can't diagnose.")
+                Text("AI answers that look across your trends. It sees your derived scores only, it can make mistakes, and it can't diagnose.")
                     .font(.callout)
                     .foregroundStyle(Color.V2.ink2)
                     .multilineTextAlignment(.center)
