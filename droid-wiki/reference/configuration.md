@@ -2,7 +2,7 @@
 
 ## Info.plist
 
-The iOS app's Info.plist is at `StressMonitor/StressMonitor/Info.plist`; most privacy strings are generated from `INFOPLIST_KEY_*` build settings in `project.pbxproj`. Notable keys:
+The iOS app's Info.plist is at `StressMonitor/StressMonitor/Info.plist`. The privacy strings below are declared as `INFOPLIST_KEY_*` build settings in `project.pbxproj`, not in that file. On this toolchain some `INFOPLIST_KEY_*` settings do not reach the product plist (see AGENTS.md, "Info.plist truth"), so confirm a key in the built or archived app's merged Info.plist before relying on it. Notable keys:
 
 | Key | Value | Purpose |
 | --- | --- | --- |
