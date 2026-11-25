@@ -2,7 +2,7 @@
 
 ## Info.plist
 
-The iOS app's Info.plist is at `StressMonitor/Info.plist`. Notable keys:
+The iOS app's Info.plist is at `StressMonitor/StressMonitor/Info.plist`; most privacy strings are generated from `INFOPLIST_KEY_*` build settings in `project.pbxproj`. Notable keys:
 
 | Key | Value | Purpose |
 | --- | --- | --- |
@@ -11,10 +11,6 @@ The iOS app's Info.plist is at `StressMonitor/Info.plist`. Notable keys:
 | `CFBundleVersion` | `$(CURRENT_PROJECT_VERSION)` | Build number |
 | `UIAppFonts` | Lato-Regular, Lato-Medium, Lato-Bold, Lato-Black | Custom fonts loaded by `FontBlaster` |
 | `NSHealthShareUsageDescription` | "We need access to your health data to monitor stress levels." | HealthKit read permission string |
-| `NSCameraUsageDescription` | Camera permission for chat media | Camera access |
-| `NSMicrophoneUsageDescription` | Microphone permission for chat video | Microphone access |
-| `NSPhotoLibraryUsageDescription` | Photo library permission for chat media | Photo access |
-| `NSPhotoLibraryAddUsageDescription` | Save-to-library permission for chat media | Photo add access |
 | `UIBackgroundModes` | fetch, processing | Background app refresh and processing |
 | `NSAppTransportSecurity.NSAllowsLocalNetworking` | true | Allows local networking for development |
 
