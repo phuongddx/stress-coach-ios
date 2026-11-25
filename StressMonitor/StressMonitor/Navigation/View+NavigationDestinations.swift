@@ -22,7 +22,11 @@ extension View {
                 DataDeleteView()
 
             case .characters:
-                CharacterCollectionView()
+                if CharactersAvailability.isEnabled {
+                    CharacterCollectionView()
+                } else {
+                    HiddenRouteView()
+                }
 
             case .appearance:
                 AppearanceSettingsView()
@@ -96,5 +100,17 @@ private struct MeasurementDetailDestination: View {
             predicate: #Predicate<StressMeasurement> { $0.persistentModelID == id }
         )
         return try? modelContext.fetch(descriptor).first
+    }
+}
+
+/// Stands in for a screen hidden in this build (`CharactersAvailability`):
+/// pops itself as soon as it appears, so nothing can land on it.
+private struct HiddenRouteView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        Color.clear
+            .accessibilityHidden(true)
+            .onAppear { dismiss() }
     }
 }

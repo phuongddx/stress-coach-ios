@@ -36,7 +36,9 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(spacing: 12) {
                     meHeroSection
-                    companionBannerSection
+                    if CharactersAvailability.isEnabled {
+                        companionBannerSection
+                    }
                 }
                 plusSection
                 healthDevicesSection
@@ -454,16 +456,18 @@ struct SettingsView: View {
                 value: appearanceLabel,
                 destination: .appearance
             )
-            ActionRowDivider()
-            navRow(
-                icon: AppIconSystem.Setting.characters.sfSymbol,
-                setting: .characters,
-                tint: Color.V2.Companion.blossom,
-                glyph: Color.V2.onAccent,
-                title: "Characters",
-                value: "\(unlockedCharacters.count) of \(CharacterCreature.offeredCharacters.count)",
-                destination: .characters
-            )
+            if CharactersAvailability.isEnabled {
+                ActionRowDivider()
+                navRow(
+                    icon: AppIconSystem.Setting.characters.sfSymbol,
+                    setting: .characters,
+                    tint: Color.V2.Companion.blossom,
+                    glyph: Color.V2.onAccent,
+                    title: "Characters",
+                    value: "\(unlockedCharacters.count) of \(CharacterCreature.offeredCharacters.count)",
+                    destination: .characters
+                )
+            }
             ActionRowDivider()
             toggleRow(
                 icon: AppIconSystem.Setting.haptics.sfSymbol,

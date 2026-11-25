@@ -3,9 +3,11 @@ import SwiftUI
 
 /// Confirmation screen shown after a successful purchase.
 ///
-/// Premium mode (default): unlocks the premium characters (Ember, Zephyr) and
-/// the streak-gated Lumi by updating existing `CharacterUnlock` rows
-/// additively, then lists everything Plus unlocked (UI V2 `S.success`).
+/// Premium mode (default): unlocks the premium characters (Ember, Zephyr) by
+/// updating existing `CharacterUnlock` rows additively, then lists everything
+/// Plus unlocked (UI V2 `S.success`). While the Characters feature is hidden
+/// (`CharactersAvailability`) the rows are still kept up to date, but the
+/// screen shows Ripple alone and lists only chat, charts and trends.
 ///
 /// Pack mode (`purchasedPack` non-nil): a consumable credit-pack top-up —
 /// shows the granted credits and the new balance. No character unlock and no
@@ -73,9 +75,10 @@ struct PurchaseSuccessView: View {
         }
     }
 
-    /// Ripple flanked by the companions Plus unlocks.
+    /// Ripple flanked by the companions Plus unlocks, or Ripple alone while
+    /// the Characters feature is hidden.
     private var companionTrio: some View {
-        let ids = Self.unlockedByPremium
+        let ids = CharactersAvailability.isEnabled ? Self.unlockedByPremium : []
         return HStack(alignment: .bottom, spacing: 0) {
             if let first = ids.first {
                 CharacterAssetResolver.characterView(for: first, mood: .happy, size: 64)
@@ -134,15 +137,11 @@ struct PurchaseSuccessView: View {
                 .accessibilityAddTraits(.isHeader)
 
             VStack(spacing: 0) {
-                unlockedRow(icon: "bubble.left.and.bubble.right.fill", text: "Unlimited AI chat with Ripple")
-                divider
-                unlockedRow(icon: "chart.xyaxis.line", text: "All your charts, unblurred")
-                divider
-                unlockedRow(icon: "calendar", text: "30- and 90-day Trends")
-                divider
-                unlockedRow(icon: "face.smiling", text: companionsLine)
-                divider
-                unlockedRow(icon: "sparkles", text: "All elemental companions and evolution stages")
+                let lines = Self.unlockedLines()
+                ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                    if index > 0 { divider }
+                    unlockedRow(icon: line.icon, text: line.text)
+                }
             }
             .v2CardBackground()
         }
@@ -154,9 +153,26 @@ struct PurchaseSuccessView: View {
         }
     }
 
+    struct UnlockedLine: Equatable {
+        let icon: String
+        let text: String
+    }
+
+    /// What the success screen lists. The companions line appears only while
+    /// the Characters feature is on (`CharactersAvailability`).
+    static func unlockedLines(_ availability: CharactersAvailability = .current) -> [UnlockedLine] {
+        let core = [
+            UnlockedLine(icon: "bubble.left.and.bubble.right.fill", text: "Unlimited AI chat with Ripple"),
+            UnlockedLine(icon: "chart.xyaxis.line", text: "All your charts, unblurred"),
+            UnlockedLine(icon: "calendar", text: "30- and 90-day Trends")
+        ]
+        guard availability == .enabled else { return core }
+        return core + [UnlockedLine(icon: "face.smiling", text: companionsLine)]
+    }
+
     /// "Ember and Zephyr unlocked", from the premium-gated characters.
-    private var companionsLine: String {
-        let names = Self.unlockedByPremium.compactMap { CharacterCreature.find(by: $0)?.displayName }
+    private static var companionsLine: String {
+        let names = unlockedByPremium.compactMap { CharacterCreature.find(by: $0)?.displayName }
         guard !names.isEmpty else { return "Plus companions unlocked" }
         return ListFormatter.localizedString(byJoining: names) + " unlocked"
     }

@@ -17,6 +17,7 @@
 		D1858B03657E705B3A69F771 /* StoreKitProductCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */; };
 		F00A8B56A1D511A3811527F4 /* PaywallPriceMathTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */; };
 		C4163467438CF5A3F76C8E0F /* OnboardingPaywallGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */; };
+		984D231B23BF916C92598D80 /* CharactersAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1947435CB4CD25049FD2DFD8 /* CharactersAvailabilityTests.swift */; };
 		A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */; };
 		39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */; };
 		4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */; };
@@ -137,6 +138,7 @@
 		A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StoreKitProductCatalogTests.swift; path = StressMonitorTests/StoreKitProductCatalogTests.swift; sourceTree = "<group>"; };
 		3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PaywallPriceMathTests.swift; path = StressMonitorTests/PaywallPriceMathTests.swift; sourceTree = "<group>"; };
 		2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = OnboardingPaywallGateTests.swift; path = StressMonitorTests/OnboardingPaywallGateTests.swift; sourceTree = "<group>"; };
+		1947435CB4CD25049FD2DFD8 /* CharactersAvailabilityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CharactersAvailabilityTests.swift; path = StressMonitorTests/CharactersAvailabilityTests.swift; sourceTree = "<group>"; };
 		0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = TrendsRangeLockTests.swift; path = StressMonitorTests/TrendsRangeLockTests.swift; sourceTree = "<group>"; };
 		6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PlusLockedModifierTests.swift; path = StressMonitorTests/PlusLockedModifierTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F600000000F201 /* RipplePoseTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RipplePoseTests.swift; path = StressMonitorTests/RipplePoseTests.swift; sourceTree = "<group>"; };
@@ -350,6 +352,7 @@
 				A41EC256A3DD566A20DAB84B /* StoreKitProductCatalogTests.swift */,
 				3723FD158807B6D94EFFCD3A /* PaywallPriceMathTests.swift */,
 				2B0A2EE959AFEDD9DBD9D4FC /* OnboardingPaywallGateTests.swift */,
+				1947435CB4CD25049FD2DFD8 /* CharactersAvailabilityTests.swift */,
 				0064BAA5F8393828292E35B4 /* TrendsRangeLockTests.swift */,
 				6D16DC399939A030995A4C1B /* PlusLockedModifierTests.swift */,
 				EE14A3833DCE923166318FB5 /* PlusAccessTests.swift */,
@@ -599,6 +602,7 @@
 				D1858B03657E705B3A69F771 /* StoreKitProductCatalogTests.swift in Sources */,
 				F00A8B56A1D511A3811527F4 /* PaywallPriceMathTests.swift in Sources */,
 				C4163467438CF5A3F76C8E0F /* OnboardingPaywallGateTests.swift in Sources */,
+				984D231B23BF916C92598D80 /* CharactersAvailabilityTests.swift in Sources */,
 				A56BA027DDB343B4A7923B96 /* TrendsRangeLockTests.swift in Sources */,
 				39296546D564B0DF426C6887 /* PlusLockedModifierTests.swift in Sources */,
 				4E50E07322651DEAC5A7F24A /* PlusAccessTests.swift in Sources */,

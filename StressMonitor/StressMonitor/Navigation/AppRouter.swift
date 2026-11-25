@@ -76,4 +76,34 @@ final class AppRouter {
         else { return NavigationPath() }
         return NavigationPath(codable)
     }
+
+    /// Decodes a path and cuts it at the first `Route` that `isAllowed`
+    /// rejects, dropping that screen and every screen pushed above it.
+    /// Used on restore so a screen hidden in this build (see
+    /// `CharactersAvailability.allows(_:)`) can't come back from a path saved
+    /// by an earlier version.
+    ///
+    /// `NavigationPath.CodableRepresentation` encodes as a flat JSON array of
+    /// (type name, JSON value) string pairs, top of the stack first.
+    static func decodePath(_ data: Data?, keeping isAllowed: (Route) -> Bool) -> NavigationPath {
+        guard let data,
+              let items = try? JSONDecoder().decode([String].self, from: data),
+              items.count % 2 == 0
+        else { return decodePath(data) }
+
+        let topFirst = stride(from: 0, to: items.count, by: 2).map { (type: items[$0], value: items[$0 + 1]) }
+        var keptBottomFirst: [(type: String, value: String)] = []
+        for item in topFirst.reversed() {
+            if item.type.hasSuffix("Route"),
+               let route = try? JSONDecoder().decode(Route.self, from: Data(item.value.utf8)),
+               !isAllowed(route) {
+                break
+            }
+            keptBottomFirst.append(item)
+        }
+        guard keptBottomFirst.count < topFirst.count else { return decodePath(data) }
+
+        let flat = keptBottomFirst.reversed().flatMap { [$0.type, $0.value] }
+        return decodePath(try? JSONEncoder().encode(flat))
+    }
 }
