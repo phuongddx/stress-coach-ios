@@ -948,7 +948,6 @@
 		"INFOPLIST_KEY_CFBundleDisplayName" = "Stress AI Coach";
 		"INFOPLIST_KEY_ITSAppUsesNonExemptEncryption" = NO;
 		"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.healthcare-fitness";
-		"INFOPLIST_KEY_NSCameraUsageDescription" = "Camera access allows you to capture photos and videos to share in chat conversations.";
 		"INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthUpdateUsageDescription" = "We need to update your health data with stress measurements.";
@@ -997,7 +996,6 @@
 		"INFOPLIST_KEY_CFBundleDisplayName" = "Stress AI Coach";
 		"INFOPLIST_KEY_ITSAppUsesNonExemptEncryption" = NO;
 		"INFOPLIST_KEY_LSApplicationCategoryType" = "public.app-category.healthcare-fitness";
-		"INFOPLIST_KEY_NSCameraUsageDescription" = "Camera access allows you to capture photos and videos to share in chat conversations.";
 		"INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthShareUsageDescription" = "We need access to your health data to monitor stress levels.";
 		"INFOPLIST_KEY_NSHealthUpdateUsageDescription" = "We need to update your health data with stress measurements.";
