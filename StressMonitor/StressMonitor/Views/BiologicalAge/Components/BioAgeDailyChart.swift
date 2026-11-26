@@ -46,6 +46,7 @@ struct BioAgeDailyChart: View {
             }
         }
         .frame(height: chartHeight)
+        .clipped()
     }
 
     private func bars(size: CGSize) -> some View {
@@ -81,16 +82,38 @@ struct BioAgeDailyChart: View {
     }
 
     private func barHeight(for age: Int, in chartHeight: CGFloat) -> CGFloat {
-        let bounds = valueDomain
-        let span = max(bounds.upperBound - bounds.lowerBound, 1)
-        let normalized = (Double(age) - bounds.lowerBound) / span
-        return max(CGFloat(normalized) * chartHeight, 2)
+        let fraction = Self.heightFraction(
+            for: age,
+            estimates: estimates,
+            chronologicalAge: chronologicalAge
+        )
+        return max(fraction * chartHeight, 2)
     }
 
-    private var valueDomain: ClosedRange<Double> {
+    /// Bar height as a share of the plot height, always within `0...1`, so a
+    /// bar or the reference line can never be drawn outside the chart.
+    static func heightFraction(
+        for age: Int,
+        estimates: [DailyBioAgeEstimate],
+        chronologicalAge: Int
+    ) -> CGFloat {
+        let bounds = valueDomain(estimates: estimates, chronologicalAge: chronologicalAge)
+        let normalized = (Double(age) - bounds.lowerBound) / (bounds.upperBound - bounds.lowerBound)
+        return CGFloat(min(max(normalized, 0), 1))
+    }
+
+    /// Plotted value range. When every value is the same (a steady week that
+    /// matches the chronological age) the range is centred on that value, so
+    /// the bars sit at half height instead of being scaled against `0...1`.
+    static func valueDomain(
+        estimates: [DailyBioAgeEstimate],
+        chronologicalAge: Int
+    ) -> ClosedRange<Double> {
         let values = estimates.map { Double($0.estimatedAge) } + [Double(chronologicalAge)]
-        guard let lower = values.min(), let upper = values.max(), upper > lower else {
-            return 0...1
+        let lower = values.min() ?? Double(chronologicalAge)
+        let upper = values.max() ?? Double(chronologicalAge)
+        guard upper > lower else {
+            return (lower - 1)...(upper + 1)
         }
         let padding = (upper - lower) * 0.2
         return (lower - padding)...(upper + padding)
