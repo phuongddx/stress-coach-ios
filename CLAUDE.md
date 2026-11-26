@@ -340,7 +340,7 @@ StressMonitor/
 │   ├── Services/
 │   │   ├── Algorithm/      (MultiFactorStressCalculator, StressCalculator, 5 StressFactor impls)
 │   │   ├── HealthKit/      (HealthKitManager + extensions for Activity/Recovery/Sleep fetch)
-│   │   ├── LLM/            (StressLLMService, ChatContextBuilder)
+│   │   ├── LLM/            (StressLLMService, StressContextPayload — derived-only /chat context; the backend builds the prompt)
 │   │   ├── StoreKit/       (StoreKitService, MockStoreKitService, StoreKitProductCatalog)
 │   │   ├── CloudKit/       (CloudKitManager, CloudKitSyncEngine, CloudKitSchema)
 │   │   ├── Sync/           (SyncManager, ConflictResolver)

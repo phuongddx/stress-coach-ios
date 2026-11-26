@@ -13,7 +13,7 @@ final class SettingsViewModel {
     var streakDays: Int = 0
     private(set) var chatStressResult: StressResult?
     private(set) var chatBaseline: PersonalBaseline?
-    /// Oldest first, as `ChatContextBuilder` expects for trend analysis.
+    /// Oldest first, as handed to the chat for trend analysis.
     private(set) var chatHistory: [StressMeasurement] = []
 
     private let repository: StressRepositoryProtocol
