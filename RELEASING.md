@@ -1,7 +1,11 @@
 # Releasing Stress AI Coach
 
-Release flow A: **trunk + tags**. `main` is the trunk; every App Store version is
-shipped from an annotated `vX.Y.Z` tag on a chosen `main` commit. Adopted
+Release flow A: **trunk + tags**. `main` is the trunk. Normally every App Store
+version is shipped from an annotated `vX.Y.Z` tag on a chosen `main` commit. The
+one exception: a hotfix while `main` holds code that must not ship yet is tagged
+on a `release/X.Y` branch instead (see
+[Hotfix exception](#hotfix-exception-release-branch)). Xcode Cloud `Release`
+filters on the tag prefix `v` only, not on the branch. Adopted
 2026-11-25 (replacing the short-lived release-branch flow B, used once for 1.1.0).
 
 ## Moving parts

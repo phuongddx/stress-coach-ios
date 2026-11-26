@@ -155,7 +155,7 @@ Select the **StressMonitor** scheme and press ⌘R. Without HealthKit history (f
 | Pipeline | Trigger | What it does |
 |---|---|---|
 | Xcode Cloud **Beta** | Started by `cd-testflight` (main), or any push to a `release/*` hotfix branch | Archive and upload to TestFlight (internal group Qa). The old Xcode Cloud PR Gate is off; GitHub Actions gates pull requests. |
-| Xcode Cloud **Release** | Tags `v*` on `main` (e.g. `v1.1.0`) | App Store build (`APP_STORE_ELIGIBLE`), uploaded only. Submission is a separate step, see [RELEASING.md](RELEASING.md) |
+| Xcode Cloud **Release** | Tags `v*` (e.g. `v1.1.0`), normally on `main`; on `release/X.Y` only for the hotfix exception | App Store build (`APP_STORE_ELIGIBLE`), uploaded only. Submission is a separate step, see [RELEASING.md](RELEASING.md) |
 | [`ci`](.github/workflows/ci.yml) | Pull request into `main` or `release/**` | SwiftLint, iOS, watchOS and widget builds, the test suite, and Release builds with Xcode 26.3 and 27.1 |
 | [`cd-testflight`](.github/workflows/cd-testflight.yml) | Green `Build` on `main` | Starts Xcode Cloud Beta through the App Store Connect API and waits for the TestFlight build |
 | [`testflight`](.github/workflows/testflight.yml) | Manual | Emergency TestFlight build from GitHub Actions when Xcode Cloud cannot ship |
