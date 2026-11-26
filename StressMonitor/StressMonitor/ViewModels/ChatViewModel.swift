@@ -64,7 +64,6 @@ final class ChatViewModel {
 
     private let llmService: LLMServiceProtocol
     private var streamingTask: Task<Void, Never>?
-    private let contextBuilder = ChatContextBuilder.self
 
     private(set) var stressResult: StressResult?
     private var baseline: PersonalBaseline?
@@ -202,17 +201,11 @@ final class ChatViewModel {
             coachingStyle: preferencesService?.coachingStyle ?? "supportive"
         )
 
-        // systemPrompt is ignored by StressLLMService — backend builds it
-        let systemPrompt = contextBuilder.buildSystemPrompt(
-            stressResult: stressResult,
-            baseline: baseline,
-            recentHistory: recentHistory
-        )
-
         do {
             let stream = try await llmService.send(
                 messages: messages,
-                systemPrompt: systemPrompt,
+                // The backend owns the system prompt (built from stressContext).
+                systemPrompt: "",
                 stressContext: stressContext
             )
 

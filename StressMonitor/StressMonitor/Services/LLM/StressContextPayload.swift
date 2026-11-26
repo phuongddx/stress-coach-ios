@@ -5,14 +5,15 @@ import Foundation
 /// Structured health context sent to the stress-api backend `/chat` endpoint.
 /// The backend builds the system prompt from this data — the iOS app no longer
 /// builds the prompt locally.
+///
+/// Privacy: this type carries only the app's own derived values (stress
+/// score, category, trends, factor scores). Raw HealthKit readings (HRV,
+/// heart rate, baselines) have no field here, so they cannot be encoded.
+/// The backend also drops them if an older build sends them.
 struct StressContextPayload: Codable, Sendable {
     let stressLevel: Int?
     let stressCategory: String?
     let confidence: Double?
-    let hrv: Double?
-    let heartRate: Double?
-    let baselineHRV: Double?
-    let baselineHR: Double?
     let sleepQuality: Int?
     let sleepHours: Double?
     let activeMinutes: Int?
@@ -54,10 +55,6 @@ struct StressContextPayload: Codable, Sendable {
         case stressLevel = "stress_level"
         case stressCategory = "stress_category"
         case confidence
-        case hrv
-        case heartRate = "heart_rate"
-        case baselineHRV = "baseline_hrv"
-        case baselineHR = "baseline_hr"
         case sleepQuality = "sleep_quality"
         case sleepHours = "sleep_hours"
         case activeMinutes = "active_minutes"
@@ -74,6 +71,8 @@ struct StressContextPayload: Codable, Sendable {
     // MARK: - Builder
 
     /// Build a stress context payload from the current health data available in ChatViewModel.
+    /// `baseline` is accepted for call-site stability but never encoded —
+    /// raw baseline readings stay on the device.
     static func build(
         stressResult: StressResult?,
         baseline: PersonalBaseline?,
@@ -125,13 +124,6 @@ struct StressContextPayload: Codable, Sendable {
             stressLevel: stressResult.map { Int($0.level) },
             stressCategory: stressResult?.category.rawValue,
             confidence: stressResult?.confidence,
-            // Raw HealthKit-derived readings never leave the device — only the
-            // app's own derived stress score/category above do. See
-            // StressContextPayloadTests for the invariant this enforces.
-            hrv: nil,
-            heartRate: nil,
-            baselineHRV: nil,
-            baselineHR: nil,
             sleepQuality: nil,  // Not directly available from StressResult
             sleepHours: nil,
             activeMinutes: nil,

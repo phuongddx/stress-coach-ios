@@ -7,16 +7,52 @@ import XCTest
 /// own analytics output, not HealthKit data itself.
 final class StressContextPayloadTests: XCTestCase {
 
-    func testBuildDoesNotIncludeRawHealthReadings() {
-        let result = StressResult(level: 65, category: .moderate, confidence: 0.9, hrv: 42.5, heartRate: 78)
-        let baseline = PersonalBaseline(restingHeartRate: 60, baselineHRV: 50)
+    /// Every key the backend's derived-only allowlist accepts
+    /// (stress-app-be `sanitizeStressContext`). Anything else on the wire is
+    /// either raw health data or dead weight.
+    private static let derivedKeys: Set<String> = [
+        "stress_level", "stress_category", "confidence", "sleep_quality",
+        "sleep_hours", "active_minutes", "recovery_score", "stress_trend",
+        "stress_trend_delta", "hrv_trend", "sleep_trend", "factor_breakdown",
+        "language", "coaching_style"
+    ]
 
-        let payload = StressContextPayload.build(stressResult: result, baseline: baseline)
+    private func encodedJSON(_ payload: StressContextPayload) throws -> (object: [String: Any], text: String) {
+        let data = try JSONEncoder().encode(payload)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        return (object, String(decoding: data, as: UTF8.self))
+    }
 
-        XCTAssertNil(payload.hrv, "Raw HRV must never leave the device.")
-        XCTAssertNil(payload.heartRate, "Raw heart rate must never leave the device.")
-        XCTAssertNil(payload.baselineHRV, "Raw baseline HRV must never leave the device.")
-        XCTAssertNil(payload.baselineHR, "Raw baseline resting heart rate must never leave the device.")
+    func testEncodedPayloadContainsOnlyDerivedKeysAndNoRawValues() throws {
+        // Distinctive raw readings, so a leak shows up in the encoded text.
+        let result = StressResult(
+            level: 65, category: .severe, confidence: 0.9, hrv: 42.37, heartRate: 78.61,
+            factorBreakdown: FactorBreakdown(hrvComponent: 0.72, hrComponent: 0.61, sleepComponent: nil,
+                                             activityComponent: nil, recoveryComponent: nil,
+                                             dataCompleteness: 0.4)
+        )
+        let baseline = PersonalBaseline(restingHeartRate: 59.13, baselineHRV: 51.29)
+        let history = [
+            StressMeasurement(timestamp: Date(), stressLevel: 65, hrv: 42.37, restingHeartRate: 59.13),
+            StressMeasurement(timestamp: Date(timeIntervalSinceNow: -3600), stressLevel: 50,
+                              hrv: 47.83, restingHeartRate: 59.13)
+        ]
+
+        let payload = StressContextPayload.build(stressResult: result, baseline: baseline, recentHistory: history)
+        let (json, text) = try encodedJSON(payload)
+
+        let unexpected = Set(json.keys).subtracting(Self.derivedKeys)
+        XCTAssertTrue(unexpected.isEmpty, "Non-derived keys on the wire: \(unexpected.sorted())")
+        for raw in ["42.37", "78.61", "59.13", "51.29", "47.83"] {
+            XCTAssertFalse(text.contains(raw), "Raw reading \(raw) leaked into the /chat payload.")
+        }
+        // Derived values still go out.
+        XCTAssertEqual(json["stress_level"] as? Int, 65)
+        XCTAssertEqual(json["stress_category"] as? String, "severe")
+        XCTAssertEqual(json["stress_trend"] as? String, "increasing")
+        let factors = try XCTUnwrap(json["factor_breakdown"] as? [String: Any])
+        XCTAssertEqual(Set(factors.keys), ["hrv", "heart_rate"])
+        XCTAssertEqual((factors["hrv"] as? [String: Double])?["score"], 0.72)
     }
 
     func testBuildStillIncludesDerivedStressScore() {
