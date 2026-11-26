@@ -218,6 +218,40 @@ struct BiologicalAgeViewModelTests {
         #expect(BioAgeDailyChart.accessibilitySummary(for: []) == nil)
     }
 
+    @Test("daily chart bars stay inside the plot for steady, single and outlier weeks")
+    func testDailyChartHeightFraction_StaysWithinPlot() {
+        func estimates(_ ages: [Int]) -> [DailyBioAgeEstimate] {
+            ages.enumerated().map { index, age in
+                DailyBioAgeEstimate(
+                    day: Date(timeIntervalSinceNow: Double(index - ages.count) * 86_400),
+                    estimatedAge: age
+                )
+            }
+        }
+        func fraction(_ age: Int, _ ages: [Int], chronological: Int) -> CGFloat {
+            BioAgeDailyChart.heightFraction(
+                for: age,
+                estimates: estimates(ages),
+                chronologicalAge: chronological
+            )
+        }
+
+        // Steady week equal to chronological age (the reported overflow).
+        #expect(fraction(31, [31, 31, 31], chronological: 31) == 0.5)
+        // Single day.
+        #expect(fraction(31, [31], chronological: 31) == 0.5)
+        // No estimates: the reference line still has a valid position.
+        #expect(fraction(31, [], chronological: 31) == 0.5)
+
+        // Values far from chronological age stay within 0...1.
+        let outliers = [20, 75, 31]
+        for age in outliers + [31] {
+            let value = fraction(age, outliers, chronological: 31)
+            #expect(value >= 0 && value <= 1)
+        }
+        #expect(fraction(75, outliers, chronological: 31) > fraction(20, outliers, chronological: 31))
+    }
+
     // MARK: - Fixtures
 
     private func sevenDaySpecs() -> [MeasurementSpec] {
