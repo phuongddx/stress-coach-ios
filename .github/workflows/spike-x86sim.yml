@@ -1,0 +1,204 @@
+# Spike (throwaway, not for merge): can x86Sim run StressMonitor's unit tests on a
+# standard GitHub-hosted ubuntu-24.04 runner (no GPU, CPU rendering via lavapipe)?
+# Job "products" builds the test bundles on macos-15 (as build.yml does); job
+# "x86sim" sets x86Sim up in parallel, boots an iPhone, then runs the bundles.
+name: Spike x86sim
+
+on:
+  push:
+    branches: ["spike/x86sim-ci"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write   # the cleanup job deletes the run's artifact (it carries Xcode's XCTest frameworks)
+
+env:
+  XCODE_VERSION: "26.3"
+  SCHEME: "StressMonitor"
+  X86SIM_VERSION: "v0.7.4"
+
+jobs:
+  products:
+    name: Build test bundles (macos-15)
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer
+          xcodebuild -version
+      - name: Ensure watchOS Simulator runtime
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            xcodebuild -downloadPlatform watchOS
+          fi
+      - name: build-for-testing (arm64 simulator)
+        run: |
+          set -o pipefail
+          start=$(date +%s)
+          xcodebuild build-for-testing \
+            -project StressMonitor/StressMonitor.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO | tail -n 30
+          echo "build_for_testing_seconds=$(( $(date +%s) - start ))" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Pack products and XCTest platform files
+        run: |
+          set -e
+          ls build/Build/Products
+          P=$(xcode-select -p)/Platforms/iPhoneSimulator.platform
+          mkdir -p pack/Platforms/iPhoneSimulator.platform/Developer
+          for part in Library/Frameworks Library/PrivateFrameworks/XCTestCore.framework \
+                      Library/PrivateFrameworks/XCTestSupport.framework \
+                      Library/PrivateFrameworks/XCTAutomationSupport.framework \
+                      usr/lib/libXCTestBundleInject.dylib usr/lib/libXCTestSwiftSupport.dylib \
+                      usr/lib/lib_TestingInterop.dylib usr/lib/XCTest.swiftmodule Library/Xcode/Agents/xctest; do
+            [ -e "$P/Developer/$part" ] || { echo "missing $part"; continue; }
+            mkdir -p "pack/Platforms/iPhoneSimulator.platform/Developer/$(dirname "$part")"
+            cp -R "$P/Developer/$part" "pack/Platforms/iPhoneSimulator.platform/Developer/$part"
+          done
+          cp -R build/Build/Products pack/Products
+          tar -C pack -czf products.tgz .
+          du -sh products.tgz pack/Products pack/Platforms
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spike-products
+          path: products.tgz
+          retention-days: 1
+
+  x86sim:
+    name: x86Sim on ubuntu-24.04 (CPU rendering)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    env:
+      X86SIM_DATA: /mnt/x86sim/data
+      X86SIM_CACHE: /mnt/x86sim/cache
+      APPIMAGE_EXTRACT_AND_RUN: "1"
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Runner specs
+        run: |
+          set -x
+          nproc; free -h; df -h / /mnt; lsb_release -a; ldd --version | head -1; uname -r
+          ls -l /dev/kvm /dev/dri 2>&1 || true
+          grep -o -w -E 'sse4_1|popcnt|cx16' /proc/cpuinfo | sort -u
+          sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>&1 || true
+          echo "## Runner" >> "$GITHUB_STEP_SUMMARY"
+          { echo '```'; nproc; free -h; df -h / /mnt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune -af > /dev/null 2>&1 || true
+          sudo mkdir -p /mnt/x86sim && sudo chown -R "$USER" /mnt/x86sim
+          df -h / /mnt
+      - name: Allow unprivileged user namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
+          unshare -r -m true && echo "userns: ok"
+          unshare -r -m -p -f --mount-proc true && echo "userns+pid: ok"
+      - name: Download x86Sim ${{ env.X86SIM_VERSION }}
+        run: |
+          mkdir -p /mnt/x86sim/dl && cd /mnt/x86sim/dl
+          gh release download "$X86SIM_VERSION" -R x86sim/x86sim -p 'x86sim-*-x86_64.AppImage' -p 'SHA256SUMS*'
+          ls -la
+          sha256sum --ignore-missing -c SHA256SUMS* || echo "::warning::checksum file not matched"
+          chmod +x x86sim-*-x86_64.AppImage
+          echo "A=$(ls /mnt/x86sim/dl/x86sim-*-x86_64.AppImage)" >> "$GITHUB_ENV"
+      - name: Setup check
+        continue-on-error: true
+        run: |
+          "$A" version
+          "$A" aot setup check || true
+      - name: Fetch iOS runtime from Apple
+        run: |
+          "$A" x86sim runtime list ios | tee runtimes.txt
+          B=24B8117   # iOS 27.2, the build x86Sim's docs and Setup use by default
+          echo "runtime build: $B"
+          start=$(date +%s)
+          "$A" x86sim runtime fetch "$B"
+          echo "runtime_fetch_seconds=$(( $(date +%s) - start ))" | tee -a "$GITHUB_STEP_SUMMARY"
+          du -sh "$X86SIM_DATA"/runtimes/* | tee -a "$GITHUB_STEP_SUMMARY"
+          df -h / /mnt
+      - name: Mark setup done
+        continue-on-error: true
+        run: "\"$A\" aot setup done || true"
+      - name: Create iPhone (GPU = cpu)
+        run: |
+          "$A" x86sim device models | head -40
+          "$A" x86sim device create --model "iPhone 17 Pro" ci
+          "$A" x86sim gpu ci set cpu
+          "$A" x86sim device list
+      - name: Boot to home screen
+        run: |
+          start=$(date +%s)
+          "$A" aot --device ci sim start
+          "$A" x86sim --phone ci wait home 1200
+          echo "boot_seconds=$(( $(date +%s) - start ))" | tee -a "$GITHUB_STEP_SUMMARY"
+          "$A" aot sim status || true
+          free -h
+      - name: Screenshot and snapshot
+        continue-on-error: true
+        run: |
+          mkdir -p out
+          "$A" x86sim --phone ci screenshot out/home.png
+          "$A" x86sim --phone ci snapshot | head -40
+      - name: Wait for the test bundles
+        run: |
+          for i in $(seq 1 90); do
+            if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --jq '.artifacts[].name' | grep -qx spike-products; then
+              echo "artifact ready after ${i} checks"; break
+            fi
+            sleep 20
+          done
+          gh run download "$GITHUB_RUN_ID" -R "$GITHUB_REPOSITORY" -n spike-products -D /mnt/x86sim/products
+          cd /mnt/x86sim/products && tar -xzf products.tgz && rm products.tgz
+          find Products -maxdepth 1
+      - name: Run unit tests on x86Sim
+        id: tests
+        continue-on-error: true
+        run: |
+          cd /mnt/x86sim/products
+          RUN=$(ls Products/*.xctestrun | head -1); echo "xctestrun: $RUN"
+          start=$(date +%s)
+          set +e
+          "$A" x86sim test ci --xctestrun "$RUN" --platform "$PWD/Platforms" \
+            --junit "$GITHUB_WORKSPACE/out/junit.xml" --out "$GITHUB_WORKSPACE/out/xctest" 2>&1 | tee "$GITHUB_WORKSPACE/out/xctest.log"
+          rc=${PIPESTATUS[0]}
+          echo "xctest_seconds=$(( $(date +%s) - start )) exit=$rc" | tee -a "$GITHUB_STEP_SUMMARY"
+          tail -n 40 "$GITHUB_WORKSPACE/out/xctest.log" | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
+          exit $rc
+      - name: Sizes for caching
+        if: always()
+        run: |
+          du -sh "$X86SIM_DATA"/* "$X86SIM_CACHE"/* 2>/dev/null | sort -h | tail -20 | tee -a "$GITHUB_STEP_SUMMARY"
+          df -h / /mnt; free -h
+      - name: Collect logs
+        if: always()
+        run: |
+          mkdir -p out/logs
+          find "$X86SIM_CACHE" -maxdepth 2 -name '*.log' -size -5M -exec cp {} out/logs/ \; 2>/dev/null || true
+          find "$X86SIM_DATA/var" -path '*/var/log/*.log' -size -2M -exec cp --backup=numbered {} out/logs/ \; 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-x86sim-results
+          path: out
+          retention-days: 7
+
+  cleanup:
+    name: Delete the products artifact
+    needs: [products, x86sim]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: |
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" --jq '.artifacts[] | select(.name=="spike-products") | .id'); do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" && echo "deleted $id"
+          done
