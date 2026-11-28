@@ -101,6 +101,17 @@ jobs:
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
           unshare -r -m true && echo "userns: ok"
           unshare -r -m -p -f --mount-proc true && echo "userns+pid: ok"
+      - name: Install llvm (x86sim needs llvm-lipo to thin XCTest dylibs)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq llvm
+          if ! command -v llvm-lipo >/dev/null; then
+            L=$(ls /usr/bin/llvm-lipo-* /usr/lib/llvm-*/bin/llvm-lipo 2>/dev/null | sort -V | tail -1)
+            echo "linking $L"
+            sudo ln -sf "$L" /usr/local/bin/llvm-lipo
+          fi
+          command -v llvm-lipo
+          llvm-lipo --version
       - name: Download x86Sim ${{ env.X86SIM_VERSION }}
         run: |
           mkdir -p /mnt/x86sim/dl && cd /mnt/x86sim/dl
@@ -172,6 +183,25 @@ jobs:
           echo "xctest_seconds=$(( $(date +%s) - start )) exit=$rc" | tee -a "$GITHUB_STEP_SUMMARY"
           tail -n 40 "$GITHUB_WORKSPACE/out/xctest.log" | sed 's/^/    /' >> "$GITHUB_STEP_SUMMARY"
           exit $rc
+      - name: Test counts (junit)
+        if: always()
+        run: |
+          J="$GITHUB_WORKSPACE/out/junit.xml"
+          if [ -f "$J" ]; then
+            python3 - "$J" <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import sys, xml.etree.ElementTree as ET
+          r = ET.parse(sys.argv[1]).getroot()
+          cases = r.findall('.//testcase')
+          f = sum(1 for c in cases if c.find('failure') is not None or c.find('error') is not None)
+          s = sum(1 for c in cases if c.find('skipped') is not None)
+          print(f"junit: total={len(cases)} pass={len(cases)-f-s} fail={f} skip={s}")
+          for c in cases:
+              if c.find('failure') is not None or c.find('error') is not None:
+                  print(f"FAILED {c.get('classname')}.{c.get('name')}")
+          PY
+          else
+            echo "junit: no junit.xml produced" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Sizes for caching
         if: always()
         run: |
