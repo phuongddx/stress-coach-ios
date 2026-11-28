@@ -11,16 +11,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Do not build or test locally unless it is unavoidable. Build, tests and screenshots run on GitHub Actions in `.github/workflows/agent-verify.yml` (`macos-15`; artifacts kept 7 days).
 
 ```bash
-# 1. Push to an agent/<topic> branch: runs all tests + screenshots automatically (always works)
+# A. Any pushed branch (agent-verify.yml is on main, so dispatch works for every ref):
+git push -u origin HEAD                      # the branch must exist on GitHub
+gh workflow run agent-verify.yml --ref <branch>
+#    Optional inputs: -f only_testing=StressMonitorTests/<Class>[/<method>] (comma-separated)
+#                     -f screenshots=false   -f device="iPhone 16"
+# B. Or push to an agent/<topic> branch: runs every test + screenshots automatically
 git push -u origin HEAD:agent/<topic>
-#    Filtered rerun (workflow_dispatch works only once agent-verify.yml is on the default branch):
-#    only_testing = comma-separated Target/Class[/method]; also -f device="iPhone 16"
-gh workflow run agent-verify.yml --ref agent/<topic> \
-  -f only_testing=StressMonitorTests/<Class> -f screenshots=true
-# 2. Find and watch the run (on failure: gh run view <id> --log-failed)
-gh run list --workflow agent-verify.yml --branch agent/<topic> -L 1
+# Find and watch the run (on failure: gh run view <id> --log-failed)
+gh run list --workflow agent-verify.yml --branch <branch> -L 1
 gh run watch <id> --exit-status
-# 3. Download results (drop -n agent-screenshots when screenshots=false)
+# Download results (drop -n agent-screenshots when screenshots=false)
 gh run download <id> -n agent-xcresult -n agent-screenshots -D /tmp/agent-verify-<id>
 ```
 

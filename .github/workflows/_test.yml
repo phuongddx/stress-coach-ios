@@ -9,20 +9,28 @@ env:
   LANG: "en_US.UTF-8"
 
 jobs:
-  # One macOS runner builds the iOS app, the watch app, the widget extension and
-  # the Release configuration. These used to be four parallel macOS jobs; GitHub's
-  # macOS arm64 pool is often short, so each PR now asks for fewer runners. The
-  # watchOS and Widget builds keep their own check names (main's branch
-  # protection requires them) through the small ubuntu jobs below, which report
-  # this job's step outcomes. Later steps run even when an earlier one fails, so
-  # each check still says what broke.
+  # PR CI asks for three macOS runners: this job, Test below and ci.yml's
+  # "Release Build (Xcode 27.2)". Each configuration is compiled once:
+  #
+  # - Test builds Debug for the iOS Simulator (build-for-testing). The
+  #   StressMonitor scheme embeds the watch app and the widget extension, so
+  #   that one build compiles all three targets; the old separate iOS, watchOS
+  #   and widget Debug builds compiled the same sources again on this runner.
+  # - Lint & Build runs SwiftLint and builds Release for devices with Xcode
+  #   26.3 (iOS app with the watch app and the widget embedded).
+  #
+  # Both jobs check that the watch app and the widget really are embedded in
+  # the product they built. The watchOS and Widget required checks are the
+  # small ubuntu jobs further down, which pass only when both jobs report
+  # their target built. Later steps run even when an earlier one fails, so each
+  # check still says what broke.
   lint-and-build:
     name: Lint & Build
     runs-on: macos-15
-    timeout-minutes: 50
+    timeout-minutes: 40
     outputs:
-      watchos: ${{ steps.watchos.outcome }}
-      widget: ${{ steps.widget.outcome }}
+      watchos: ${{ steps.embedded.outputs.watchos }}
+      widget: ${{ steps.embedded.outputs.widget }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,120 +40,27 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
           xcodebuild -version
 
-      - name: Setup Ruby & Bundler
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: "3.3"
-          bundler-cache: true
-
-      - name: Install xcpretty
-        run: gem install xcpretty --no-document
+      - name: Install xcbeautify
+        run: command -v xcbeautify || brew install xcbeautify
 
       - name: Xcode cache
         uses: ./.github/actions/xcode-cache
         with:
           job-key: lint-build
-          restore-from: build   # main saves only the Build job's entry
+          # Release objects differ from main's Debug entry, so restoring it buys nothing.
+          compilation-cache: "false"
 
       - name: Run SwiftLint
         run: |
-          if which swiftlint >/dev/null 2>&1; then
-            swiftlint lint --reporter github-actions-logging || true
-          else
-            brew install swiftlint
-            swiftlint lint --reporter github-actions-logging || true
-          fi
+          command -v swiftlint >/dev/null 2>&1 || brew install swiftlint
+          swiftlint lint --reporter github-actions-logging || true
 
-      - name: Build iOS
+      - name: Ensure iOS platform
         run: |
-          set -o pipefail
-          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
-          xcodebuild build \
-            -project StressMonitor/StressMonitor.xcodeproj \
-            -scheme "$SCHEME" \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build \
-            -skipPackagePluginValidation \
-            $XCODE_CACHE_ARGS \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            | xcpretty
-
-      - name: Verify Plus StoreKit keys in merged Info.plist
-        run: |
-          set -e
-          PLIST="build/Build/Products/Debug-iphonesimulator/StressMonitor.app/Info.plist"
-          if [ ! -f "$PLIST" ]; then
-            echo "error: merged Info.plist not found at $PLIST" >&2
-            exit 1
-          fi
-          # 1.1 sells StressMonitor Plus only: credit packs must stay out.
-          HITS=$(grep -c STOREKIT_CREDITS "$PLIST") || [ $? -eq 1 ]
-          if [ "$HITS" -ne 0 ]; then
-            echo "error: found $HITS STOREKIT_CREDITS_* reference(s) in merged Info.plist — credit packs are not sold in 1.1." >&2
-            exit 1
-          fi
-          for KEY in STOREKIT_PREMIUM_MONTHLY_PRODUCT_ID STOREKIT_PREMIUM_ANNUAL_PRODUCT_ID STOREKIT_PREMIUM_SUBSCRIPTION_GROUP_ID; do
-            VALUE=$(/usr/libexec/PlistBuddy -c "Print :$KEY" "$PLIST" 2>/dev/null || true)
-            if [ -z "$VALUE" ]; then
-              echo "error: $KEY missing or empty in merged Info.plist." >&2
-              exit 1
-            fi
-            case "$KEY" in
-              *_PRODUCT_ID)
-                case "$VALUE" in
-                  com.stressmonitor.app.plus.*) ;;
-                  *) echo "error: $KEY=$VALUE must start with com.stressmonitor.app.plus." >&2; exit 1 ;;
-                esac ;;
-            esac
-          done
-          echo "OK: Plus StoreKit keys present with plus.* product IDs; no credit-pack keys"
-
-      - name: Build watchOS
-        id: watchos
-        if: ${{ !cancelled() }}
-        run: |
-          set -o pipefail
-          if ! xcodebuild -showdestinations -scheme "StressMonitorWatch Watch App" -project StressMonitor/StressMonitor.xcodeproj 2>/dev/null | grep -q "watchOS Simulator"; then
-            echo "Installing watchOS Simulator runtime..."
-            xcodebuild -downloadPlatform watchOS
-          fi
-          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
-          xcodebuild build \
-            -project StressMonitor/StressMonitor.xcodeproj \
-            -scheme "StressMonitorWatch Watch App" \
-            -destination 'generic/platform=watchOS Simulator' \
-            -derivedDataPath build \
-            -skipPackagePluginValidation \
-            $XCODE_CACHE_ARGS \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            | xcpretty
-
-      - name: Install iOS Platform
-        if: ${{ !cancelled() }}
-        run: |
-          if ! xcodebuild -showdestinations -scheme StressMonitorWidgetExtension -project StressMonitor/StressMonitor.xcodeproj 2>/dev/null | grep -q "iOS"; then
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "platform:iOS,"; then
             echo "No eligible iOS platform found — downloading..."
             xcodebuild -downloadPlatform iOS
           fi
-
-      - name: Build Widget Extension
-        id: widget
-        if: ${{ !cancelled() }}
-        run: |
-          set -o pipefail
-          # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
-          xcodebuild build \
-            -project StressMonitor/StressMonitor.xcodeproj \
-            -scheme "StressMonitorWidgetExtension" \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            -skipPackagePluginValidation \
-            $XCODE_CACHE_ARGS \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            | xcpretty
 
       # Compiles the Release configuration with Xcode 26.3, the older SDK the
       # iOS 18.6 fallback path builds against. Catches Release-only compile
@@ -155,10 +70,9 @@ jobs:
       # optional at build time and signing is off. The Xcode 27.x Release build
       # is ci.yml's "Release Build (Xcode 27.2)" check.
       - name: Build Release (Xcode 26.3)
-        if: ${{ !cancelled() }}
+        id: release
         run: |
           set -o pipefail
-          # The compilation cache holds Debug objects, so it is left out here.
           xcodebuild build \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "$SCHEME" \
@@ -169,52 +83,67 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            | xcpretty
+            | xcbeautify --renderer github-actions
 
-  # Required check names on main. They run no build: each reports the outcome of
-  # its step in Lint & Build. "upstream-not-run" tells scripts/ci-rerun-infra.sh
-  # that the macOS job never ran (for example no runner was free), so a re-run
-  # is safe; any other failure is a real build failure.
+      - name: Verify Plus StoreKit keys in the Release Info.plist
+        if: ${{ !cancelled() && steps.release.outcome == 'success' }}
+        run: scripts/ci/verify-plus-storekit-keys.sh build/Build/Products/Release-iphoneos/StressMonitor.app
+
+      - name: Check the watch app and widget are embedded (Release, device)
+        id: embedded
+        if: ${{ !cancelled() }}
+        run: scripts/ci/check-embedded-targets.sh build/Build/Products/Release-iphoneos/StressMonitor.app "${{ steps.release.outcome }}"
+
+  # Required check names on main. They run no build: each passes only when
+  # both Lint & Build (Release, device) and Test (Debug, simulator) built the
+  # target and embedded it in the app. "upstream-not-run" tells
+  # scripts/ci-rerun-infra.sh that a macOS job never ran (for example no runner
+  # was free), so a re-run is safe; any other failure is a real build failure.
   build-watchos:
     name: Build watchOS
-    needs: lint-and-build
+    needs: [lint-and-build, test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Report the watchOS build from Lint & Build
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/ci
+      - name: Report the watchOS builds from Lint & Build and Test
         env:
-          OUTCOME: ${{ needs.lint-and-build.outputs.watchos }}
-          UPSTREAM: ${{ needs.lint-and-build.result }}
-        run: |
-          case "$OUTCOME" in
-            success) echo "Build watchOS passed in the Lint & Build job." ;;
-            failure) echo "::error::Build watchOS failed: see the Lint & Build job, step \"Build watchOS\"."; exit 1 ;;
-            *) echo "::error title=upstream-not-run::Lint & Build did not run the watchOS build (job result: $UPSTREAM)."; exit 1 ;;
-          esac
+          RELEASE: ${{ needs.lint-and-build.outputs.watchos }}
+          DEBUG: ${{ needs.test.outputs.watchos }}
+          UPSTREAM: "Lint & Build: ${{ needs.lint-and-build.result }}, Test: ${{ needs.test.result }}"
+        run: scripts/ci/report-target-check.sh "watch app" "$RELEASE" "$DEBUG" "$UPSTREAM"
 
   build-widget:
     name: Build Widget
-    needs: lint-and-build
+    needs: [lint-and-build, test]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Report the widget build from Lint & Build
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/ci
+      - name: Report the widget builds from Lint & Build and Test
         env:
-          OUTCOME: ${{ needs.lint-and-build.outputs.widget }}
-          UPSTREAM: ${{ needs.lint-and-build.result }}
-        run: |
-          case "$OUTCOME" in
-            success) echo "Build Widget passed in the Lint & Build job." ;;
-            failure) echo "::error::Build Widget failed: see the Lint & Build job, step \"Build Widget Extension\"."; exit 1 ;;
-            *) echo "::error title=upstream-not-run::Lint & Build did not run the widget build (job result: $UPSTREAM)."; exit 1 ;;
-          esac
+          RELEASE: ${{ needs.lint-and-build.outputs.widget }}
+          DEBUG: ${{ needs.test.outputs.widget }}
+          UPSTREAM: "Lint & Build: ${{ needs.lint-and-build.result }}, Test: ${{ needs.test.result }}"
+        run: scripts/ci/report-target-check.sh "widget extension" "$RELEASE" "$DEBUG" "$UPSTREAM"
 
   test:
     name: Test
     runs-on: macos-15
-    timeout-minutes: 30
+    timeout-minutes: 40
+    outputs:
+      watchos: ${{ steps.embedded.outputs.watchos }}
+      widget: ${{ steps.embedded.outputs.widget }}
+    env:
+      TEST_DESTINATION: "platform=iOS Simulator,name=iPhone 16,OS=latest"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -233,49 +162,74 @@ jobs:
           job-key: test
           restore-from: build   # main saves only the Build job's entry
 
-      # No CI-only test gate: the past CI host stall was a SwiftData
-      # container-lifetime bug in test fixtures (now kept alive per test).
-      - name: Run Tests
+      # The StressMonitor scheme embeds the watch app, so xcodebuild needs a
+      # watchOS Simulator runtime to build it (same guard as build.yml).
+      - name: Ensure watchOS Simulator runtime
+        run: |
+          if ! xcodebuild -showdestinations -project StressMonitor/StressMonitor.xcodeproj -scheme "$SCHEME" 2>/dev/null | grep -q "watchOS Simulator"; then
+            echo "watchOS Simulator runtime missing — downloading..."
+            xcodebuild -downloadPlatform watchOS
+          fi
+
+      # One Debug simulator build of the iOS app, the embedded watch app, the
+      # widget extension and the test bundle.
+      - name: Build iOS, watchOS and widget (Debug, simulator)
+        id: build
         run: |
           set -o pipefail
           # shellcheck disable=SC2086 # XCODE_CACHE_ARGS is split into build settings on purpose
-          xcodebuild test \
+          xcodebuild build-for-testing \
             -project StressMonitor/StressMonitor.xcodeproj \
             -scheme "$SCHEME" \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -destination "$TEST_DESTINATION" \
             -derivedDataPath build \
-            -resultBundlePath TestResults.xcresult \
             -skipPackagePluginValidation \
             $XCODE_CACHE_ARGS \
-            -parallel-testing-enabled NO \
-            -maximum-concurrent-test-simulator-destinations 1 \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
+            2>&1 | tee raw-build-output.log | xcbeautify --renderer github-actions
+
+      - name: Verify Plus StoreKit keys in merged Info.plist
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: scripts/ci/verify-plus-storekit-keys.sh build/Build/Products/Debug-iphonesimulator/StressMonitor.app
+
+      - name: Check the watch app and widget are embedded (Debug, simulator)
+        id: embedded
+        if: ${{ !cancelled() }}
+        run: scripts/ci/check-embedded-targets.sh build/Build/Products/Debug-iphonesimulator/StressMonitor.app "${{ steps.build.outcome }}"
+
+      # No CI-only test gate: the past CI host stall was a SwiftData
+      # container-lifetime bug in test fixtures (now kept alive per test).
+      - name: Run Tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          xcodebuild test-without-building \
+            -project StressMonitor/StressMonitor.xcodeproj \
+            -scheme "$SCHEME" \
+            -destination "$TEST_DESTINATION" \
+            -derivedDataPath build \
+            -resultBundlePath TestResults.xcresult \
+            -parallel-testing-enabled NO \
+            -maximum-concurrent-test-simulator-destinations 1 \
             2>&1 | tee raw-test-output.log | xcbeautify --renderer github-actions
 
       # The console counts XCTest and Swift Testing separately; the result
-      # bundle is the one place with the combined totals per suite.
+      # bundle is the one place with the combined totals and the names of the
+      # failed and skipped tests.
       - name: Summarize test results
         if: always()
-        run: |
-          [ -d TestResults.xcresult ] || exit 0
-          xcrun xcresulttool get test-results summary --path TestResults.xcresult > summary.json
-          xcrun xcresulttool get test-results tests --path TestResults.xcresult > tests.json
-          {
-            echo "### Tests"
-            jq -r '"\(.result): \(.passedTests) passed, \(.failedTests) failed, \(.skippedTests) skipped of \(.totalTestCount)"' summary.json
-            echo
-            echo "| Suite | Tests |"
-            echo "|---|---|"
-            jq -r '[.. | objects | select(.nodeType == "Test Suite")] | sort_by(.name)[] | "| \(.name) | \([.children[]? | select(.nodeType == "Test Case")] | length) |"' tests.json
-          } | tee -a "$GITHUB_STEP_SUMMARY"
+        run: scripts/ci/summarize-test-results.sh TestResults.xcresult | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload raw test log on failure
+      - name: Upload raw build and test logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: raw-test-output
-          path: raw-test-output.log
+          path: |
+            raw-build-output.log
+            raw-test-output.log
+          if-no-files-found: ignore
           retention-days: 5
 
       - name: Upload xcresult
@@ -284,4 +238,5 @@ jobs:
         with:
           name: test-results-xcresult
           path: TestResults.xcresult
+          if-no-files-found: ignore
           retention-days: 5
