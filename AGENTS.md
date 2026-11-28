@@ -55,16 +55,17 @@ Schemes: `StressMonitor`, `"StressMonitorWatch Watch App"` (shared); `StressMoni
 **Verify in the cloud first (default).** Do not build or test locally unless it is unavoidable. Build, tests and screenshots run on GitHub Actions in `.github/workflows/agent-verify.yml` (`macos-15`; artifacts kept 7 days).
 
 ```bash
-# 1. Push to an agent/<topic> branch: runs all tests + screenshots automatically (always works)
+# A. Any pushed branch (agent-verify.yml is on main, so dispatch works for every ref):
+git push -u origin HEAD                      # the branch must exist on GitHub
+gh workflow run agent-verify.yml --ref <branch>
+#    Optional inputs: -f only_testing=StressMonitorTests/<Class>[/<method>] (comma-separated)
+#                     -f screenshots=false   -f device="iPhone 16"
+# B. Or push to an agent/<topic> branch: runs every test + screenshots automatically
 git push -u origin HEAD:agent/<topic>
-#    Filtered rerun (workflow_dispatch works only once agent-verify.yml is on the default branch):
-#    only_testing = comma-separated Target/Class[/method]; also -f device="iPhone 16"
-gh workflow run agent-verify.yml --ref agent/<topic> \
-  -f only_testing=StressMonitorTests/<Class> -f screenshots=true
-# 2. Find and watch the run (on failure: gh run view <id> --log-failed)
-gh run list --workflow agent-verify.yml --branch agent/<topic> -L 1
+# Find and watch the run (on failure: gh run view <id> --log-failed)
+gh run list --workflow agent-verify.yml --branch <branch> -L 1
 gh run watch <id> --exit-status
-# 3. Download results (drop -n agent-screenshots when screenshots=false)
+# Download results (drop -n agent-screenshots when screenshots=false)
 gh run download <id> -n agent-xcresult -n agent-screenshots -D /tmp/agent-verify-<id>
 ```
 
@@ -145,7 +146,7 @@ Run on simulator with `-demo-mode` launch argument to cycle stress levels throug
 
 ## Runtime / Tooling Preferences
 
-- **CI:** macOS 15, Xcode 26.3 (the `xcode-27` runner for `Release Build (Xcode 27.2)`; it falls back to the newest stable 27.x with a `Xcode fallback` warning if 27.2 leaves the image), Ruby 3.3, fastlane 2.236.1. PR CI asks for 3 macOS runners: `Lint & Build` (SwiftLint, iOS, watchOS, widget and the Xcode 26.3 Release build in one job), `Test`, and `Release Build (Xcode 27.2)`. `Build watchOS` and `Build Widget` are ubuntu jobs that only report their step's outcome from `Lint & Build`, so the four required check names stay. `.github/workflows/ci-rerun-infra.yml` re-runs a CI run's failed jobs (at most twice) when a job got no runner ("not acquired by Runner"); real failures, superseded runs and hand-cancelled runs are left alone (logic: `scripts/ci-rerun-infra.sh`, try it with `DRY_RUN=1 GH_REPO=phuongddx/stress-coach-ios scripts/ci-rerun-infra.sh <run-id> <attempt>`). **Local:** Xcode 26.6, system `python3` (no iOS device platform/simulator runtimes — Swift/Xcode verification is GitHub-Actions-only). Diagnose red jobs from the run log, not memory: `PaywallController.swift:59:40` is a Swift-6-mode *warning* only (`SWIFT_VERSION=5.0`); the actual Test-job failure was `MockAuthService` missing `signInWithApple(presenting:)` (fixed `5e55944`). The legacy Xcode Cloud `PR Gate` check fails separately — GitHub Actions is the validation path; don't mix the two.
+- **CI:** macOS 15, Xcode 26.3, xcbeautify (the `xcode-27` runner for `Release Build (Xcode 27.2)`; it falls back to the newest stable 27.x with a `Xcode fallback` warning if 27.2 leaves the image), Ruby 3.3, fastlane 2.236.1. PR CI asks for 3 macOS runners in parallel and compiles each configuration once: `Lint & Build` (SwiftLint + the Xcode 26.3 Release device build of the app with the watch app and widget embedded), `Test` (one Debug simulator `build-for-testing` that compiles the app, the embedded watch app and the widget, the Plus StoreKit key check, then `test-without-building` with `-parallel-testing-enabled NO`), and `Release Build (Xcode 27.2)`. Both `Lint & Build` and `Test` check the watch app and the widget are embedded (`scripts/ci/check-embedded-targets.sh`); `Build watchOS` and `Build Widget` are ubuntu jobs that pass only when both report success, so the four required check names stay. The `Test` step summary lists passed/failed/skipped counts and the name and reason of every failed or skipped test (`scripts/ci/summarize-test-results.sh`); the 2 expected skips are `FirebaseBootstrapTests/testHostIsConfigured()` and `FirebaseBootstrapTests/bootstrapReturnsConfigured()` (CI has no `GoogleService-Info.plist`). `.github/workflows/ci-rerun-infra.yml` re-runs a CI run's failed jobs (at most twice) when a job got no runner ("not acquired by Runner"); real failures, superseded runs and hand-cancelled runs are left alone (logic: `scripts/ci-rerun-infra.sh`, try it with `DRY_RUN=1 GH_REPO=phuongddx/stress-coach-ios scripts/ci-rerun-infra.sh <run-id> <attempt>`). **Local:** Xcode 27.1 (27A9275), system `python3` (no iOS device platform/simulator runtimes — Swift/Xcode verification is GitHub-Actions-only). Diagnose red jobs from the run log, not memory: `PaywallController.swift:59:40` is a Swift-6-mode *warning* only (`SWIFT_VERSION=5.0`); the actual Test-job failure was `MockAuthService` missing `signInWithApple(presenting:)` (fixed `5e55944`). The legacy Xcode Cloud `PR Gate` check fails separately — GitHub Actions is the validation path; don't mix the two.
 - **Agent verify:** `.github/workflows/agent-verify.yml` (push to `agent/**` or dispatch; inputs `only_testing`, `screenshots`, `device`; artifacts `agent-xcresult`, `agent-screenshots`) is the default build/test path for agents — see Development Commands. PR CI also builds the Release configuration (see CI above).
 - **SPM deps (only two):** `firebase-ios-sdk` (Auth/Core) and `GoogleSignIn-iOS`, via a local proxy package. Trust `project.pbxproj`, not README/docs package tables.
 - **`GoogleService-Info.plist`** is **gitignored** and untracked — required locally at `StressMonitor/StressMonitor/GoogleService-Info.plist`; provision separately. Some Firebase tests self-disable without it.

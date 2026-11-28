@@ -69,7 +69,7 @@ jobs:
       - name: Install xcbeautify
         run: command -v xcbeautify || brew install xcbeautify
 
-      # Same guards as _test.yml Build Widget (iOS) and build.yml (watchOS):
+      # Same guards as _test.yml (Lint & Build: iOS, Test: watchOS) and build.yml:
       # the StressMonitor scheme embeds the watch app, so xcodebuild needs the
       # watchOS platform installed too.
       - name: Ensure iOS and watchOS platforms
